@@ -1,17 +1,20 @@
 import { useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth.js'
+import LoadingSpinner from '../pages/Shared/LoadingSpinner.jsx'
 import { loginRoute } from '../utils/constants.js'
 
 function ProtectedRoute({ children }) {
-  const { user } = useAuth()
-
-  console.log('Protected Route User:', user)
+  const { authLoading, user } = useAuth()
 
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       window.history.replaceState({}, '', loginRoute)
     }
-  }, [user])
+  }, [authLoading, user])
+
+  if (authLoading) {
+    return <LoadingSpinner />
+  }
 
   if (!user) {
     return null

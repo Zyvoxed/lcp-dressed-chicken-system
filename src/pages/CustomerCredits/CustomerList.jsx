@@ -1,22 +1,21 @@
 import StatusBadge from '../Shared/StatusBadge.jsx'
-import { debtors } from '../../data/customers.js'
 import { peso } from '../../utils/currency.js'
 
-function CustomerList() {
+function CustomerList({ customers, selectedCustomer, onSelect }) {
   return (
     <article className="panel">
       <h2>AGING CUSTOMER RECEIVABLES</h2>
       <div className="debtor-list">
-        {debtors.map(([name, phone, address, balance, status]) => (
-          <div className="debtor-row" key={name}>
+        {customers.map((customer) => (
+          <div className={`debtor-row ${selectedCustomer?.customer_id === customer.customer_id ? 'selected' : ''}`} key={customer.customer_id} onClick={() => onSelect(customer)}>
             <div>
-              <strong>{name}</strong>
-              <p>{phone}</p>
-              <span>{address}</span>
+              <strong>{customer.customer_name}</strong>
+              <p>{customer.contact_number || '—'}</p>
+              <span>{customer.address || '—'}</span>
             </div>
             <div>
-              <b>{peso.format(balance)}</b>
-              <StatusBadge value={status} as="em" />
+              <b>{peso.format(Number(customer.current_balance))}</b>
+              <StatusBadge value={Number(customer.current_balance) > 0 ? 'Unpaid' : 'Paid'} as="em" />
             </div>
           </div>
         ))}

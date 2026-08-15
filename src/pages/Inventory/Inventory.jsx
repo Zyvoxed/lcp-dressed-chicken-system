@@ -10,6 +10,7 @@ import StockInForm from './StockInForm.jsx'
 function Inventory() {
   const [activeTab, setActiveTab] = useState('Product List')
   const [showProductModal, setShowProductModal] = useState(false)
+  const [inventoryVersion, setInventoryVersion] = useState(0)
 
   return (
     <section className="page-stack">
@@ -23,12 +24,14 @@ function Inventory() {
                 Register Dressed Product
               </button>
             </PageHeader>
-            <ProductList />
+            <ProductList key={inventoryVersion} />
           </article>
         </>
       )}
-      {activeTab === 'Stock In Product (Delivery)' && <StockInForm />}
-      {activeTab === 'Inflow Records' && <InflowRecords />}
+      {activeTab === 'Stock In Product (Delivery)' && (
+        <StockInForm onCreated={() => setInventoryVersion((version) => version + 1)} />
+      )}
+      {activeTab === 'Inflow Records' && <InflowRecords key={inventoryVersion} />}
       {showProductModal && <ProductModal onClose={() => setShowProductModal(false)} />}
     </section>
   )

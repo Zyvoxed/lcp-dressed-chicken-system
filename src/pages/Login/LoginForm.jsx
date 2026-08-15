@@ -4,38 +4,30 @@ import { defaultRoute } from "../../utils/constants.js";
 function LoginForm({ onLogin }) {
   const [formState, setFormState] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   function handleChange(event) {
     const { name, value } = event.target;
     setFormState((current) => ({ ...current, [name]: value }));
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     const username = formState.username.trim();
     const { password } = formState;
 
-    console.log("Login Attempt:", username, password);
-
-    let userData = null;
-
-    if (username === "admin" && password === "admin123") {
-      userData = { username: "admin", role: "admin" };
-    }
-
-    if (username === "employee" && password === "employee123") {
-      userData = { username: "employee", role: "employee" };
-    }
-
-    if (!userData) {
-      setError("Invalid username or password");
-      return;
-    }
-
+    setLoading(true);
     setError("");
-    onLogin(userData);
-    window.history.pushState({}, "", defaultRoute);
+
+    try {
+      await onLogin(username, password);
+      window.history.pushState({}, "", defaultRoute);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -70,8 +62,8 @@ function LoginForm({ onLogin }) {
       <a href="#forgot" className="forgot-link">
         Forgot Password
       </a>
-      <button type="submit" className="primary-action">
-        Login
+      <button type="submit" className="primary-action" disabled={loading}>
+        {loading ? "Logging In" : "Login"}
       </button>
     </form>
   );

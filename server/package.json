@@ -1,0 +1,22 @@
+{
+  "name": "lcp-business-system-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "create-admin": "node scripts/createAdmin.js",
+    "dev": "nodemon server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcrypt": "latest",
+    "cors": "latest",
+    "dotenv": "latest",
+    "express": "latest",
+    "jsonwebtoken": "latest",
+    "mysql2": "latest"
+  },
+  "devDependencies": {
+    "nodemon": "latest"
+  }
+}
