@@ -1,0 +1,154 @@
+.data-table-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.table-search {
+  width: min(100%, 320px);
+}
+
+.table-scroll {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 760px;
+}
+
+th,
+td {
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--table-header-bg);
+  color: var(--text-label);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+}
+
+th button {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: inherit;
+  font: inherit;
+  text-transform: inherit;
+}
+
+td {
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+tbody tr:nth-child(even) {
+  background: var(--row-zebra);
+}
+
+tbody tr {
+  transition:
+    background-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+tbody tr:hover {
+  background: var(--row-hover);
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-action {
+  min-height: 32px;
+  margin-right: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  background: var(--surface-raised);
+  font-size: 12px;
+}
+
+.table-action.danger {
+  color: var(--danger-text);
+  border-color: rgba(239, 68, 68, 0.48);
+  background: var(--danger-bg);
+}
+
+.table-empty {
+  padding: 28px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.table-pagination div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-pagination button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-soft);
+  background: var(--surface-raised);
+}
+
+.table-pagination strong {
+  color: var(--text-heading);
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .table-toolbar {
+    justify-content: stretch;
+  }
+
+  .table-search {
+    width: 100%;
+  }
+
+  .table-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

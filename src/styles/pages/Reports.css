@@ -1,0 +1,136 @@
+.report-layout {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
+.receipt-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--receipt-bg);
+  color: var(--receipt-text);
+}
+
+.receipt-panel h2,
+.receipt-panel strong {
+  color: var(--receipt-text);
+}
+
+.receipt-panel span {
+  border-block: 1px dashed var(--receipt-divider);
+  padding: 14px 0;
+}
+
+.receipt-panel b {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.donut-panel {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.donut-panel p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.donut-wrap {
+  position: relative;
+}
+
+.donut-wrap::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  width: max-content;
+  max-width: 240px;
+  padding: 9px 10px;
+  border: 1px solid var(--tooltip-border);
+  border-left: 3px solid var(--orange);
+  border-radius: var(--radius);
+  color: var(--tooltip-text);
+  background: var(--tooltip-bg);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 6px);
+}
+
+.donut-wrap:hover::after,
+.donut-wrap:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.donut {
+  width: 190px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: conic-gradient(#f97316 0 42%, #60a5fa 42% 68%, #22c55e 68% 84%, #facc15 84% 100%);
+  position: relative;
+  cursor: pointer;
+  animation: donut-render 0.7s ease both;
+  transition:
+    transform 0.25s ease,
+    filter 0.25s ease;
+}
+
+.donut-wrap:hover .donut,
+.donut-wrap:focus-visible .donut {
+  transform: scale(1.04);
+  filter: drop-shadow(0 14px 28px rgba(249, 115, 22, 0.16));
+}
+
+.donut::after {
+  content: '';
+  position: absolute;
+  inset: 38px;
+  border-radius: 50%;
+  background: var(--card-bg);
+}
+
+.donut::before {
+  content: 'Inventory mix';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  text-transform: uppercase;
+  transform: translate(-50%, -50%);
+}
+
+.highlight-money {
+  color: var(--orange-strong);
+}
+
+@keyframes donut-render {
+  from {
+    opacity: 0;
+    transform: scale(0.95) rotate(-8deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@media (max-width: 1180px) {
+  .report-layout {
+    grid-template-columns: 1fr;
+  }
+}

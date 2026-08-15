@@ -1,0 +1,156 @@
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.stats-grid.compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.report-stats {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.stat-card,
+.panel,
+.supplier-card,
+.receipt-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #08152f;
+  box-shadow: var(--card-shadow);
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.stat-card:hover,
+.panel:hover,
+.supplier-card:hover,
+.receipt-panel:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow-hover);
+  border-color: var(--border-strong);
+}
+
+.stat-card {
+  min-height: 146px;
+  padding: 24px;
+  display: grid;
+  align-content: space-between;
+  gap: 14px;
+  overflow: hidden;
+}
+
+.stat-card-top,
+.stat-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stat-card p,
+.section-heading span,
+.product-card p,
+.debtor-row p,
+.shipment-row p,
+.supplier-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.stat-card p {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.stat-card strong {
+  display: block;
+  color: var(--text-heading);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.stat-card-bottom span {
+  color: var(--status-success-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stat-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(245, 158, 11, 0.36);
+  border-radius: var(--radius);
+  color: var(--primary);
+  background: var(--primary-tint);
+}
+
+.stat-sparkline {
+  width: 116px;
+  height: 38px;
+  overflow: visible;
+}
+
+.stat-sparkline polyline {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 8px 10px rgba(245, 158, 11, 0.14));
+}
+
+.panel,
+.receipt-panel {
+  padding: 20px;
+}
+
+.panel h2,
+.receipt-panel h2,
+.supplier-card h2 {
+  margin: 0 0 18px;
+  color: var(--text-heading);
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.panel h3 {
+  color: var(--text-heading);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+@media (max-width: 1280px) {
+  .stats-grid,
+  .stats-grid.compact,
+  .report-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .stats-grid,
+  .stats-grid.compact,
+  .report-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card strong {
+    font-size: 26px;
+  }
+}

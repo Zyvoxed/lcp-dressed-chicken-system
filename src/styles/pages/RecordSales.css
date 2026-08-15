@@ -1,0 +1,99 @@
+.sales-layout {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 360px;
+}
+
+.catalog-panel,
+.basket-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.product-card {
+  position: relative;
+  min-height: 170px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg-soft);
+  box-shadow: var(--card-shadow);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--card-shadow-hover);
+}
+
+.product-card span {
+  color: var(--orange-strong);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.product-card h3 {
+  margin: 12px 0 10px;
+  color: var(--text-heading);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.product-card strong {
+  display: block;
+  margin-top: 14px;
+  color: var(--money-text);
+  font-weight: 600;
+}
+
+.product-card em {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+}
+
+.empty-basket {
+  min-height: 170px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 18px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.45;
+}
+
+.bill-total {
+  padding: 18px;
+  border-radius: var(--radius);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bill-total strong {
+  color: var(--orange-strong);
+}
+
+@media (max-width: 1180px) {
+  .sales-layout {
+    grid-template-columns: 1fr;
+  }
+}

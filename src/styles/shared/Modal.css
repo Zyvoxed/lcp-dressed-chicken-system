@@ -1,0 +1,52 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: var(--modal-backdrop);
+  z-index: 40;
+  backdrop-filter: blur(12px);
+}
+
+.modal-card {
+  width: min(100%, 540px);
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+}
+
+.modal-card .panel-title-row {
+  margin-bottom: 0;
+}
+
+.modal-card h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.close-button {
+  width: 38px;
+  min-height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  color: var(--text-heading);
+  background: var(--surface-raised);
+}
+
+@media (max-width: 520px) {
+  .modal-actions {
+    grid-template-columns: 1fr;
+  }
+}

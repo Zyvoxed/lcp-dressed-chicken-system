@@ -1,0 +1,157 @@
+:root,
+.dark-theme {
+  --primary: #f59e0b;
+  --primary-strong: #d97706;
+  --primary-soft: rgba(245, 158, 11, 0.14);
+  --primary-tint: rgba(245, 158, 11, 0.08);
+  --orange: var(--primary);
+  --orange-strong: var(--primary);
+  --orange-dark: var(--primary-strong);
+  --green: #22c55e;
+  --red: #ef4444;
+  --blue: #38bdf8;
+  --violet: #8b5cf6;
+
+  --bg-primary: #0f172a;
+  --bg-secondary: #111827;
+  --app-bg: #0f172a;
+  --sidebar-bg: #0b1220;
+  --topbar-bg: rgba(15, 23, 42, 0.86);
+  --card-bg: #111827;
+  --card-bg-soft: #0f172a;
+  --card-gradient: linear-gradient(
+    180deg,
+    rgba(17, 24, 39, 0.98),
+    rgba(15, 23, 42, 0.98)
+  );
+  --input-bg: #0b1220;
+  --surface-raised: #111827;
+  --surface-inset: #0b1220;
+  --receipt-bg: #f8fafc;
+
+  --text-primary: #e5e7eb;
+  --text-heading: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-soft: #cbd5e1;
+  --text-label: #cbd5e1;
+  --receipt-text: #0f172a;
+  --money-text: #fbbf24;
+
+  --border: #1f2937;
+  --border-subtle: #1f2937;
+  --border-strong: #334155;
+  --chart-grid: rgba(148, 163, 184, 0.16);
+  --table-header-bg: rgba(15, 23, 42, 0.95);
+  --row-hover: rgba(245, 158, 11, 0.08);
+  --row-zebra: rgba(255, 255, 255, 0.018);
+  --nav-hover-bg: rgba(245, 158, 11, 0.08);
+  --nav-text: #cbd5e1;
+  --nav-active-text: #fffbeb;
+  --danger-bg: rgba(239, 68, 68, 0.12);
+  --danger-text: #fecaca;
+  --modal-backdrop: rgba(2, 6, 23, 0.72);
+  --tooltip-bg: #020617;
+  --tooltip-border: rgba(245, 158, 11, 0.55);
+  --tooltip-text: #f8fafc;
+  --primary-action-bg: linear-gradient(180deg, #fbbf24, #f59e0b);
+  --primary-action-text: #111827;
+  --brand-bg: rgba(245, 158, 11, 0.12);
+  --status-warn-text: #fde68a;
+  --status-warn-bg: rgba(245, 158, 11, 0.14);
+  --status-success-text: #bbf7d0;
+  --status-success-bg: rgba(34, 197, 94, 0.12);
+  --status-danger-text: #fecaca;
+  --status-danger-bg: rgba(239, 68, 68, 0.14);
+  --chart-point-fill: #fffbeb;
+  --bar-fill: linear-gradient(180deg, #fbbf24, #d97706);
+  --bar-shadow: 0 10px 24px rgba(245, 158, 11, 0.18);
+  --receipt-divider: #cbd5e1;
+  --login-grid-line: rgba(148, 163, 184, 0.1);
+  --login-ambient: rgba(245, 158, 11, 0.2);
+  --online-ring: rgba(34, 197, 94, 0.12);
+  --focus-ring: 0 0 0 4px rgba(245, 158, 11, 0.18);
+  --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  --card-shadow-hover: 0 16px 44px rgba(0, 0, 0, 0.28);
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+  --orange-glow: 0 0 0 4px rgba(245, 158, 11, 0.12);
+  --radius: 8px;
+  --sidebar-expanded: 260px;
+  --sidebar-collapsed: 80px;
+}
+
+.light-theme {
+  --primary: #f59e0b;
+  --primary-strong: #d97706;
+  --primary-soft: rgba(245, 158, 11, 0.14);
+  --primary-tint: rgba(245, 158, 11, 0.08);
+  --orange: var(--primary);
+  --orange-strong: var(--primary-strong);
+  --orange-dark: #b45309;
+  --green: #10b981;
+  --red: #ef4444;
+  --blue: #0284c7;
+  --violet: #7c3aed;
+
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --app-bg: #f8fafc;
+  --sidebar-bg: #ffffff;
+  --topbar-bg: rgba(255, 255, 255, 0.88);
+  --card-bg: #ffffff;
+  --card-bg-soft: #ffffff;
+  --card-gradient: linear-gradient(180deg, #ffffff, #ffffff);
+  --input-bg: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-inset: #f8fafc;
+  --receipt-bg: #ffffff;
+
+  --text-primary: #0f172a;
+  --text-heading: #0f172a;
+  --text-secondary: #475569;
+  --text-soft: #334155;
+  --text-label: #334155;
+  --receipt-text: #0f172a;
+  --money-text: #b45309;
+
+  --border: #cbd5e1;
+  --border-subtle: #cbd5e1;
+  --border-strong: #94a3b8;
+  --chart-grid: #e2e8f0;
+  --table-header-bg: #f8fafc;
+  --row-hover: #f1f5f9;
+  --row-zebra: rgba(15, 23, 42, 0.025);
+  --nav-hover-bg: rgba(245, 158, 11, 0.1);
+  --nav-text: #334155;
+  --nav-active-text: #111827;
+  --danger-bg: #fee2e2;
+  --danger-text: #991b1b;
+  --modal-backdrop: rgba(15, 23, 42, 0.34);
+  --tooltip-bg: #ffffff;
+  --tooltip-border: #cbd5e1;
+  --tooltip-text: #0f172a;
+  --primary-action-bg: linear-gradient(180deg, #fbbf24, #f59e0b);
+  --primary-action-text: #111827;
+  --brand-bg: rgba(245, 158, 11, 0.12);
+  --status-warn-text: #92400e;
+  --status-warn-bg: #fef3c7;
+  --status-success-text: #047857;
+  --status-success-bg: #d1fae5;
+  --status-danger-text: #b91c1c;
+  --status-danger-bg: #fee2e2;
+  --chart-point-fill: #fff7ed;
+  --bar-fill: linear-gradient(180deg, #fbbf24, #d97706);
+  --bar-shadow: 0 10px 24px rgba(245, 158, 11, 0.18);
+  --receipt-divider: #cbd5e1;
+  --login-grid-line: rgba(148, 163, 184, 0.22);
+  --login-ambient: rgba(245, 158, 11, 0.14);
+  --online-ring: rgba(16, 185, 129, 0.14);
+  --focus-ring: 0 0 0 4px rgba(245, 158, 11, 0.18);
+  --card-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px rgba(15, 23, 42, 0.08);
+  --card-shadow-hover: 0 14px 36px rgba(15, 23, 42, 0.14);
+  --shadow: 0 24px 80px rgba(15, 23, 42, 0.16);
+  --orange-glow: 0 0 0 4px rgba(245, 158, 11, 0.14);
+  --radius: 8px;
+  --sidebar-expanded: 260px;
+  --sidebar-collapsed: 80px;
+}

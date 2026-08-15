@@ -1,0 +1,205 @@
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 96px; /* updated header height */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 32px;
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 30;
+  backdrop-filter: blur(18px);
+}
+
+.topbar-brand-section,
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Utility classes used in header JSX to emulate tailwind-like behavior */
+.topbar .flex {
+  display: flex;
+}
+
+.topbar .shrink-0 {
+  flex-shrink: 0;
+}
+
+.topbar .flex-1 {
+  flex: 1 1 auto;
+}
+
+.topbar .items-center {
+  align-items: center;
+}
+
+.topbar .gap-4 {
+  gap: 16px;
+}
+
+.topbar-brand-copy strong {
+  color: var(--text-heading);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.topbar-brand-copy p {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.command-key {
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.command-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+}
+
+.command-menu p {
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.command-menu button {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-soft);
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.command-menu button:hover {
+  color: var(--text-heading);
+  background: var(--row-hover);
+}
+
+.user-card,
+.privilege-card {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.user-card strong,
+.privilege-card strong {
+  color: var(--text-heading);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.online-dot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 5px var(--online-ring);
+}
+
+.theme-toggle {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  color: var(--text-soft);
+  background: #07122a;
+}
+
+.theme-toggle:hover {
+  transform: translateY(-2px);
+  border-color: rgba(245, 158, 11, 0.28);
+  color: var(--text-heading);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+.privilege-card {
+  background: rgba(8, 21, 47, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 8px 14px;
+  border-radius: 12px;
+  gap: 10px;
+  min-height: 48px;
+}
+
+.privilege-card strong {
+  color: var(--text-heading);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.privilege-card p {
+  margin: 0;
+  color: #f59e0b;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 980px) {
+  .topbar {
+    padding-inline: 18px;
+  }
+
+  .privilege-card {
+    display: none;
+  }
+}
+
+@media (max-width: 820px) {
+  .topbar {
+    position: sticky;
+    left: 0;
+    height: auto;
+    padding: 14px 16px;
+    flex-wrap: wrap;
+  }
+}

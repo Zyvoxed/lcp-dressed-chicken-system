@@ -1,0 +1,406 @@
+.dashboard-grid {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(0, 7fr) minmax(320px, 3fr);
+}
+
+.chart-panel {
+  position: relative;
+}
+
+.chart-title-row {
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.chart-title-row h2 {
+  margin: 0;
+}
+
+.chart-range-select {
+  width: auto;
+  min-width: 112px;
+  min-height: 36px;
+  padding: 0 34px 0 12px;
+  color: var(--text-heading);
+  background: var(--surface-raised);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chart-canvas {
+  position: relative;
+  min-height: 280px;
+}
+
+.line-chart {
+  width: 100%;
+  height: 280px;
+  display: block;
+  overflow: visible;
+}
+
+.line-chart line {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+}
+
+.chart-axis-label,
+.chart-axis-title,
+.chart-x-label {
+  fill: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.chart-axis-title {
+  fill: var(--text-label);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.chart-x-label {
+  fill: var(--text-soft);
+}
+
+.line-chart .chart-line {
+  fill: none;
+  stroke: var(--orange);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: chart-draw 1s ease forwards;
+}
+
+.line-chart .chart-fill {
+  fill: url(#lineFill);
+  transform-origin: bottom;
+  animation: chart-fill-in 0.8s ease 0.1s both;
+}
+
+.line-chart circle {
+  fill: var(--chart-point-fill);
+  stroke: var(--orange);
+  stroke-width: 2.5;
+  transition:
+    r 0.2s ease,
+    filter 0.2s ease,
+    transform 0.2s ease;
+}
+
+.chart-point {
+  cursor: pointer;
+}
+
+.chart-point:hover circle,
+.chart-point.active circle,
+.chart-point:focus-visible circle {
+  r: 8px;
+  filter: drop-shadow(0 0 11px var(--orange));
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  min-width: 132px;
+  padding: 10px 12px;
+  border: 1px solid var(--tooltip-border);
+  border-left: 3px solid var(--orange);
+  border-radius: var(--radius);
+  color: var(--tooltip-text);
+  background: var(--tooltip-bg);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 14px));
+}
+
+.chart-tooltip strong,
+.chart-tooltip span,
+.chart-tooltip small {
+  display: block;
+}
+
+.chart-tooltip strong {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.chart-tooltip span {
+  margin-top: 5px;
+  color: var(--orange-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chart-tooltip small {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px 14px;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chart-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.product-trend-panel {
+  min-width: 0;
+}
+
+.product-trend-line {
+  fill: none;
+  stroke: var(--series-color);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: chart-draw 1s ease forwards;
+}
+
+.product-series circle {
+  stroke: var(--series-color);
+}
+
+.product-series .chart-point:hover circle,
+.product-series .chart-point.active circle,
+.product-series .chart-point:focus-visible circle {
+  filter: drop-shadow(0 0 10px var(--series-color));
+}
+
+.restock-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.restock-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg-soft);
+}
+
+.restock-row button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--nav-active-text);
+  background: var(--orange);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.business-analytics-section {
+  display: grid;
+  gap: 18px;
+}
+
+.analytics-section-heading {
+  margin-bottom: 0;
+}
+
+.analytics-card-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.analytics-card {
+  min-width: 0;
+}
+
+.top-products-list,
+.low-demand-list,
+.insight-list {
+  display: grid;
+  gap: 12px;
+}
+
+.top-product-row,
+.low-demand-row,
+.insight-item {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg-soft);
+}
+
+.top-product-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.rank-badge,
+.insight-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--orange-strong);
+  background: var(--brand-bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.top-product-row strong,
+.low-demand-row strong,
+.insight-item strong,
+.analytics-product-name {
+  display: block;
+  color: var(--text-heading);
+  font-weight: 600;
+}
+
+.top-product-row span,
+.low-demand-row span,
+.insight-item p {
+  display: block;
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.top-product-row em {
+  color: var(--money-text);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  text-align: right;
+}
+
+.low-demand-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  border-color: var(--orange);
+  background: var(--status-warn-bg);
+}
+
+.low-demand-row > div:last-child {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+}
+
+.analytics-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.analytics-card-title h2 {
+  margin: 0;
+}
+
+.analytics-card-title svg {
+  color: var(--orange-strong);
+}
+
+.insight-item {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.insight-item p {
+  margin-top: 0;
+}
+
+.trend-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trend-indicator.increasing {
+  color: var(--status-success-text);
+}
+
+.trend-indicator.decreasing {
+  color: var(--status-danger-text);
+}
+
+.trend-indicator.stable {
+  color: var(--text-secondary);
+}
+
+@keyframes chart-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes chart-fill-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.7);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@media (max-width: 1180px) {
+  .dashboard-grid,
+  .analytics-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .chart-title-row,
+  .top-product-row,
+  .low-demand-row {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-title-row {
+    align-items: stretch;
+  }
+
+  .chart-range-select {
+    width: 100%;
+  }
+
+  .chart-legend {
+    justify-content: flex-start;
+  }
+
+  .top-product-row em,
+  .low-demand-row > div:last-child {
+    justify-items: start;
+    text-align: left;
+  }
+}

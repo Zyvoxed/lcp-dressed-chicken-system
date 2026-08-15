@@ -1,0 +1,128 @@
+.supplier-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.supplier-card {
+  padding: 20px;
+}
+
+.supplier-card.selected {
+  border-color: var(--orange);
+  box-shadow: var(--orange-glow);
+}
+
+.supplier-card div {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+  color: var(--text-label);
+  font-size: 13px;
+}
+
+.procurement-layout {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
+.bar-chart {
+  min-height: 270px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  align-items: end;
+  padding-top: 34px;
+}
+
+.bar-chart div {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  align-items: end;
+  cursor: pointer;
+}
+
+.bar-chart span {
+  display: block;
+  border-radius: 6px 6px 0 0;
+  background: var(--bar-fill);
+  transform-origin: bottom;
+  animation: bar-grow 0.72s ease both;
+  box-shadow: var(--bar-shadow);
+}
+
+.bar-chart div:hover span,
+.bar-chart div:focus-visible span {
+  filter: brightness(1.1);
+  box-shadow: var(--orange-glow);
+  transform: scaleY(1.03);
+}
+
+.bar-chart p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.bar-chart div::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  min-width: 136px;
+  padding: 9px 10px;
+  border: 1px solid var(--tooltip-border);
+  border-left: 3px solid var(--orange);
+  border-radius: var(--radius);
+  color: var(--tooltip-text);
+  background: var(--tooltip-bg);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  text-align: left;
+  transform: translate(-50%, 6px);
+}
+
+.bar-chart div:hover::after,
+.bar-chart div:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.shipment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg-soft);
+}
+
+.shipment-row:hover {
+  transform: translateY(-1px);
+  background: var(--row-hover);
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@media (max-width: 1180px) {
+  .procurement-layout {
+    grid-template-columns: 1fr;
+  }
+}
