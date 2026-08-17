@@ -4,7 +4,9 @@ export const modules = [
   { label: 'Inventory & Stock In', path: '/inventory', roles: ['admin', 'employee'] },
   { label: 'Customer Credits Book', path: '/customer-credits', roles: ['admin', 'employee'] },
   { label: 'Supplier Contracts', path: '/supplier-contracts', roles: ['admin'] },
+  { label: 'Business Analytics', path: '/business-analytics', roles: ['admin'] },
   { label: 'Reports & Audits', path: '/reports', roles: ['admin'] },
+  { label: 'Activity Logs', path: '/activity-logs', roles: ['admin'] },
   { label: 'User Accounts', path: '/user-accounts', roles: ['admin'] },
 ]
 

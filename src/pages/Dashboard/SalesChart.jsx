@@ -1,132 +1,137 @@
-import { useMemo, useState } from 'react'
-import { salesPerformance } from '../../data/dashboard.js'
-import { buildAreaPath, buildSmoothPath } from '../../utils/chartPaths.js'
-import { peso } from '../../utils/currency.js'
+import { BarChart3 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { buildSmoothPath } from "../../utils/chartPaths.js";
+import { peso } from "../../utils/currency.js";
 
-const chartSize = {
-  width: 680,
-  height: 280,
-  left: 66,
-  right: 26,
-  top: 24,
-  bottom: 56,
-}
+const chart = {
+  width: 760,
+  height: 310,
+  left: 72,
+  right: 24,
+  top: 28,
+  bottom: 54,
+};
+const ranges = ["daily", "weekly", "monthly"];
 
-const rangeTitles = {
-  weekly: 'WEEKLY INWARD SALES PERFORMANCE',
-  monthly: 'MONTHLY INWARD SALES PERFORMANCE',
-}
-
-function buildChartModel(data) {
-  const chartBottom = chartSize.height - chartSize.bottom
-  const chartWidth = chartSize.width - chartSize.left - chartSize.right
-  const chartHeight = chartBottom - chartSize.top
-  const maxSales = Math.ceil(Math.max(...data.map((item) => item.sales)) * 1.12 / 10000) * 10000
+function chartModel(data) {
+  const bottom = chart.height - chart.bottom;
+  const width = chart.width - chart.left - chart.right;
+  const height = bottom - chart.top;
+  const highest = Math.max(...data.map((item) => item.sales), 0);
+  const maximum = Math.max(Math.ceil((highest * 1.15) / 1000) * 1000, 1000);
   const points = data.map((item, index) => ({
     ...item,
-    x: chartSize.left + (chartWidth / (data.length - 1)) * index,
-    y: chartBottom - (item.sales / maxSales) * chartHeight,
-  }))
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((percent) => ({
-    value: maxSales * percent,
-    y: chartBottom - chartHeight * percent,
-  }))
-
-  return {
-    points,
-    ticks,
-    linePath: buildSmoothPath(points),
-    areaPath: buildAreaPath(points, chartBottom),
-  }
+    x: chart.left + (width / Math.max(data.length - 1, 1)) * index,
+    y: bottom - (item.sales / maximum) * height,
+  }));
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => ({
+    value: maximum * fraction,
+    y: bottom - height * fraction,
+  }));
+  return { points, ticks, path: buildSmoothPath(points) };
 }
 
-function SalesChart() {
-  const [activePoint, setActivePoint] = useState(null)
-  const [range, setRange] = useState('weekly')
-  const chartData = salesPerformance[range]
-  const chartModel = useMemo(() => buildChartModel(chartData), [chartData])
+function SalesChart({ trends }) {
+  const [range, setRange] = useState("weekly");
+  const [activePoint, setActivePoint] = useState(null);
+  const data = trends[range] || [];
+  const model = useMemo(() => chartModel(data), [data]);
+  const labelStep = range === "daily" ? 4 : range === "monthly" ? 5 : 1;
 
   return (
-    <article className="panel chart-panel">
-      <div className="panel-title-row chart-title-row">
-        <h2>{rangeTitles[range]}</h2>
-        <select
-          className="chart-range-select"
-          aria-label="Sales chart time range"
-          value={range}
-          onChange={(event) => {
-            setActivePoint(null)
-            setRange(event.target.value)
-          }}
-        >
-          <option value="weekly">Weekly</option>
-          <option value="monthly">Monthly</option>
-        </select>
-      </div>
+    <article className="panel dashboard-sales-chart">
+      <header className="dashboard-chart-header">
+        <div>
+          <h2>
+            <BarChart3 size={18} aria-hidden="true" /> Weekly Sales Performance
+          </h2>
+          <p>
+            Aggregate distribution of completed transactions grouped by {range}
+          </p>
+        </div>
+        <div className="dashboard-segments" aria-label="Sales chart range">
+          {ranges.map((item) => (
+            <button
+              className={range === item ? "active" : ""}
+              type="button"
+              key={item}
+              onClick={() => {
+                setRange(item);
+                setActivePoint(null);
+              }}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      </header>
       <div className="chart-canvas">
         {activePoint && (
           <div
             className="chart-tooltip"
             style={{
-              left: `${(activePoint.x / chartSize.width) * 100}%`,
-              top: `${(activePoint.y / chartSize.height) * 100}%`,
+              left: `${(activePoint.x / chart.width) * 100}%`,
+              top: `${(activePoint.y / chart.height) * 100}%`,
             }}
           >
             <strong>{activePoint.label}</strong>
-            <span>Sales: {peso.format(activePoint.sales)}</span>
-            <small>Orders: {activePoint.orders}</small>
+            <span>{peso.format(activePoint.sales)}</span>
+            <small>{activePoint.transactions} transactions</small>
           </div>
         )}
         <svg
           className="line-chart"
-          viewBox={`0 0 ${chartSize.width} ${chartSize.height}`}
+          viewBox={`0 0 ${chart.width} ${chart.height}`}
           role="img"
-          aria-label={`${rangeTitles[range]} chart`}
+          aria-label={`${range} sales performance`}
         >
-          <defs>
-            <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="var(--orange)" stopOpacity="0.38" />
-              <stop offset="100%" stopColor="var(--orange)" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          {chartModel.ticks.map((tick) => (
+          {model.ticks.map((tick) => (
             <g key={tick.value}>
-              <line x1={chartSize.left} x2={chartSize.width - chartSize.right} y1={tick.y} y2={tick.y} />
-              <text className="chart-axis-label" x={chartSize.left - 12} y={tick.y + 4} textAnchor="end">
+              <line
+                x1={chart.left}
+                x2={chart.width - chart.right}
+                y1={tick.y}
+                y2={tick.y}
+              />
+              <text
+                className="chart-axis-label"
+                x={chart.left - 10}
+                y={tick.y + 4}
+                textAnchor="end"
+              >
                 {peso.format(tick.value)}
               </text>
             </g>
           ))}
-          <text className="chart-axis-title" x="18" y="142" transform="rotate(-90 18 142)">
-            Sales Amount
-          </text>
-          <text className="chart-axis-title" x="340" y="274" textAnchor="middle">
-            {range === 'weekly' ? 'Week' : 'Month'}
-          </text>
-          <path d={chartModel.areaPath} className="chart-fill" />
-          <path className="chart-line" d={chartModel.linePath} />
-          {chartModel.points.map((point) => (
+          <path className="chart-line" d={model.path} />
+          {model.points.map((point, index) => (
             <g
-              className={`chart-point ${activePoint?.label === point.label ? 'active' : ''}`}
+              className={`chart-point ${activePoint?.label === point.label ? "active" : ""}`}
               key={point.label}
-              role="button"
               tabIndex="0"
-              aria-label={`${point.label} sales ${peso.format(point.sales)} orders ${point.orders}`}
+              role="button"
               onPointerEnter={() => setActivePoint(point)}
               onPointerLeave={() => setActivePoint(null)}
               onFocus={() => setActivePoint(point)}
               onBlur={() => setActivePoint(null)}
             >
               <circle cx={point.x} cy={point.y} r="5" />
-              <text className="chart-x-label" x={point.x} y="250" textAnchor="middle">
-                {point.label}
-              </text>
+              {index % labelStep === 0 && (
+                <text
+                  className="chart-x-label"
+                  x={point.x}
+                  y={chart.height - 20}
+                  textAnchor="middle"
+                >
+                  {point.label}
+                </text>
+              )}
             </g>
           ))}
         </svg>
       </div>
     </article>
-  )
+  );
 }
 
-export default SalesChart
+export default SalesChart;

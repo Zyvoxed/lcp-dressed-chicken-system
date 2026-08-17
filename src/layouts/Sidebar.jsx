@@ -1,6 +1,7 @@
 import {
   BarChart3,
   LayoutDashboard,
+  History,
   LogOut,
   Package,
   ShoppingCart,
@@ -17,7 +18,9 @@ const moduleIcons = {
   "Inventory & Stock In": Package,
   "Customer Credits Book": WalletCards,
   "Supplier Contracts": Truck,
+  "Business Analytics": BarChart3,
   "Reports & Audits": BarChart3,
+  "Activity Logs": History,
   "User Accounts": Users,
 };
 

@@ -8,6 +8,8 @@ import Inventory from '../pages/Inventory/Inventory.jsx'
 import CustomerCredits from '../pages/CustomerCredits/CustomerCredits.jsx'
 import SupplierContracts from '../pages/SupplierContracts/SupplierContracts.jsx'
 import Reports from '../pages/Reports/Reports.jsx'
+import BusinessAnalytics from '../pages/Dashboard/BusinessAnalytics.jsx'
+import ActivityLogs from '../pages/ActivityLogs/ActivityLogs.jsx'
 import PageTransition from '../pages/Shared/PageTransition.jsx'
 import UserAccounts from '../pages/UserAccounts/UserAccounts.jsx'
 import { modules } from '../utils/constants.js'
@@ -21,7 +23,9 @@ function AppRoutes() {
     'Inventory & Stock In': <Inventory />,
     'Customer Credits Book': <CustomerCredits />,
     'Supplier Contracts': <SupplierContracts />,
+    'Business Analytics': <BusinessAnalytics />,
     'Reports & Audits': <Reports />,
+    'Activity Logs': <ActivityLogs />,
     'User Accounts': <UserAccounts />,
   }[activeModule]
 

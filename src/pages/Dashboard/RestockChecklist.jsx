@@ -1,20 +1,12 @@
-import { products } from '../../data/products.js'
+import EmptyState from '../Shared/EmptyState.jsx'
 
-function RestockChecklist() {
+function RestockChecklist({ products, total }) {
   return (
-    <article className="panel restock-panel">
-      <h2>RESTOCK CHECKLIST REQUIREMENTS</h2>
-      {products
-        .filter((product) => product[4] !== 'Ready')
-        .map(([name, , stock]) => (
-          <div className="restock-row" key={name}>
-            <div>
-              <strong>{name}</strong>
-              <p>Stock Level: {stock} kg</p>
-            </div>
-            <button type="button">RESTOCK</button>
-          </div>
-        ))}
+    <article className="panel dashboard-list-panel">
+      <header><h2>LOW STOCK ALERTS</h2><span className="dashboard-badge danger">{total} ALERTS</span></header>
+      {!products.length ? <EmptyState>No products require restocking.</EmptyState> : <div className="dashboard-ranked-list">
+        {products.slice(0, 5).map((product) => <div className="dashboard-stock-row" key={product.product_id}><div><strong>{product.product_name}</strong><p>Stock: <em>{Number(product.stock_quantity)} {product.unit}</em></p><span>Min Stock: {Number(product.reorder_level)} {product.unit}</span></div><b>RESTOCK NEEDED</b></div>)}
+      </div>}
     </article>
   )
 }
