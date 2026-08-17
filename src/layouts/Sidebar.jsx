@@ -24,12 +24,10 @@ const moduleIcons = {
   "User Accounts": Users,
 };
 
-function Sidebar({ activeModule, onSelect, onLogout, role, user }) {
+function Sidebar({ activeModule, onSelect, onLogout, role }) {
   const accessibleModules = modules.filter((module) =>
     hasRouteAccess(module, role),
   );
-
-  const displayName = user?.username || role || "Operator";
 
   return (
     <aside className="sidebar">

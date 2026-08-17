@@ -121,7 +121,7 @@
   box-sizing: content-box;
   border: 1px solid var(--border);
   border-radius: 6px;
-  color: #817cff;
+  color: var(--system-text);
   background: var(--surface-inset);
 }
 .user-metric-card.admin > svg {
@@ -131,11 +131,11 @@
   color: var(--status-success-text);
 }
 .user-security-card {
-  border-color: #302d64;
+  border-color: var(--system-border);
 }
 .user-security-card > strong,
 .user-security-card > span {
-  color: #8f88ff;
+  color: var(--system-text);
 }
 .user-security-card p {
   margin: 12px 0;
@@ -246,8 +246,8 @@
   justify-self: start;
   padding: 2px 7px;
   border-radius: 4px;
-  color: #918bff;
-  background: #1e1a4b;
+  color: var(--system-text);
+  background: var(--system-bg);
   font-size: 8px;
 }
 .user-identity > b.inactive {
@@ -272,12 +272,12 @@
   text-transform: uppercase;
 }
 .user-role-badge.admin {
-  border-color: #744900;
+  border-color: var(--warning-border);
   color: var(--orange-strong);
   background: var(--brand-bg);
 }
 .user-role-badge.staff {
-  border-color: #00694f;
+  border-color: var(--success-border);
   color: var(--status-success-text);
   background: var(--status-success-bg);
 }
@@ -297,7 +297,7 @@
 }
 .table-action.success {
   color: var(--status-success-text);
-  border-color: #00694f;
+  border-color: var(--success-border);
 }
 .profile-panel {
   align-self: start;
@@ -395,7 +395,7 @@
   opacity: 0.45;
 }
 .role-cards button.staff.selected {
-  border-color: #008d6a;
+  border-color: var(--success-border);
   color: var(--status-success-text);
   background: var(--status-success-bg);
 }

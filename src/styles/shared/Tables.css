@@ -97,7 +97,7 @@ tbody tr:last-child td {
 
 .table-action.danger {
   color: var(--danger-text);
-  border-color: rgba(239, 68, 68, 0.48);
+  border-color: var(--danger-border);
   background: var(--danger-bg);
 }
 

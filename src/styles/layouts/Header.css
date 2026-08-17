@@ -147,22 +147,22 @@
   height: 48px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--text-soft);
-  background: #07122a;
+  background: var(--surface-inset);
 }
 
 .theme-toggle:hover {
   transform: translateY(-2px);
-  border-color: rgba(245, 158, 11, 0.28);
+  border-color: var(--warning-border);
   color: var(--text-heading);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--card-shadow);
 }
 
 .privilege-card {
-  background: rgba(8, 21, 47, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
   padding: 8px 14px;
   border-radius: 12px;
   gap: 10px;
@@ -177,7 +177,7 @@
 
 .privilege-card p {
   margin: 0;
-  color: #f59e0b;
+  color: var(--orange-strong);
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;

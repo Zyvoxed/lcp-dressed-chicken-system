@@ -18,7 +18,7 @@
 .receipt-panel {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: #08152f;
+  background: var(--card-bg);
   box-shadow: var(--card-shadow);
   transition:
     transform 0.22s ease,
@@ -91,7 +91,7 @@
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border: 1px solid rgba(245, 158, 11, 0.36);
+  border: 1px solid var(--warning-border);
   border-radius: var(--radius);
   color: var(--primary);
   background: var(--primary-tint);
@@ -109,7 +109,7 @@
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 8px 10px rgba(245, 158, 11, 0.14));
+  filter: drop-shadow(0 8px 10px var(--primary-soft));
 }
 
 .panel,

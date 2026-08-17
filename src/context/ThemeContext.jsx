@@ -19,6 +19,7 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(getStoredTheme)
 
   useLayoutEffect(() => {
+    document.documentElement.dataset.theme = theme
     document.body.classList.remove('light-theme', 'dark-theme')
     document.body.classList.add(`${theme}-theme`)
     try {

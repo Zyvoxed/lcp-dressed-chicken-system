@@ -76,7 +76,7 @@
   width: 190px;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: conic-gradient(#f97316 0 42%, #60a5fa 42% 68%, #22c55e 68% 84%, #facc15 84% 100%);
+  background: conic-gradient(var(--chart-series-1) 0 42%, var(--chart-series-2) 42% 68%, var(--chart-series-3) 68% 84%, var(--chart-series-4) 84% 100%);
   position: relative;
   cursor: pointer;
   animation: donut-render 0.7s ease both;
@@ -88,7 +88,7 @@
 .donut-wrap:hover .donut,
 .donut-wrap:focus-visible .donut {
   transform: scale(1.04);
-  filter: drop-shadow(0 14px 28px rgba(249, 115, 22, 0.16));
+  filter: drop-shadow(0 14px 28px var(--chart-accent-shadow));
 }
 
 .donut::after {

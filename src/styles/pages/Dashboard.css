@@ -860,7 +860,7 @@
 .analytics-bar-column > div {
   min-height: 4px;
   border-radius: 5px 5px 0 0;
-  background: #3877d4;
+  background: var(--chart-secondary);
 }
 .analytics-bar-column > div.leading {
   background: var(--orange);

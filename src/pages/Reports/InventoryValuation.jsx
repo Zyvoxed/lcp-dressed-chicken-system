@@ -10,7 +10,13 @@ import {
 import { exportCsv } from "../../utils/csvExport.js";
 import { peso } from "../../utils/currency.js";
 
-const colors = ["#f97316", "#60a5fa", "#22c55e", "#facc15", "#a78bfa"];
+const colors = [
+  "var(--chart-series-1)",
+  "var(--chart-series-2)",
+  "var(--chart-series-3)",
+  "var(--chart-series-4)",
+  "var(--chart-series-5)",
+];
 
 function InventoryValuation() {
   const [report, setReport] = useState(null);

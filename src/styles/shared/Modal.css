@@ -18,6 +18,8 @@
   border-radius: 12px;
   background: var(--card-bg);
   box-shadow: var(--shadow);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
 }
 
 .modal-card .panel-title-row {

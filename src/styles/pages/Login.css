@@ -49,7 +49,7 @@
 .login-subtitle {
   max-width: 570px;
   margin: 22px 0 30px;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 

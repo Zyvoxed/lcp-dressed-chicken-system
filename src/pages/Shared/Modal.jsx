@@ -7,6 +7,9 @@ function Modal({ title, children, onClose }) {
     <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
       <motion.section
         className="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.2, ease: 'easeOut' }}
