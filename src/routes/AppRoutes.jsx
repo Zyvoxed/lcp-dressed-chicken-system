@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { AuthProvider } from '../context/AuthContext.jsx'
 import ProtectedLayout from '../layouts/ProtectedLayout.jsx'
@@ -15,7 +15,20 @@ import UserAccounts from '../pages/UserAccounts/UserAccounts.jsx'
 import { modules } from '../utils/constants.js'
 
 function AppRoutes() {
-  const [activeModule, setActiveModule] = useState(modules[0].label)
+  const moduleForPath = () => modules.find((module) => module.path === window.location.pathname) || modules[0]
+  const [activeModule, setActiveModule] = useState(() => moduleForPath().label)
+
+  function selectModule(label) {
+    const selected = modules.find((module) => module.label === label) || modules[0]
+    window.history.pushState({}, '', selected.path)
+    setActiveModule(selected.label)
+  }
+
+  useEffect(() => {
+    const handleNavigation = () => setActiveModule(moduleForPath().label)
+    window.addEventListener('popstate', handleNavigation)
+    return () => window.removeEventListener('popstate', handleNavigation)
+  }, [])
 
   const activePage = {
     'Main Dashboard': <Dashboard />,
@@ -31,7 +44,7 @@ function AppRoutes() {
 
   return (
     <AuthProvider>
-      <ProtectedLayout activeModule={activeModule} onSelect={setActiveModule}>
+      <ProtectedLayout activeModule={activeModule} onSelect={selectModule}>
         <AnimatePresence mode="wait">
           <PageTransition key={activeModule}>{activePage}</PageTransition>
         </AnimatePresence>

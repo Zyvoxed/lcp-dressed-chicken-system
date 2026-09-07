@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "create-admin": "node scripts/createAdmin.js",
+    "test:transactions": "node scripts/predeployTransactionTest.js",
     "dev": "nodemon server.js",
     "start": "node server.js"
   },

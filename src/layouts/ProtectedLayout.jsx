@@ -11,13 +11,17 @@ function ProtectedLayout({ activeModule, onSelect, children }) {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated && window.location.pathname !== loginRoute) {
+      sessionStorage.setItem('returnTo', window.location.pathname)
       window.history.replaceState({}, '', loginRoute)
     }
 
     if (isAuthenticated && window.location.pathname === loginRoute) {
-      window.history.replaceState({}, '', defaultRoute)
+      const returnTo = sessionStorage.getItem('returnTo') || defaultRoute
+      sessionStorage.removeItem('returnTo')
+      const destination = modules.find((module) => module.path === returnTo) || modules[0]
+      onSelect(destination.label)
     }
-  }, [authLoading, isAuthenticated])
+  }, [authLoading, isAuthenticated, onSelect])
 
   useEffect(() => {
     if (authLoading || !isAuthenticated || !role) {

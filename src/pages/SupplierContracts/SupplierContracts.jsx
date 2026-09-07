@@ -6,10 +6,12 @@ import SupplierCard from './SupplierCard.jsx'
 import SupplierLedger from './SupplierLedger.jsx'
 import SupplierModal from './SupplierModal.jsx'
 import { getSuppliers } from '../../services/supplierService.js'
+import { getStockInRecords } from '../../services/stockInService.js'
 
 function SupplierContracts() {
   const [showSupplierModal, setShowSupplierModal] = useState(false)
   const [suppliers, setSuppliers] = useState([])
+  const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -30,8 +32,12 @@ function SupplierContracts() {
 
     async function loadSuppliers() {
       try {
-        const data = await getSuppliers({ signal: controller.signal })
-        setSuppliers(data)
+        const [supplierData, stockInData] = await Promise.all([
+          getSuppliers({ signal: controller.signal }),
+          getStockInRecords({ signal: controller.signal }),
+        ])
+        setSuppliers(supplierData)
+        setRecords(stockInData)
       } catch (requestError) {
         if (requestError.name !== 'AbortError') {
           setError(requestError.message)
@@ -64,8 +70,8 @@ function SupplierContracts() {
         ))}
       </div>
       <section className="procurement-layout">
-        <ProcurementChart onSupplierModal={() => setShowSupplierModal(true)} />
-        <SupplierLedger />
+        <ProcurementChart records={records} onSupplierModal={() => setShowSupplierModal(true)} />
+        <SupplierLedger records={records} />
       </section>
       {showSupplierModal && (
         <SupplierModal onClose={() => setShowSupplierModal(false)} onCreated={handleSupplierCreated} />

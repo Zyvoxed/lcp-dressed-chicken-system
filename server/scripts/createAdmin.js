@@ -7,11 +7,11 @@ const saltRounds = 10
 async function createAdmin() {
   const fullname = process.env.ADMIN_FULLNAME?.trim()
   const username = process.env.ADMIN_USERNAME?.trim()
-  const password = process.env.ADMIN_PASSWORD
+  const password = process.env.ADMIN_INITIAL_PASSWORD
   const contactNumber = process.env.ADMIN_CONTACT?.trim() || null
 
   if (!fullname || !username || !password) {
-    throw new Error('ADMIN_FULLNAME, ADMIN_USERNAME, and ADMIN_PASSWORD are required')
+    throw new Error('ADMIN_FULLNAME, ADMIN_USERNAME, and ADMIN_INITIAL_PASSWORD are required')
   }
 
   const [existingUsers] = await pool.execute(
@@ -32,13 +32,13 @@ async function createAdmin() {
     [fullname, username, passwordHash, contactNumber],
   )
 
-  console.log('Development Admin created successfully.')
+  console.log('Initial Admin created successfully.')
 }
 
 try {
   await createAdmin()
 } catch (error) {
-  console.error('Unable to create development Admin:', error.message)
+  console.error('Unable to create initial Admin:', error.message)
   process.exitCode = 1
 } finally {
   await pool.end()

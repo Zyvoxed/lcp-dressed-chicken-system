@@ -1,7 +1,7 @@
-import { apiFetch } from './api.js'
+import { authenticatedApiFetch } from './api.js'
 
 export async function getProducts(options = {}) {
-  const response = await apiFetch('/products', options)
+  const response = await authenticatedApiFetch('/products', options)
 
   if (!response.ok) {
     throw new Error(`Unable to retrieve products (HTTP ${response.status})`)

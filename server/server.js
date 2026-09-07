@@ -2,6 +2,7 @@ import 'dotenv/config'
 import cors from 'cors'
 import express from 'express'
 import pool from './config/database.js'
+import { environment } from './config/environment.js'
 import activityLogRoutes from './routes/activityLogRoutes.js'
 import authRoutes from './routes/authRoutes.js'
 import customerRoutes from './routes/customerRoutes.js'
@@ -15,9 +16,14 @@ import supplierRoutes from './routes/supplierRoutes.js'
 import userRoutes from './routes/userRoutes.js'
 
 const app = express()
-const port = process.env.PORT || 5000
+const port = environment.port
 
-app.use(cors())
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || origin === environment.frontendUrl) return callback(null, true)
+    return callback(null, false)
+  },
+}))
 app.use(express.json())
 app.use('/api/activity-logs', activityLogRoutes)
 app.use('/api/auth', authRoutes)

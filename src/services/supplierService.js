@@ -1,4 +1,4 @@
-import { apiFetch } from './api.js'
+import { authenticatedApiFetch } from './api.js'
 
 async function parseResponse(response, fallbackMessage) {
   let result
@@ -17,7 +17,7 @@ async function parseResponse(response, fallbackMessage) {
 }
 
 export async function getSuppliers(options = {}) {
-  const response = await apiFetch('/suppliers', options)
+  const response = await authenticatedApiFetch('/suppliers', options)
   const result = await parseResponse(response, 'Unable to retrieve suppliers')
 
   if (!Array.isArray(result.data)) {
@@ -28,7 +28,7 @@ export async function getSuppliers(options = {}) {
 }
 
 export async function createSupplier(data) {
-  const response = await apiFetch('/suppliers', {
+  const response = await authenticatedApiFetch('/suppliers', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
