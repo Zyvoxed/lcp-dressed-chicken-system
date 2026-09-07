@@ -10,7 +10,9 @@ async function parseResponse(response, fallbackMessage) {
   }
 
   if (!response.ok || !result.success) {
-    throw new Error(result.message || fallbackMessage)
+    const error = new Error(result.message || fallbackMessage)
+    error.status = response.status
+    throw error
   }
 
   return result

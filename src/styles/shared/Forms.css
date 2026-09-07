@@ -2,8 +2,8 @@ label {
   display: grid;
   gap: 8px;
   color: var(--text-label);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1.25;
 }
 
@@ -11,7 +11,7 @@ input,
 select,
 textarea {
   width: 100%;
-  min-height: 44px;
+  min-height: 42px;
   padding: 0 13px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -45,7 +45,7 @@ textarea::placeholder {
 
 .search-field,
 .table-search {
-  min-height: 44px;
+  min-height: 42px;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -81,7 +81,7 @@ textarea::placeholder {
 .close-button {
   min-height: 44px;
   border-radius: var(--radius);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0;
   transition:
     transform 0.18s ease,
@@ -95,6 +95,17 @@ textarea::placeholder {
   border: 0;
   color: var(--primary-action-text);
   background: var(--primary-action-bg);
+}
+
+.primary-action,
+.secondary-action {
+  padding-inline: 16px;
+}
+
+.primary-action:focus-visible,
+.secondary-action:focus-visible,
+.table-action:focus-visible {
+  outline-offset: 2px;
 }
 
 .primary-action.slim,

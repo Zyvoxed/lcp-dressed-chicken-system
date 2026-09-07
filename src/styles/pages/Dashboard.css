@@ -211,7 +211,7 @@
   color: var(--orange-strong);
   background: var(--brand-bg);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 600;
 }
 .dashboard-badge.danger,
 .dashboard-product-row b,
@@ -731,7 +731,7 @@
 .business-kpi-grid header span {
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.04em;
 }
 .business-kpi-grid header span.accent,
@@ -824,7 +824,7 @@
   flex: 0 0 auto;
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.1em;
 }
 .analytics-bar-chart {
@@ -911,7 +911,7 @@
 .analytics-restock-row p em {
   color: var(--status-danger-text);
   font-style: normal;
-  font-weight: 800;
+  font-weight: 600;
 }
 .analytics-restock-row p span {
   margin-left: 8px;
@@ -964,7 +964,7 @@
 .analytics-performance-row em {
   color: var(--orange-strong);
   font-style: normal;
-  font-weight: 800;
+  font-weight: 600;
 }
 .analytics-performance-row > div:last-child > b {
   color: var(--text-heading);
@@ -1015,7 +1015,7 @@
 .executive-insights p em {
   color: var(--orange-strong);
   font-style: normal;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 @keyframes chart-draw {
@@ -1132,4 +1132,41 @@
     justify-items: start;
     text-align: left;
   }
+}
+
+/* Analytics uses the same readable density as the rest of the dashboard. */
+.business-analytics-page {
+  gap: 24px;
+}
+
+.business-analytics-header,
+.business-kpi-grid article,
+.product-performance-chart,
+.analytics-restock-panel,
+.analytics-performance-list,
+.executive-insights {
+  border-radius: var(--radius-lg);
+}
+
+.business-analytics-header h1 {
+  font-size: clamp(22px, 2vw, 26px);
+  letter-spacing: -0.02em;
+}
+
+.business-kpi-grid article header span,
+.business-kpi-grid article header b,
+.product-performance-chart header > span,
+.analytics-restock-panel > header > b,
+.analytics-bar-column > span,
+.analytics-bar-column small,
+.analytics-restock-row > b,
+.analytics-performance-row span,
+.analytics-performance-row b.low-demand {
+  font-size: 10px;
+  letter-spacing: 0.025em;
+}
+
+.analytics-restock-row strong,
+.analytics-performance-row strong {
+  font-size: 12px;
 }

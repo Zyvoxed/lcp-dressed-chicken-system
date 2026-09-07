@@ -3,12 +3,12 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 96px; /* updated header height */
+  height: 76px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 16px 32px;
+  padding: 12px 28px;
   background: var(--topbar-bg);
   border-bottom: 1px solid var(--border-subtle);
   z-index: 30;
@@ -45,16 +45,16 @@
 
 .topbar-brand-copy strong {
   color: var(--text-heading);
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .topbar-brand-copy p {
   margin: 2px 0 0;
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
@@ -69,7 +69,7 @@
   color: var(--text-secondary);
   background: var(--surface-raised);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -89,8 +89,8 @@
   margin: 0 0 8px;
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -128,7 +128,7 @@
 .privilege-card strong {
   color: var(--text-heading);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: capitalize;
 }
 
@@ -143,8 +143,8 @@
 
 .theme-toggle {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
   border: 1px solid var(--border);
@@ -154,7 +154,6 @@
 }
 
 .theme-toggle:hover {
-  transform: translateY(-2px);
   border-color: var(--warning-border);
   color: var(--text-heading);
   box-shadow: var(--card-shadow);
@@ -166,20 +165,20 @@
   padding: 8px 14px;
   border-radius: 12px;
   gap: 10px;
-  min-height: 48px;
+  min-height: 44px;
 }
 
 .privilege-card strong {
   color: var(--text-heading);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .privilege-card p {
   margin: 0;
   color: var(--orange-strong);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }

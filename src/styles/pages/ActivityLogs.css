@@ -39,7 +39,7 @@
   color: var(--text-heading);
   background: var(--card-bg);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
 }
 .activity-page-header > span i {
   width: 8px;
@@ -94,7 +94,7 @@
   color: var(--text-secondary);
   background: transparent;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 600;
   text-transform: uppercase;
 }
 .activity-filter-row button.active {
@@ -163,7 +163,7 @@
   border: 1px solid transparent;
   border-radius: 999px;
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 600;
   white-space: nowrap;
 }
 .activity-role.admin {
@@ -281,4 +281,37 @@
   .activity-pagination {
     justify-content: center;
   }
+}
+
+/* Keep dense audit information compact without sacrificing legibility. */
+.activity-logs-page {
+  gap: 24px;
+}
+
+.activity-filter-panel,
+.activity-table-panel {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+}
+
+.activity-filter-row button,
+.activity-filter-panel > footer,
+.activity-pagination strong {
+  font-size: 11px;
+  letter-spacing: 0.025em;
+}
+
+.activity-table-panel th {
+  font-size: 11px;
+  letter-spacing: 0.035em;
+}
+
+.activity-table-panel td {
+  font-size: 12px;
+}
+
+.activity-role,
+.activity-action {
+  font-size: 10px;
+  font-weight: 600;
 }

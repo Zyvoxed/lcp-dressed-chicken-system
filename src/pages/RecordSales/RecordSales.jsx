@@ -9,6 +9,8 @@ import CustomerModal from './CustomerModal.jsx'
 import { getCustomers } from '../../services/customerService.js'
 import { getProducts } from '../../services/productService.js'
 import { createSale } from '../../services/salesService.js'
+import { ShoppingCart } from 'lucide-react'
+import PageIntro from '../Shared/PageIntro.jsx'
 
 function RecordSales() {
   const [category, setCategory] = useState('All')
@@ -96,7 +98,9 @@ function RecordSales() {
   }
 
   return (
-    <section className="sales-layout">
+    <section className="sales-page page-stack">
+      <PageIntro icon={ShoppingCart} title="Record Sales" description="Select products, review totals, and complete customer transactions." />
+      <div className="sales-layout">
       <article className="panel catalog-panel">
         <div className="section-heading">
           <p>PRODUCT CATALOG (SALES POS)</p>
@@ -111,6 +115,7 @@ function RecordSales() {
       </article>
       <SalesBasket cart={cart} customers={customers} onAddCustomer={() => setCustomerModal(true)} onQuantity={updateQuantity} onRemove={removeProduct} onProcess={processSale} />
       {customerModal && <CustomerModal onClose={() => setCustomerModal(false)} onCreated={customerCreated} />}
+      </div>
     </section>
   )
 }

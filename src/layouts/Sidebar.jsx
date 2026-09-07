@@ -1,11 +1,13 @@
 import {
   BarChart3,
+  Boxes,
+  FileChartColumn,
   LayoutDashboard,
   History,
   LogOut,
-  Package,
   ShoppingCart,
   Truck,
+  UserRound,
   Users,
   WalletCards,
 } from "lucide-react";
@@ -15,16 +17,16 @@ import { hasRouteAccess } from "../utils/rolePermissions.js";
 const moduleIcons = {
   "Main Dashboard": LayoutDashboard,
   "Record Sales": ShoppingCart,
-  "Inventory & Stock In": Package,
+  "Inventory & Stock In": Boxes,
   "Customer Credits Book": WalletCards,
   "Supplier Contracts": Truck,
   "Business Analytics": BarChart3,
-  "Reports & Audits": BarChart3,
+  "Reports & Audits": FileChartColumn,
   "Activity Logs": History,
   "User Accounts": Users,
 };
 
-function Sidebar({ activeModule, onSelect, onLogout, role }) {
+function Sidebar({ activeModule, onSelect, onLogout, role, user }) {
   const accessibleModules = modules.filter((module) =>
     hasRouteAccess(module, role),
   );
@@ -40,6 +42,7 @@ function Sidebar({ activeModule, onSelect, onLogout, role }) {
             <button
               key={module.path}
               className={activeModule === module.label ? "active" : ""}
+              aria-current={activeModule === module.label ? "page" : undefined}
               type="button"
               onClick={() => onSelect(module.label)}
               title={module.label}
@@ -51,6 +54,13 @@ function Sidebar({ activeModule, onSelect, onLogout, role }) {
         })}
       </nav>
       <div className="sidebar-footer">
+        <div className="sidebar-user" title={user?.fullname || user?.username || "Authenticated user"}>
+          <span className="sidebar-user-icon"><UserRound size={17} aria-hidden="true" /></span>
+          <span className="sidebar-user-copy">
+            <strong>{user?.fullname || user?.username || "Authenticated user"}</strong>
+            <small>{role === "admin" ? "Administrator" : "Staff member"}</small>
+          </span>
+        </div>
         <div className="sidebar-utility">
           <button
             className="logout-button"
