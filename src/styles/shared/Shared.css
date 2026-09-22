@@ -1,26 +1,32 @@
+/* ============================================================
+   Shared UI Components
+   ============================================================ */
+
+/* — Brand mark — */
 .brand-mark {
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border: 1px solid var(--warning-border);
   border-radius: 10px;
-  background: var(--brand-bg);
-  box-shadow: inset 0 1px 0 var(--inset-highlight), var(--orange-glow);
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  background: #fffaf5;
 }
 
-.brand-mark span {
-  color: var(--primary);
-  font-size: 22px;
-  font-weight: 700;
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
 }
 
 .login-kicker {
   color: var(--primary);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -28,33 +34,33 @@
   grid-column: 1 / -1;
 }
 
+/* — Page intro — */
 .page-intro {
   min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-subtle);
+  gap: 16px;
+  padding: 2px 2px 0;
 }
 
 .page-intro-copy {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .page-intro-icon {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--warning-border);
-  border-radius: 11px;
-  color: var(--primary);
-  background: var(--primary-tint);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--brand-dark);
+  background: var(--brand-dark-soft);
 }
 
 .page-intro h1 {
@@ -63,8 +69,9 @@
 
 .page-intro p {
   margin: 4px 0 0;
-  color: var(--text-secondary);
-  font-size: 13px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .page-intro-actions {
@@ -82,22 +89,32 @@
   }
 }
 
+/* — Status badges — */
 .status {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 26px;
-  padding: 4px 9px;
-  border: 1px solid transparent;
-  border-radius: 999px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: none;
+  border-radius: var(--radius-pill);
   color: var(--status-warn-text);
   background: var(--status-warn-bg);
   font-size: 11px;
   font-style: normal;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.025em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
+}
+
+.status::before {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
 }
 
 .status.paid,
@@ -132,66 +149,70 @@
   background: var(--status-success-bg);
 }
 
+/* — Section heading — */
 .section-heading,
 .panel-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .section-heading p {
   margin: 0;
   color: var(--text-heading);
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: 0;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
 .section-heading span {
   display: block;
-  margin-top: 4px;
+  margin-top: 3px;
 }
 
 .narrow {
   max-width: 260px;
 }
 
+/* — Empty state — */
 .empty-basket {
-  min-height: 150px;
+  min-height: 140px;
   display: grid;
   place-items: center;
   gap: 8px;
-  padding: 18px;
+  padding: 24px;
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-lg);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   background: var(--surface-inset);
   text-align: center;
-  line-height: 1.45;
+  line-height: 1.5;
+  font-size: 13px;
 }
 
+/* — Loading state — */
 .loading-state {
   min-height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: .02em;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
 }
 
 .loading-state i {
   width: 18px;
   height: 18px;
   border: 2px solid var(--border-strong);
-  border-top-color: var(--orange);
+  border-top-color: var(--primary);
   border-radius: 50%;
-  animation: loading-spin .7s linear infinite;
+  animation: loading-spin 0.7s linear infinite;
 }
 
 @keyframes loading-spin { to { transform: rotate(360deg); } }

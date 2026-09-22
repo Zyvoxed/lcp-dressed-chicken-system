@@ -1,7 +1,11 @@
+/* ============================================================
+   Cards & Stat Cards
+   ============================================================ */
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .stats-grid.compact {
@@ -12,6 +16,7 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+/* — Card base — */
 .stat-card,
 .panel,
 .supplier-card,
@@ -19,27 +24,26 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--card-bg);
-  box-shadow: var(--card-shadow);
+  box-shadow: 0 3px 12px rgba(53, 44, 42, 0.035);
   transition:
-    transform 0.22s ease,
-    box-shadow 0.22s ease,
-    border-color 0.22s ease;
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
-.stat-card:hover,
 .supplier-card:hover {
-  transform: translateY(-1px);
   box-shadow: var(--card-shadow-hover);
-  border-color: var(--border-strong);
+  transform: translateY(-2px);
 }
 
+/* — Stat card — */
 .stat-card {
-  min-height: 146px;
-  padding: 20px;
+  min-height: 106px;
+  padding: 14px;
   display: grid;
   align-content: space-between;
-  gap: 14px;
+  gap: 7px;
   overflow: hidden;
+  transition: transform 150ms ease, box-shadow 150ms ease;
 }
 
 .stat-card-top,
@@ -58,7 +62,7 @@
 .supplier-card p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -66,62 +70,64 @@
   font-weight: 500;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  font-size: 11px;
 }
 
 .stat-card strong {
   display: block;
   color: var(--text-heading);
-  font-size: 34px;
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: 0;
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .stat-card-bottom span {
-  color: var(--status-success-text);
+  color: var(--text-muted);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .stat-icon {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border: 1px solid var(--warning-border);
-  border-radius: var(--radius);
-  color: var(--primary);
-  background: var(--primary-tint);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--brand-dark);
+  background: var(--brand-dark-soft);
 }
 
 .stat-sparkline {
-  width: 116px;
-  height: 38px;
+  width: 100px;
+  height: 34px;
   overflow: visible;
 }
 
 .stat-sparkline polyline {
   fill: none;
   stroke: var(--primary);
-  stroke-width: 3;
+  stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 8px 10px var(--primary-soft));
+  filter: drop-shadow(0 4px 8px var(--primary-soft));
 }
 
+/* — Panel — */
 .panel,
 .receipt-panel {
-  padding: 20px;
+  padding: 18px;
 }
 
 .panel h2,
 .receipt-panel h2,
 .supplier-card h2 {
-  margin: 0 0 18px;
+  margin: 0 0 16px;
   color: var(--text-heading);
-  font-size: 17px;
-  line-height: 1.2;
+  font-size: 15px;
+  line-height: 1.3;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
@@ -129,10 +135,11 @@
 
 .panel h3 {
   color: var(--text-heading);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
 }
 
+/* — Responsive — */
 @media (max-width: 1280px) {
   .stats-grid,
   .stats-grid.compact,
@@ -141,7 +148,7 @@
   }
 }
 
-@media (max-width: 620px) {
+@media (max-width: 640px) {
   .stats-grid,
   .stats-grid.compact,
   .report-stats {
@@ -149,6 +156,10 @@
   }
 
   .stat-card strong {
-    font-size: 26px;
+    font-size: 24px;
+  }
+
+  .stat-card {
+    min-height: 110px;
   }
 }

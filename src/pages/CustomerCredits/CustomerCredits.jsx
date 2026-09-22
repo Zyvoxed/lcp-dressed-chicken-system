@@ -5,8 +5,6 @@ import CreditStats from './CreditStats.jsx'
 import CustomerLedger from './CustomerLedger.jsx'
 import CustomerList from './CustomerList.jsx'
 import { getCustomer, getCustomerCredits, getCustomerPayments, getCustomers } from '../../services/customerService.js'
-import { WalletCards } from 'lucide-react'
-import PageIntro from '../Shared/PageIntro.jsx'
 
 function CustomerCredits() {
   const [customers, setCustomers] = useState([])
@@ -65,7 +63,6 @@ function CustomerCredits() {
 
   return (
     <section className="credits-page page-stack">
-      <PageIntro icon={WalletCards} title="Customer Credits" description="Review outstanding balances, credit transactions, and payment history." />
       <div className="credits-layout">
       <CreditStats customers={customers} />
       {loading && <LoadingSpinner />}

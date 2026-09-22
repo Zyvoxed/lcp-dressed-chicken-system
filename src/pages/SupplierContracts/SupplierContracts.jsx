@@ -7,8 +7,6 @@ import SupplierLedger from './SupplierLedger.jsx'
 import SupplierModal from './SupplierModal.jsx'
 import { getSuppliers } from '../../services/supplierService.js'
 import { getStockInRecords } from '../../services/stockInService.js'
-import { Truck } from 'lucide-react'
-import PageIntro from '../Shared/PageIntro.jsx'
 
 function SupplierContracts() {
   const [showSupplierModal, setShowSupplierModal] = useState(false)
@@ -63,7 +61,6 @@ function SupplierContracts() {
 
   return (
     <section className="page-stack">
-      <PageIntro icon={Truck} title="Suppliers" description="Review supplier contacts, deliveries, and procurement history." />
       <div className="supplier-grid">
         {loading && <LoadingSpinner />}
         {!loading && error && <EmptyState>{error}</EmptyState>}

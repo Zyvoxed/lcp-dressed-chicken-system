@@ -10,9 +10,9 @@ function Modal({ title, children, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
+        initial={{ opacity: 0, scale: 0.97, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
       >
         <PageHeader title={title}>
           <button className="close-button" type="button" onClick={onClose} aria-label="Close modal">

@@ -1,3 +1,7 @@
+/* ============================================================
+   Data Tables
+   ============================================================ */
+
 .data-table-shell {
   display: grid;
   gap: 12px;
@@ -9,13 +13,13 @@
 }
 
 .table-search {
-  width: min(100%, 320px);
+  width: min(100%, 300px);
 }
 
 .table-scroll {
   width: 100%;
   overflow: auto;
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--radius-lg);
 }
 
@@ -23,12 +27,12 @@ table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 760px;
+  min-width: 700px;
 }
 
 th,
 td {
-  padding: 14px 16px;
+  padding: 11px 14px;
   border-bottom: 1px solid var(--border);
   text-align: left;
   white-space: nowrap;
@@ -39,12 +43,12 @@ th {
   top: 0;
   z-index: 1;
   background: var(--table-header-bg);
-  color: var(--text-label);
+  color: var(--table-heading-text);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.035em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
 }
 
 th button {
@@ -52,7 +56,7 @@ th button {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   padding: 0;
   border: 0;
   color: inherit;
@@ -60,21 +64,27 @@ th button {
   text-align: inherit;
   font: inherit;
   text-transform: inherit;
+  letter-spacing: inherit;
+}
+
+th button:hover {
+  color: var(--text-heading);
 }
 
 td {
   color: var(--text-soft);
   font-size: 13px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
 }
 
-tbody tr:nth-child(even) {
-  background: var(--row-zebra);
+td:has(.status),
+td:last-child {
+  white-space: nowrap;
 }
 
 tbody tr {
-  transition:
-    background-color 0.18s ease,
-    transform 0.18s ease;
+  transition: background-color 0.15s ease;
 }
 
 tbody tr:hover {
@@ -85,14 +95,23 @@ tbody tr:last-child td {
   border-bottom: 0;
 }
 
+/* — Table actions — */
 .table-action {
-  min-height: 32px;
-  margin: 2px 5px 2px 0;
+  min-height: 30px;
+  margin: 2px 4px 2px 0;
   padding: 0 10px;
   border: 1px solid var(--border);
-  color: var(--text-soft);
-  background: var(--surface-raised);
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  background: transparent;
   font-size: 12px;
+  font-weight: 500;
+}
+
+.table-action:hover {
+  border-color: var(--border-strong);
+  color: var(--text-heading);
+  background: var(--surface-hover);
 }
 
 .table-action.danger {
@@ -101,43 +120,57 @@ tbody tr:last-child td {
   background: var(--danger-bg);
 }
 
-.table-empty {
-  padding: 28px;
-  color: var(--text-secondary);
-  text-align: center;
+.table-action.danger:hover {
+  border-color: var(--red);
 }
 
+.table-empty {
+  padding: 32px;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+/* — Pagination — */
 .table-pagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
 .table-pagination div {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .table-pagination button {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text-soft);
-  background: var(--surface-raised);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.table-pagination button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text-heading);
+  background: var(--surface-hover);
 }
 
 .table-pagination strong {
   color: var(--text-heading);
   font-size: 12px;
+  font-weight: 500;
 }
 
+/* — Responsive — */
 @media (max-width: 640px) {
   .table-toolbar {
     justify-content: stretch;

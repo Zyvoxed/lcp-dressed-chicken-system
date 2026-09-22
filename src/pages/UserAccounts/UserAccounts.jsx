@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { ShieldCheck, UserRound } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth.js'
 import { createUser, getUsers, resetUserPassword, updateUser, updateUserStatus } from '../../services/userService.js'
 import EmptyState from '../Shared/EmptyState.jsx'
@@ -47,6 +46,18 @@ function UserAccounts() {
   }
 
   if (loading) return <LoadingSpinner />
-  return <section className="users-layout"><header className="user-accounts-intro full-span"><div><h1><span><ShieldCheck size={12} />ADMIN</span>USER ACCOUNTS CREDENTIALS DECK</h1><p>Configure system access logs, operational credentials, contact coordinates, and authorization hierarchies for LCP staff members and administrative partners.</p></div><strong><UserRound size={15} />Operator: <b>{currentUser?.fullname || currentUser?.username || 'Authenticated user'}</b></strong></header><div className="full-span user-feedback-stack">{error && <div className="users-feedback error" role="alert">{error}</div>}{notice && <div className="users-feedback success">{notice}</div>}</div><UserStats users={users} />{!users.length && error ? <EmptyState>{error}</EmptyState> : <UserTable users={users} currentUserId={currentUser?.user_id} onEdit={(user) => choose('edit', user)} onResetPassword={(user) => choose('password', user)} onToggleStatus={toggleStatus} busyId={busyId} />}<UserForm key={`${mode}-${selectedUser?.user_id || 'new'}`} mode={mode} selectedUser={selectedUser} protectAdminRole={mode === 'edit' && Number(selectedUser?.user_id) === Number(currentUser?.user_id)} onCancel={() => choose('create')} onSubmit={submit} busy={busy} /></section>
+  return (
+    <section className="users-layout">
+      <div className="full-span user-feedback-stack">
+        {error && <div className="users-feedback error" role="alert">{error}</div>}
+        {notice && <div className="users-feedback success">{notice}</div>}
+      </div>
+      <UserStats users={users} />
+      {!users.length && error
+        ? <EmptyState>{error}</EmptyState>
+        : <UserTable users={users} currentUserId={currentUser?.user_id} onEdit={(user) => choose('edit', user)} onResetPassword={(user) => choose('password', user)} onToggleStatus={toggleStatus} busyId={busyId} />}
+      <UserForm key={`${mode}-${selectedUser?.user_id || 'new'}`} mode={mode} selectedUser={selectedUser} protectAdminRole={mode === 'edit' && Number(selectedUser?.user_id) === Number(currentUser?.user_id)} onCancel={() => choose('create')} onSubmit={submit} busy={busy} />
+    </section>
+  )
 }
 export default UserAccounts

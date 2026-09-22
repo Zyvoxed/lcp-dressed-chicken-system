@@ -1,13 +1,17 @@
+/* ============================================================
+   Reports Page
+   ============================================================ */
+
 .report-layout {
   display: grid;
-  gap: 24px;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 320px;
 }
 
 .receipt-panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   background: var(--receipt-bg);
   color: var(--receipt-text);
 }
@@ -19,23 +23,24 @@
 
 .receipt-panel span {
   border-block: 1px dashed var(--receipt-divider);
-  padding: 14px 0;
+  padding: 12px 0;
 }
 
 .receipt-panel b {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
 }
 
+/* — Donut chart — */
 .donut-panel {
   display: grid;
   justify-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .donut-panel p {
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 12px;
   text-align: center;
 }
@@ -50,20 +55,21 @@
   left: 50%;
   bottom: calc(100% + 12px);
   width: max-content;
-  max-width: 240px;
-  padding: 9px 10px;
-  border: 1px solid var(--tooltip-border);
-  border-left: 3px solid var(--orange);
+  max-width: 220px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--primary);
   border-radius: var(--radius);
   color: var(--tooltip-text);
   background: var(--tooltip-bg);
   box-shadow: var(--shadow);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.35;
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, 6px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .donut-wrap:hover::after,
@@ -73,28 +79,30 @@
 }
 
 .donut {
-  width: 190px;
+  width: 180px;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: conic-gradient(var(--chart-series-1) 0 42%, var(--chart-series-2) 42% 68%, var(--chart-series-3) 68% 84%, var(--chart-series-4) 84% 100%);
+  background: conic-gradient(
+    var(--chart-series-1) 0 42%,
+    var(--chart-series-2) 42% 68%,
+    var(--chart-series-3) 68% 84%,
+    var(--chart-series-4) 84% 100%
+  );
   position: relative;
   cursor: pointer;
-  animation: donut-render 0.7s ease both;
-  transition:
-    transform 0.25s ease,
-    filter 0.25s ease;
+  animation: donut-render 0.6s ease both;
+  transition: transform 0.2s ease;
 }
 
 .donut-wrap:hover .donut,
 .donut-wrap:focus-visible .donut {
-  transform: scale(1.04);
-  filter: drop-shadow(0 14px 28px var(--chart-accent-shadow));
+  transform: scale(1.03);
 }
 
 .donut::after {
   content: '';
   position: absolute;
-  inset: 38px;
+  inset: 36px;
   border-radius: 50%;
   background: var(--card-bg);
 }
@@ -105,24 +113,25 @@
   left: 50%;
   top: 50%;
   z-index: 1;
-  color: var(--text-secondary);
-  font-size: 12px;
+  color: var(--text-muted);
+  font-size: 11px;
   font-weight: 600;
   text-align: center;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
   transform: translate(-50%, -50%);
 }
 
 .highlight-money {
-  color: var(--orange-strong);
+  color: var(--primary);
+  font-weight: 600;
 }
 
 @keyframes donut-render {
   from {
     opacity: 0;
-    transform: scale(0.95) rotate(-8deg);
+    transform: scale(0.95) rotate(-6deg);
   }
-
   to {
     opacity: 1;
     transform: scale(1) rotate(0);

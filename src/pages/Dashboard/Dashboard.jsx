@@ -9,8 +9,6 @@ import SalesChart from './SalesChart.jsx'
 import SalesSummary from './SalesSummary.jsx'
 import TopSellingProducts from './TopSellingProducts.jsx'
 import { getDashboard } from '../../services/dashboardService.js'
-import { LayoutDashboard } from 'lucide-react'
-import PageIntro from '../Shared/PageIntro.jsx'
 
 function Dashboard() {
   const [dashboard, setDashboard] = useState(null)
@@ -31,7 +29,6 @@ function Dashboard() {
 
   return (
     <section className="page-stack dashboard-page">
-      <PageIntro icon={LayoutDashboard} title="Dashboard" description="Monitor sales, stock levels, and recent business activity." />
       <DashboardStats summary={dashboard.summary} />
       <div className="dashboard-primary-grid">
         <SalesChart trends={dashboard.trends} />

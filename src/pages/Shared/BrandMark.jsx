@@ -1,7 +1,9 @@
+import lcpLogo from '../../assets/lcp-logo.png'
+
 function BrandMark() {
   return (
     <div className="brand-mark" aria-hidden="true">
-      <span>L</span>
+      <img src={lcpLogo} alt="" />
     </div>
   )
 }

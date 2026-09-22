@@ -1,5 +1,15 @@
+/* ============================================================
+   Inventory Page
+   ============================================================ */
+
 .centered-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.inventory-page .data-table-shell {
+  gap: 14px;
 }

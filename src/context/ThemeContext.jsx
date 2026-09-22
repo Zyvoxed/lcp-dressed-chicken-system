@@ -4,7 +4,7 @@ import { createContext, useLayoutEffect, useMemo, useState } from 'react'
 export const ThemeContext = createContext(null)
 
 const storageKey = 'theme'
-const defaultTheme = 'dark'
+const defaultTheme = 'light'
 
 function getStoredTheme() {
   try {

@@ -1,56 +1,59 @@
+/* ============================================================
+   Customer Credits Page
+   ============================================================ */
+
 .credits-layout {
   display: grid;
-  gap: 24px;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 340px;
 }
 
 .ledger-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .debtor-list,
 .history-grid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .debtor-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 14px;
+  gap: 12px;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--card-bg-soft);
+  cursor: pointer;
   transition:
-    background-color 0.25s ease,
-    border-color 0.25s ease,
-    transform 0.25s ease;
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .debtor-row:hover {
-  transform: translateY(-1px);
   border-color: var(--border-strong);
   background: var(--row-hover);
 }
 
 .debtor-row span {
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
 .debtor-row b {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: var(--text-heading);
   text-align: right;
 }
 
 .balance-display {
-  padding: 18px;
+  padding: 16px;
   border-radius: var(--radius);
   background: var(--surface-inset);
   border: 1px solid var(--border);
@@ -58,10 +61,11 @@
 
 .balance-display strong {
   display: block;
-  margin-top: 8px;
-  color: var(--orange-strong);
-  font-size: 30px;
+  margin-top: 6px;
+  color: var(--primary);
+  font-size: 26px;
   font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .history-grid {
@@ -69,13 +73,20 @@
 }
 
 .history-grid h3 {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   color: var(--text-heading);
   font-size: 14px;
+  font-weight: 600;
 }
 
 @media (max-width: 1180px) {
   .credits-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .history-grid {
     grid-template-columns: 1fr;
   }
 }
