@@ -53,7 +53,7 @@ export async function getActivityLogs(request, response) {
       ${where}
       ORDER BY al.created_at DESC, al.activity_id DESC
       LIMIT ? OFFSET ?
-    `, [...parameters, limit, offset])
+    `, [...parameters, String(limit), String(offset)])
     const total = Number(countRows[0].total)
 
     return response.json({

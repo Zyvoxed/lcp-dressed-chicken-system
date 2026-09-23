@@ -74,7 +74,7 @@ export async function getDashboard(request, response) {
       SELECT DAY(sale_date) - 1 AS bucket_index, SUM(total_amount) AS sales, COUNT(*) AS transactions
       FROM sales
       WHERE YEAR(sale_date) = YEAR(CURRENT_DATE()) AND MONTH(sale_date) = MONTH(CURRENT_DATE())
-      GROUP BY DAY(sale_date)
+      GROUP BY DAY(sale_date) - 1
     `)
 
     const today = new Date()
