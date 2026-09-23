@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
 import { defaultRoute } from "../../utils/constants.js";
 import LoginErrorNotification from "./LoginErrorNotification.jsx";
 
@@ -64,7 +64,7 @@ function LoginForm({ onLogin }) {
   return (
     <form className="login-card" onSubmit={handleSubmit}>
       <header className="login-card-header">
-        <span>Secure system access</span>
+        <span>Secure Access</span>
         <h2>Welcome Back</h2>
         <p>Sign in to access the management system.</p>
       </header>
@@ -90,6 +90,7 @@ function LoginForm({ onLogin }) {
       <button type="submit" className="primary-action login-submit" disabled={loading}>
         {loading && <span className="login-spinner" aria-hidden="true" />}
         {loading ? "Signing in..." : "Sign In"}
+        {!loading && <ArrowRight size={21} aria-hidden="true" />}
       </button>
       <p className="login-access-note">Authorized LCP personnel only</p>
       {loginFailureId > 0 && loginFailure && <LoginErrorNotification key={loginFailureId} title={loginFailure.title} message={loginFailure.message} onClose={() => setLoginFailureId(0)} />}

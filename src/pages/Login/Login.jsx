@@ -10,12 +10,12 @@ function Login({ onLogin }) {
   return (
     <main className="login-page">
       <div className="login-ambient" aria-hidden="true"></div>
-      <button className="login-theme-toggle" type="button" onClick={toggleTheme} aria-label={themeLabel} title={themeLabel}>
-        {theme === "dark" ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
-      </button>
       <div className="login-shell">
         <LoginHeader />
         <section className="login-form-panel" aria-label="System sign in">
+          <button className="login-theme-toggle" type="button" onClick={toggleTheme} aria-label={themeLabel} title={themeLabel}>
+            {theme === "dark" ? <Moon size={19} aria-hidden="true" /> : <Sun size={19} aria-hidden="true" />}
+          </button>
           <LoginForm onLogin={onLogin} />
         </section>
       </div>
