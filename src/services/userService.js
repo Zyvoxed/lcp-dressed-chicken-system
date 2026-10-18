@@ -14,3 +14,4 @@ export async function createUser(data) { return request('', { method: 'POST', he
 export async function updateUser(id, data) { return request(`/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }) }
 export async function updateUserStatus(id, isActive) { return request(`/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: isActive }) }) }
 export async function resetUserPassword(id, newPassword) { return request(`/${id}/password`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_password: newPassword }) }) }
+export async function resendEmailVerification(id) { return request(`/${id}/email-verification`, { method: 'POST' }) }

@@ -404,6 +404,42 @@
   font-weight: 500;
 }
 
+.login-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.login-label-row a,
+.login-secondary-link {
+  color: var(--login-accent);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.login-label-row a:hover,
+.login-secondary-link:hover {
+  text-decoration: underline;
+}
+
+.login-label-row a:focus-visible,
+.login-secondary-link:focus-visible {
+  border-radius: 4px;
+  outline: 3px solid var(--login-focus-ring);
+  outline-offset: 3px;
+}
+
+.login-secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  justify-self: center;
+  margin-top: 5px;
+}
+
 .login-input-wrap {
   min-height: 60px;
   display: flex;
@@ -558,6 +594,43 @@
   height: 1px;
   flex: 1;
   background: var(--login-border);
+}
+
+.email-verification-card {
+  text-align: center;
+}
+
+.email-verification-card .login-card-header > span {
+  justify-content: center;
+}
+
+.email-verification-status {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 24px;
+  border: 1px solid var(--login-border);
+  border-radius: 11px;
+  color: var(--login-secondary);
+  background: var(--login-input-bg);
+}
+
+.email-verification-status.success > svg {
+  color: var(--status-success-text);
+}
+
+.email-verification-status.error > svg {
+  color: var(--login-error);
+}
+
+.email-verification-status strong {
+  color: var(--login-heading);
+  font-size: 17px;
+}
+
+.email-verification-status p {
+  margin: 0;
+  line-height: 1.5;
 }
 
 .login-notification {

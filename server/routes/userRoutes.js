@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { createUser, getUserById, getUsers, resetUserPassword, updateUser, updateUserStatus } from '../controllers/userController.js'
+import { resendEmailVerification } from '../controllers/emailVerificationController.js'
 import authenticate from '../middleware/authenticate.js'
 import authorizeRoles from '../middleware/authorizeRoles.js'
 
@@ -11,4 +12,5 @@ router.post('/', createUser)
 router.put('/:id', updateUser)
 router.patch('/:id/status', updateUserStatus)
 router.patch('/:id/password', resetUserPassword)
+router.post('/:id/email-verification', resendEmailVerification)
 export default router

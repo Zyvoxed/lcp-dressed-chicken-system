@@ -12,13 +12,82 @@ CREATE TABLE users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     fullname VARCHAR(100) NOT NULL,
     username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(254) NULL,
+    email_verified_at DATETIME(3) NULL,
     password VARCHAR(255) NOT NULL,
     role ENUM('Admin', 'Staff') NOT NULL,
     contact_number VARCHAR(20) NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    auth_version INT UNSIGNED NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_users_email (email)
+);
+
+-- =========================================================
+-- 1A. EMAIL VERIFICATION TOKENS
+-- Stores hashed, expiring tokens for recovery email ownership
+-- verification. Raw tokens are never stored.
+-- =========================================================
+CREATE TABLE email_verification_tokens (
+    verification_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token_hash BINARY(32) NOT NULL,
+    email_hash BINARY(32) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    used_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE KEY uq_email_verification_token_hash (token_hash),
+    KEY idx_email_verification_user_created (user_id, created_at),
+    KEY idx_email_verification_expiry (expires_at),
+
+    CONSTRAINT fk_email_verification_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
+
+-- =========================================================
+-- 1B. PASSWORD RESET TOKENS
+-- Stores hashed, single-use password reset tokens.
+-- =========================================================
+CREATE TABLE password_reset_tokens (
+    reset_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token_hash BINARY(32) NOT NULL,
+    email_hash BINARY(32) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    used_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE KEY uq_password_reset_token_hash (token_hash),
+    KEY idx_password_reset_user_created (user_id, created_at),
+    KEY idx_password_reset_expiry (expires_at),
+
+    CONSTRAINT fk_password_reset_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
+
+-- =========================================================
+-- 1C. PASSWORD RESET RATE LIMITS
+-- Stores hashed rate-limit identifiers for serverless-safe throttling.
+-- =========================================================
+CREATE TABLE password_reset_rate_limits (
+    event_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    action ENUM('request', 'attempt') NOT NULL,
+    identifier_kind ENUM('email', 'ip', 'token') NOT NULL,
+    identifier_hash BINARY(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    KEY idx_password_reset_rate_lookup
+        (action, identifier_kind, identifier_hash, created_at),
+    KEY idx_password_reset_rate_created (created_at)
 );
 
 -- =========================================================

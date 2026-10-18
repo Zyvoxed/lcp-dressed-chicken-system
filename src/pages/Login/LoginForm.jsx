@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
-import { defaultRoute } from "../../utils/constants.js";
+import { defaultRoute, forgotPasswordRoute } from "../../utils/constants.js";
 import LoginErrorNotification from "./LoginErrorNotification.jsx";
 
 function LoginForm({ onLogin }) {
@@ -77,7 +77,10 @@ function LoginForm({ onLogin }) {
         <small className="login-field-error" id="username-error">{validation.username || "\u00a0"}</small>
       </div>
       <div className="input-group">
-        <label htmlFor="login-password">Password</label>
+        <div className="login-label-row">
+          <label htmlFor="login-password">Password</label>
+          <a href={forgotPasswordRoute}>Forgot Password?</a>
+        </div>
         <span className={`login-input-wrap ${validation.password ? "invalid" : ""} ${loading ? "disabled" : ""}`}>
           <LockKeyhole size={18} aria-hidden="true" />
           <input id="login-password" name="password" type={showPassword ? "text" : "password"} placeholder="Enter your password" autoComplete="current-password" value={formState.password} onChange={handleChange} disabled={loading} aria-invalid={Boolean(validation.password)} aria-describedby={validation.password ? "password-error" : undefined} />

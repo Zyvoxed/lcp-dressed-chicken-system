@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test:email": "npm --prefix server run test:email",
+    "test:password-reset": "npm --prefix server run test:password-reset",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -18,6 +20,7 @@
     "jsonwebtoken": "9.0.3",
     "lucide-react": "^1.17.0",
     "mysql2": "3.23.3",
+    "nodemailer": "10.1.6",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },

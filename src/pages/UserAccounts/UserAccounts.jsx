@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth.js'
-import { createUser, getUsers, resetUserPassword, updateUser, updateUserStatus } from '../../services/userService.js'
+import { createUser, getUsers, resendEmailVerification, resetUserPassword, updateUser, updateUserStatus } from '../../services/userService.js'
 import EmptyState from '../Shared/EmptyState.jsx'
 import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import UserForm from './UserForm.jsx'
@@ -17,6 +17,7 @@ function UserAccounts() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [busy, setBusy] = useState(false)
   const [busyId, setBusyId] = useState(null)
+  const [verificationBusyId, setVerificationBusyId] = useState(null)
 
   async function loadUsers() { setUsers(await getUsers()); setError('') }
   useEffect(() => {
@@ -32,8 +33,8 @@ function UserAccounts() {
     setBusy(true)
     try {
       let result
-      if (mode === 'create') result = await createUser({ fullname: form.fullname, username: form.username, contact_number: form.contact_number, password: form.password, role: form.role })
-      else if (mode === 'edit') result = await updateUser(selectedUser.user_id, { fullname: form.fullname, username: form.username, contact_number: form.contact_number, role: form.role })
+      if (mode === 'create') result = await createUser({ fullname: form.fullname, username: form.username, email: form.email, contact_number: form.contact_number, password: form.password, role: form.role })
+      else if (mode === 'edit') result = await updateUser(selectedUser.user_id, { fullname: form.fullname, username: form.username, email: form.email, contact_number: form.contact_number, role: form.role })
       else result = await resetUserPassword(selectedUser.user_id, form.password)
       choose('create'); setNotice(result.message); await loadUsers()
     } finally { setBusy(false) }
@@ -43,6 +44,12 @@ function UserAccounts() {
     try { const result = await updateUserStatus(user.user_id, !user.is_active); setNotice(result.message); await loadUsers() }
     catch (requestError) { setError(requestError.message) }
     finally { setBusyId(null) }
+  }
+  async function sendVerification(user) {
+    setVerificationBusyId(user.user_id); setNotice(''); setError('')
+    try { const result = await resendEmailVerification(user.user_id); setNotice(result.message) }
+    catch (requestError) { setError(requestError.message) }
+    finally { setVerificationBusyId(null) }
   }
 
   if (loading) return <LoadingSpinner />
@@ -55,7 +62,7 @@ function UserAccounts() {
       <UserStats users={users} />
       {!users.length && error
         ? <EmptyState>{error}</EmptyState>
-        : <UserTable users={users} currentUserId={currentUser?.user_id} onEdit={(user) => choose('edit', user)} onResetPassword={(user) => choose('password', user)} onToggleStatus={toggleStatus} busyId={busyId} />}
+        : <UserTable users={users} currentUserId={currentUser?.user_id} onEdit={(user) => choose('edit', user)} onResetPassword={(user) => choose('password', user)} onToggleStatus={toggleStatus} onSendVerification={sendVerification} busyId={busyId} verificationBusyId={verificationBusyId} />}
       <UserForm key={`${mode}-${selectedUser?.user_id || 'new'}`} mode={mode} selectedUser={selectedUser} protectAdminRole={mode === 'edit' && Number(selectedUser?.user_id) === Number(currentUser?.user_id)} onCancel={() => choose('create')} onSubmit={submit} busy={busy} />
     </section>
   )

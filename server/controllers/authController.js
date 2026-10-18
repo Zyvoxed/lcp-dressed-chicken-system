@@ -17,7 +17,7 @@ export async function login(request, response) {
 
   try {
     const [users] = await pool.execute(
-      `SELECT user_id, fullname, username, password, role, is_active
+      `SELECT user_id, fullname, username, password, role, is_active, auth_version
        FROM users
        WHERE username = ?
        LIMIT 1`,
@@ -43,7 +43,7 @@ export async function login(request, response) {
     }
 
     const token = jwt.sign(
-      { user_id: user.user_id, role: user.role },
+      { user_id: user.user_id, role: user.role, auth_version: Number(user.auth_version || 0) },
       process.env.JWT_SECRET,
       { expiresIn: '8h' },
     )

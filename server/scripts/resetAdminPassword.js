@@ -62,12 +62,28 @@ async function resetAdminPassword() {
   if (password !== confirmation) throw new Error('Passwords do not match')
 
   const passwordHash = await bcrypt.hash(password, 10)
-  const [result] = await pool.execute(
-    "UPDATE users SET password = ? WHERE user_id = ? AND role = 'Admin'",
-    [passwordHash, selectedAdmin.user_id],
-  )
+  const connection = await pool.getConnection()
+  try {
+    await connection.beginTransaction()
+    const [result] = await connection.execute(
+      "UPDATE users SET password = ?, auth_version = auth_version + 1 WHERE user_id = ? AND role = 'Admin'",
+      [passwordHash, selectedAdmin.user_id],
+    )
 
-  if (result.affectedRows !== 1) throw new Error('Admin password was not reset')
+    if (result.affectedRows !== 1) throw new Error('Admin password was not reset')
+    await connection.execute(
+      `UPDATE password_reset_tokens
+       SET used_at = COALESCE(used_at, CURRENT_TIMESTAMP(3))
+       WHERE user_id = ? AND used_at IS NULL`,
+      [selectedAdmin.user_id],
+    )
+    await connection.commit()
+  } catch (error) {
+    await connection.rollback()
+    throw error
+  } finally {
+    connection.release()
+  }
   console.log('Admin password reset successfully.')
 }
 

@@ -2,16 +2,19 @@ import { useState } from 'react'
 import { UserPlus } from 'lucide-react'
 import RoleSelector from './RoleSelector.jsx'
 
-const blank = { fullname: '', username: '', contact_number: '', password: '', confirm_password: '', role: 'Staff' }
+const blank = { fullname: '', username: '', email: '', contact_number: '', password: '', confirm_password: '', role: 'Staff' }
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function UserForm({ mode, selectedUser, onCancel, onSubmit, busy, protectAdminRole }) {
-  const [form, setForm] = useState(() => mode === 'edit' && selectedUser ? { ...blank, fullname: selectedUser.fullname, username: selectedUser.username, contact_number: selectedUser.contact_number || '', role: selectedUser.role } : blank)
+  const [form, setForm] = useState(() => mode === 'edit' && selectedUser ? { ...blank, fullname: selectedUser.fullname, username: selectedUser.username, email: selectedUser.email || '', contact_number: selectedUser.contact_number || '', role: selectedUser.role } : blank)
   const [error, setError] = useState('')
 
   function field(name) { return (event) => setForm((current) => ({ ...current, [name]: event.target.value })) }
   async function handleSubmit(event) {
     event.preventDefault(); setError('')
     if ((mode === 'create' || mode === 'password') && form.password !== form.confirm_password) { setError('Passwords do not match'); return }
+    const email = form.email.trim()
+    if (!passwordMode && email && (email.length > 254 || !emailPattern.test(email))) { setError('Enter a valid recovery email address'); return }
     try { await onSubmit(form); if (mode === 'create') setForm(blank) } catch (submitError) { setError(submitError.message) }
   }
 
@@ -37,6 +40,11 @@ function UserForm({ mode, selectedUser, onCancel, onSubmit, busy, protectAdminRo
               USERNAME
               <input value={form.username} onChange={field('username')} placeholder="e.g. mariacruz" disabled={busy} required />
               <small>Used to sign in. Must be unique.</small>
+            </label>
+            <label>
+              RECOVERY EMAIL (OPTIONAL)
+              <input type="email" autoComplete="email" maxLength={254} value={form.email} onChange={field('email')} placeholder="e.g. maria@example.com" disabled={busy} />
+              <small>A verification link will be sent before this email can be used for account recovery.</small>
             </label>
             <label>
               CONTACT NUMBER

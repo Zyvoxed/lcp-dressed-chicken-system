@@ -52,3 +52,36 @@ export async function getCurrentUser(token) {
 
   return result.user
 }
+
+export async function verifyRecoveryEmail(token) {
+  const response = await apiFetch('/auth/verify-email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token }),
+  })
+  return parseResponse(response, 'Unable to verify recovery email')
+}
+
+export async function requestPasswordReset(email) {
+  const response = await apiFetch('/auth/forgot-password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  })
+  return parseResponse(response, 'Unable to process the request')
+}
+
+export async function resetPassword(token, password) {
+  const response = await apiFetch('/auth/reset-password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token, password }),
+  })
+  return parseResponse(response, 'Unable to reset password')
+}

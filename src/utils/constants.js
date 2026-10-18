@@ -12,6 +12,9 @@ export const modules = [
 
 export const defaultRoute = '/dashboard'
 export const loginRoute = '/login'
+export const verifyEmailRoute = '/verify-email'
+export const forgotPasswordRoute = '/forgot-password'
+export const resetPasswordRoute = '/reset-password'
 
 export const inventoryTabs = ['Product List', 'Stock In Product (Delivery)', 'Inflow Records']
 

@@ -12,7 +12,10 @@ import BusinessAnalytics from '../pages/Dashboard/BusinessAnalytics.jsx'
 import ActivityLogs from '../pages/ActivityLogs/ActivityLogs.jsx'
 import PageTransition from '../pages/Shared/PageTransition.jsx'
 import UserAccounts from '../pages/UserAccounts/UserAccounts.jsx'
-import { modules } from '../utils/constants.js'
+import VerifyEmail from '../pages/Login/VerifyEmail.jsx'
+import ForgotPassword from '../pages/Login/ForgotPassword.jsx'
+import ResetPassword from '../pages/Login/ResetPassword.jsx'
+import { forgotPasswordRoute, modules, resetPasswordRoute, verifyEmailRoute } from '../utils/constants.js'
 
 function AppRoutes() {
   const moduleForPath = () => modules.find((module) => module.path === window.location.pathname) || modules[0]
@@ -41,6 +44,18 @@ function AppRoutes() {
     'Activity Logs': <ActivityLogs />,
     'User Accounts': <UserAccounts />,
   }[activeModule]
+
+  if (window.location.pathname === verifyEmailRoute) {
+    return <VerifyEmail />
+  }
+
+  if (window.location.pathname === forgotPasswordRoute) {
+    return <ForgotPassword />
+  }
+
+  if (window.location.pathname === resetPasswordRoute) {
+    return <ResetPassword />
+  }
 
   return (
     <AuthProvider>
