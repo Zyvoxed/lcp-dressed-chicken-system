@@ -16,7 +16,7 @@ const modulePresentation = {
   "User Accounts": { title: "User Accounts", Icon: Users },
 };
 
-function Header({ role, user, activeModule, onToggleSidebar, onToggleMobile }) {
+function Header({ role, user, activeModule, sidebarCollapsed, mobileOpen, onToggleSidebar, onToggleMobile }) {
   const { theme, toggleTheme } = useTheme();
   const nextThemeLabel =
     theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
@@ -32,6 +32,8 @@ function Header({ role, user, activeModule, onToggleSidebar, onToggleMobile }) {
           type="button"
           onClick={onToggleSidebar}
           aria-label="Toggle sidebar"
+          aria-controls="primary-sidebar"
+          aria-expanded={!sidebarCollapsed}
           title="Toggle sidebar"
         >
           <Menu size={20} aria-hidden="true" />
@@ -40,8 +42,10 @@ function Header({ role, user, activeModule, onToggleSidebar, onToggleMobile }) {
           className="sidebar-toggle mobile-only"
           type="button"
           onClick={onToggleMobile}
-          aria-label="Open navigation"
-          title="Open navigation"
+          aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
+          aria-controls="primary-sidebar"
+          aria-expanded={mobileOpen}
+          title={mobileOpen ? "Close navigation" : "Open navigation"}
         >
           <Menu size={20} aria-hidden="true" />
         </button>
@@ -66,7 +70,7 @@ function Header({ role, user, activeModule, onToggleSidebar, onToggleMobile }) {
           )}
         </button>
 
-        <div className="privilege-card">
+        <div className="privilege-card" role="group" aria-label={`${displayName}, ${role === "admin" ? "Admin" : "Staff"}`} title={`${displayName} (${role === "admin" ? "Admin" : "Staff"})`}>
           <span className="topbar-avatar" aria-hidden="true">{initials}</span>
           <div className="topbar-user-copy">
             <strong>{displayName}</strong>

@@ -69,10 +69,12 @@ function SupplierContracts() {
           <SupplierCard key={supplier.supplier_id} supplier={supplier} selected={index === 0} />
         ))}
       </div>
-      <section className="procurement-layout">
-        <ProcurementChart records={records} onSupplierModal={() => setShowSupplierModal(true)} />
-        <SupplierLedger records={records} />
-      </section>
+      {!loading && (
+        <section className="procurement-layout">
+          <ProcurementChart records={records} onSupplierModal={() => setShowSupplierModal(true)} />
+          <SupplierLedger records={records} />
+        </section>
+      )}
       {showSupplierModal && (
         <SupplierModal onClose={() => setShowSupplierModal(false)} onCreated={handleSupplierCreated} />
       )}

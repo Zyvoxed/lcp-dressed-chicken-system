@@ -150,6 +150,7 @@ textarea::placeholder {
 }
 
 .secondary-action:hover:not(:disabled),
+.tabs button:hover:not(:disabled),
 .pill-row button:hover,
 .terms-row button:hover,
 .role-cards button:hover {

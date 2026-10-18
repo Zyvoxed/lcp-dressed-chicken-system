@@ -12,17 +12,18 @@ function ProcurementChart({ onSupplierModal, records }) {
   return (
     <article className="panel">
       <div className="panel-title-row">
-        <h2>PROCUREMENT ANALYSIS</h2>
+        <h2>STOCK RECEIVED BY PRODUCT</h2>
         <button className="primary-action slim" type="button" onClick={onSupplierModal}>
           Add Qualified Supplier
         </button>
       </div>
-      {!procurement.length ? <EmptyState>No stock-in deliveries recorded.</EmptyState> : <div className="bar-chart">
+      {!procurement.length ? <EmptyState>No stock deliveries recorded.</EmptyState> : <div className="bar-chart">
         {procurement.map(({ label, value }, index) => (
           <div
             key={label}
-            tabIndex="0"
-            aria-label={`${label} received quantity ${value}`}
+            role="img"
+            tabIndex={0}
+            aria-label={`${label} quantity received ${value}`}
             data-tooltip={`${label}: ${value} received`}
           >
             <span style={{ height: `${Math.max((value / maximum) * 128, 12)}px`, animationDelay: `${index * 0.08}s` }}></span>

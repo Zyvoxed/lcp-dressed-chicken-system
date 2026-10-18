@@ -127,6 +127,10 @@
   min-height: 280px;
 }
 
+.dashboard-chart-scroll {
+  min-width: 0;
+}
+
 .dashboard-sales-chart .line-chart {
   height: 280px;
 }
@@ -169,7 +173,7 @@
 }
 
 .dashboard-segments button {
-  min-height: 28px;
+  min-height: 34px;
   padding: 0 10px;
   border: 0;
   border-radius: var(--radius-sm);
@@ -178,6 +182,11 @@
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
+}
+
+.dashboard-segments button:hover:not(.active) {
+  color: var(--text-heading);
+  background: var(--surface-hover);
 }
 
 .dashboard-segments button.active {
@@ -303,6 +312,14 @@
   color: var(--text-heading);
   font-size: 13px;
   font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-product-row > div:first-child,
+.dashboard-stock-row > div,
+.activity-heading strong,
+.dashboard-activity-row footer span {
+  min-width: 0;
 }
 
 .dashboard-product-row span,
@@ -331,7 +348,7 @@
 .dashboard-stock-row > b {
   padding: 3px 7px;
   border-radius: var(--radius-sm);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .dashboard-stock-row {
@@ -723,14 +740,12 @@
 .business-kpi-grid article > strong {
   display: block;
   margin: 18px 0 6px;
-  overflow: hidden;
   color: var(--text-heading);
-  font-size: 26px;
-  line-height: 1;
+  font-size: clamp(20px, 2vw, 26px);
+  line-height: 1.15;
   font-weight: 700;
   letter-spacing: -0.02em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 
 .business-kpi-grid article > strong.seller-name {
@@ -833,6 +848,7 @@
 }
 
 .analytics-bar-column {
+  position: relative;
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
@@ -859,12 +875,43 @@
   background: var(--primary);
 }
 
+.analytics-bar-column::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: 2;
+  width: max-content;
+  max-width: min(200px, calc(100vw - 48px));
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius);
+  color: var(--tooltip-text);
+  background: var(--tooltip-bg);
+  box-shadow: var(--shadow);
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  text-align: left;
+  transform: translate(-50%, 6px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.analytics-bar-column:hover::after,
+.analytics-bar-column:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 .analytics-bar-column small {
   min-height: 28px;
   margin-top: 6px;
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -971,6 +1018,17 @@
   justify-items: end;
   gap: 4px;
   text-align: right;
+}
+
+.analytics-performance-row > div:first-child {
+  min-width: 0;
+}
+
+.analytics-performance-row strong,
+.analytics-performance-row p,
+.analytics-restock-row strong,
+.analytics-restock-row p {
+  overflow-wrap: anywhere;
 }
 
 .analytics-performance-row em {
@@ -1263,6 +1321,16 @@
     min-width: 48px;
   }
 
+  .analytics-performance-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .analytics-performance-row > div:last-child {
+    justify-items: start;
+    text-align: left;
+  }
+
   .dashboard-kpi-grid,
   .dashboard-two-column-grid {
     grid-template-columns: 1fr;
@@ -1272,11 +1340,12 @@
     padding: 14px;
   }
 
-  .dashboard-sales-chart .chart-canvas {
+  .dashboard-chart-scroll {
     overflow-x: auto;
+    overscroll-behavior-inline: contain;
   }
 
-  .dashboard-sales-chart .line-chart {
+  .dashboard-sales-chart .chart-canvas {
     min-width: 560px;
   }
 
@@ -1295,6 +1364,22 @@
 
   .dashboard-segments button {
     flex: 1;
+  }
+
+  .dashboard-product-row,
+  .dashboard-stock-row,
+  .activity-heading,
+  .dashboard-activity-row footer {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .dashboard-product-row.low > div:last-child {
+    justify-items: start;
+  }
+
+  .dashboard-product-row em {
+    text-align: left;
   }
 
   .chart-title-row,

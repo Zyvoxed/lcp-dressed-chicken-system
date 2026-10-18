@@ -10,8 +10,8 @@ const columns = [
   'Product Name',
   'Category',
   'Selling Price',
-  'In Stock Level',
-  'Reorder Threshold',
+  'Current Stock',
+  'Low Stock Level',
   'Status',
   'Actions',
 ]

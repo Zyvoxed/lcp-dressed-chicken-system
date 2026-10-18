@@ -8,6 +8,7 @@ import {
 } from "../../services/reportService.js";
 import { exportCsv } from "../../utils/csvExport.js";
 import { peso } from "../../utils/currency.js";
+import { formatLocalDate } from "../../utils/dateFormatter.js";
 
 function ReceivablesLedger() {
   const [report, setReport] = useState(null);
@@ -40,7 +41,7 @@ function ReceivablesLedger() {
         "Contact Number",
         "Address",
         "Outstanding Balance",
-        "Open Credit Sales",
+        "Unpaid Credit Sales",
         "Oldest Unpaid Sale",
       ],
       report.records.map((customer) => [
@@ -60,9 +61,9 @@ function ReceivablesLedger() {
     return <EmptyState>No receivables report data found.</EmptyState>;
 
   return (
-    <article className="panel table-panel">
+    <article className="panel table-panel report-table-panel receivables-report-panel">
       <div className="panel-title-row">
-        <h2>CREDIT RECEIVABLES LEDGER</h2>
+        <h2>UNPAID CUSTOMER BALANCES</h2>
         <button
           className="primary-action slim"
           type="button"
@@ -71,20 +72,20 @@ function ReceivablesLedger() {
           Export CSV
         </button>
       </div>
-      <p>
+      <p className="report-summary-line">
         {report.summary.customers_with_balance} customers ·{" "}
         {peso.format(Number(report.summary.total_receivables))} outstanding
       </p>
       {!report.records.length ? (
-        <EmptyState>No outstanding customer receivables.</EmptyState>
+        <EmptyState>No customers have unpaid balances.</EmptyState>
       ) : (
         <DataTable
           columns={[
-            "Business Name",
+            "Customer Name",
             "Phone",
             "Address",
             "Outstanding Balance",
-            "Open Credit Sales",
+            "Unpaid Credit Sales",
             "Oldest Unpaid Sale",
           ]}
           rows={report.records}
@@ -109,9 +110,9 @@ function ReceivablesLedger() {
               <td>{customer.open_credit_sales}</td>
               <td>
                 {customer.oldest_unpaid_sale_date
-                  ? new Date(
-                      customer.oldest_unpaid_sale_date,
-                    ).toLocaleDateString()
+                  ? formatLocalDate(
+                      new Date(customer.oldest_unpaid_sale_date),
+                    )
                   : "—"}
               </td>
             </tr>

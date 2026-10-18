@@ -8,6 +8,47 @@
   grid-template-columns: minmax(0, 1fr) 320px;
 }
 
+.report-table-panel {
+  min-width: 0;
+}
+
+.sales-report-panel table {
+  min-width: 1120px;
+}
+
+.inventory-report-panel table {
+  min-width: 980px;
+}
+
+.receivables-report-panel table {
+  min-width: 900px;
+}
+
+.sales-report-panel :is(th, td):nth-child(6),
+.sales-report-panel :is(th, td):nth-child(7),
+.sales-report-panel :is(th, td):nth-child(8),
+.inventory-report-panel :is(th, td):nth-child(4),
+.inventory-report-panel :is(th, td):nth-child(5),
+.inventory-report-panel :is(th, td):nth-child(6),
+.inventory-report-panel :is(th, td):nth-child(7),
+.receivables-report-panel :is(th, td):nth-child(4),
+.receivables-report-panel :is(th, td):nth-child(5) {
+  text-align: right;
+}
+
+.sales-report-panel :is(th:nth-child(6), th:nth-child(7), th:nth-child(8)) button,
+.inventory-report-panel :is(th:nth-child(4), th:nth-child(5), th:nth-child(6), th:nth-child(7)) button,
+.receivables-report-panel :is(th:nth-child(4), th:nth-child(5)) button {
+  justify-content: flex-end;
+}
+
+.report-summary-line {
+  margin: -4px 0 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
 .receipt-panel {
   display: flex;
   flex-direction: column;
@@ -19,6 +60,20 @@
 .receipt-panel h2,
 .receipt-panel strong {
   color: var(--receipt-text);
+}
+
+.report-filter-panel h2 {
+  margin-bottom: 4px;
+}
+
+.report-filter-panel label {
+  gap: 7px;
+}
+
+.report-filter-panel strong {
+  padding: 10px 0;
+  border-block: 1px dashed var(--receipt-divider);
+  font-variant-numeric: tabular-nums;
 }
 
 .receipt-panel span {
@@ -43,6 +98,10 @@
   color: var(--text-muted);
   font-size: 12px;
   text-align: center;
+}
+
+.donut-panel p span {
+  font-size: 14px;
 }
 
 .donut-wrap {
@@ -108,7 +167,7 @@
 }
 
 .donut::before {
-  content: 'Inventory mix';
+  content: 'Stock value by category';
   position: absolute;
   left: 50%;
   top: 50%;
@@ -141,5 +200,33 @@
 @media (max-width: 1180px) {
   .report-layout {
     grid-template-columns: 1fr;
+  }
+
+  .report-filter-panel {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .report-filter-panel h2,
+  .report-filter-panel strong,
+  .report-filter-panel .primary-action,
+  .report-filter-panel .secondary-action {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .report-filter-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .donut {
+    width: min(180px, 58vw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .donut {
+    animation: none;
   }
 }

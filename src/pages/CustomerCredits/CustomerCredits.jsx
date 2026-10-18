@@ -13,6 +13,8 @@ function CustomerCredits() {
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [detailsLoading, setDetailsLoading] = useState(false)
+  const [detailsError, setDetailsError] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -20,6 +22,7 @@ function CustomerCredits() {
       try {
         const data = await getCustomers({ signal: controller.signal })
         setCustomers(data)
+        setDetailsLoading(Boolean(data[0]))
         setSelectedCustomer(data[0] || null)
       } catch (requestError) {
         if (requestError.name !== 'AbortError') setError(requestError.message)
@@ -40,15 +43,25 @@ function CustomerCredits() {
           getCustomerCredits(selectedCustomer.customer_id, { signal: controller.signal }),
           getCustomerPayments(selectedCustomer.customer_id, { signal: controller.signal }),
         ])
+        setDetailsError('')
         setCredits(creditData)
         setPayments(paymentData)
       } catch (requestError) {
-        if (requestError.name !== 'AbortError') setError(requestError.message)
+        if (requestError.name !== 'AbortError') setDetailsError(requestError.message)
+      } finally {
+        if (!controller.signal.aborted) setDetailsLoading(false)
       }
     }
     loadDetails()
     return () => controller.abort()
   }, [selectedCustomer])
+
+  function selectCustomer(customer) {
+    if (customer.customer_id === selectedCustomer?.customer_id) return
+    setDetailsLoading(true)
+    setDetailsError('')
+    setSelectedCustomer(customer)
+  }
 
   async function refreshCustomer() {
     const [customer, customerList, creditData, paymentData] = await Promise.all([
@@ -67,8 +80,8 @@ function CustomerCredits() {
       <CreditStats customers={customers} />
       {loading && <LoadingSpinner />}
       {!loading && error && <EmptyState>{error}</EmptyState>}
-      {!loading && !error && <CustomerList customers={customers} selectedCustomer={selectedCustomer} onSelect={setSelectedCustomer} />}
-      {!loading && !error && <CustomerLedger customer={selectedCustomer} credits={credits} payments={payments} onPayment={refreshCustomer} />}
+      {!loading && !error && <CustomerList customers={customers} selectedCustomer={selectedCustomer} onSelect={selectCustomer} />}
+      {!loading && !error && <CustomerLedger customer={selectedCustomer} credits={credits} payments={payments} onPayment={refreshCustomer} loading={detailsLoading} error={detailsError} />}
       </div>
     </section>
   )

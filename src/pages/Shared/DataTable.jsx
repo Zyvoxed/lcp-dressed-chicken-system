@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Search, ArrowUpDown } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 function defaultSortValue(row, columnIndex) {
   if (Array.isArray(row)) {
@@ -30,12 +30,12 @@ function DataTable({
   getSortValue = defaultSortValue,
   pageSize = 8,
   searchable = true,
-  searchPlaceholder = 'Search table records',
+  searchPlaceholder = 'Search records',
 }) {
   const [query, setQuery] = useState('')
   const [sortConfig, setSortConfig] = useState({ index: null, direction: 'asc' })
   const [currentPage, setCurrentPage] = useState(1)
-  const safeRows = rows ?? []
+  const safeRows = useMemo(() => rows ?? [], [rows])
 
   const processedRows = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -55,15 +55,13 @@ function DataTable({
   }, [getSortValue, query, safeRows, sortConfig])
 
   const pageCount = Math.max(Math.ceil(processedRows.length / pageSize), 1)
-  const pageRows = processedRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-  const startRow = processedRows.length ? (currentPage - 1) * pageSize + 1 : 0
-  const endRow = Math.min(currentPage * pageSize, processedRows.length)
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [query, sortConfig])
+  const visiblePage = Math.min(currentPage, pageCount)
+  const pageRows = processedRows.slice((visiblePage - 1) * pageSize, visiblePage * pageSize)
+  const startRow = processedRows.length ? (visiblePage - 1) * pageSize + 1 : 0
+  const endRow = Math.min(visiblePage * pageSize, processedRows.length)
 
   function handleSort(columnIndex) {
+    setCurrentPage(1)
     setSortConfig((current) => ({
       index: columnIndex,
       direction: current.index === columnIndex && current.direction === 'asc' ? 'desc' : 'asc',
@@ -79,7 +77,10 @@ function DataTable({
             <input
               value={query}
               placeholder={searchPlaceholder}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value)
+                setCurrentPage(1)
+              }}
               aria-label={searchPlaceholder}
             />
           </label>
@@ -90,7 +91,12 @@ function DataTable({
           <thead>
             <tr>
               {columns.map((column, index) => (
-                <th key={column}>
+                <th
+                  key={column}
+                  aria-sort={sortConfig.index === index
+                    ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending')
+                    : undefined}
+                >
                   <button type="button" onClick={() => handleSort(index)}>
                     {column}
                     <ArrowUpDown size={13} aria-hidden="true" />
@@ -104,7 +110,7 @@ function DataTable({
             {!pageRows.length && (
               <tr>
                 <td colSpan={columns.length} className="table-empty">
-                  No records match your search.
+                  No matching records found.
                 </td>
               </tr>
             )}
@@ -118,17 +124,17 @@ function DataTable({
         <div>
           <button
             type="button"
-            onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
-            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(Math.max(visiblePage - 1, 1))}
+            disabled={visiblePage === 1}
             aria-label="Previous page"
           >
             <ChevronLeft size={16} aria-hidden="true" />
           </button>
-          <strong>{currentPage} / {pageCount}</strong>
+          <strong>{visiblePage} / {pageCount}</strong>
           <button
             type="button"
-            onClick={() => setCurrentPage((page) => Math.min(page + 1, pageCount))}
-            disabled={currentPage === pageCount}
+            onClick={() => setCurrentPage(Math.min(visiblePage + 1, pageCount))}
+            disabled={visiblePage === pageCount}
             aria-label="Next page"
           >
             <ChevronRight size={16} aria-hidden="true" />

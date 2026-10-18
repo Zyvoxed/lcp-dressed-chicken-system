@@ -22,8 +22,9 @@
   border-radius: var(--radius-lg);
   background: var(--card-bg);
   box-shadow: var(--shadow);
-  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .modal-card .panel-title-row {
@@ -60,6 +61,20 @@
 }
 
 @media (max-width: 520px) {
+  .modal-backdrop {
+    padding: 12px;
+  }
+
+  .modal-card {
+    padding: var(--space-4);
+    max-height: calc(100dvh - 24px);
+  }
+
+  .modal-card .panel-title-row {
+    align-items: center;
+    flex-direction: row;
+  }
+
   .modal-actions {
     grid-template-columns: 1fr;
   }

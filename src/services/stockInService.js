@@ -21,7 +21,7 @@ export async function getStockInRecords(options = {}) {
   const result = await parseResponse(response, 'Unable to retrieve stock-in records')
 
   if (!Array.isArray(result.data)) {
-    throw new Error('The Stock-In API returned an invalid response')
+    throw new Error('Stock delivery records could not be loaded. Please try again.')
   }
 
   return result.data
@@ -38,7 +38,7 @@ export async function createStockIn(data) {
   const result = await parseResponse(response, 'Unable to record stock-in')
 
   if (!result.data?.stockin_id) {
-    throw new Error('The Stock-In API returned an invalid response')
+    throw new Error('The stock delivery result could not be read. Check the delivery history before trying again.')
   }
 
   return result.data

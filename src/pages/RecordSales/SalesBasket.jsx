@@ -32,48 +32,54 @@ function SalesBasket({ cart, customers, onAddCustomer, onQuantity, onRemove, onP
   }
 
   return (
-    <aside className="panel basket-panel">
+    <aside className="panel basket-panel" aria-busy={submitting}>
       <h2>ACTIVE SALES BASKET</h2>
-      <CustomerSelector customers={customers} paymentType={paymentType} value={customerId} onChange={(event) => setCustomerId(event.target.value)} />
-      <button className="secondary-action" type="button" onClick={onAddCustomer}>
-        Quick Register
+      <label>
+        Customer
+        <CustomerSelector customers={customers} paymentType={paymentType} value={customerId} onChange={(event) => setCustomerId(event.target.value)} disabled={submitting} />
+      </label>
+      <button className="secondary-action" type="button" onClick={onAddCustomer} disabled={submitting}>
+        Add Customer
       </button>
-      {!cart.length && <EmptyState>Basket is ready for selected products</EmptyState>}
+      {!cart.length && <EmptyState>Select products to add to the sale.</EmptyState>}
       {cart.map((item) => (
-        <div className="bill-total" key={item.product_id}>
-          <div>
+        <div className="bill-total basket-item" key={item.product_id}>
+          <div className="basket-item-details">
             <strong>{item.product_name}</strong>
             <input
               type="number"
+              inputMode="decimal"
               min="0.001"
               max={Number(item.stock_quantity)}
               step="0.001"
               value={item.quantity}
+              disabled={submitting}
               onChange={(event) => onQuantity(item.product_id, event.target.value)}
               aria-label={`${item.product_name} quantity`}
             />
           </div>
-          <button className="table-action danger" type="button" onClick={() => onRemove(item.product_id)}>Remove</button>
+          <button className="table-action danger" type="button" disabled={submitting} onClick={() => onRemove(item.product_id)}>Remove</button>
         </div>
       ))}
       <div className="terms-row">
-        <button className={paymentType === 'Cash' ? 'selected' : ''} type="button" onClick={() => { setPaymentType('Cash'); setCustomerId('') }}>
+        <button className={paymentType === 'Cash' ? 'selected' : ''} type="button" aria-pressed={paymentType === 'Cash'} disabled={submitting} onClick={() => { setPaymentType('Cash'); setCustomerId('') }}>
           Cash Sale
         </button>
-        <button className={paymentType === 'Credit' ? 'selected' : ''} type="button" onClick={() => setPaymentType('Credit')}>Credit Term</button>
+        <button className={paymentType === 'Credit' ? 'selected' : ''} type="button" aria-pressed={paymentType === 'Credit'} disabled={submitting} onClick={() => setPaymentType('Credit')}>Credit Sale</button>
       </div>
       <label>
         Amount paid
-        <input type="number" min="0" step="0.01" placeholder="0.00" value={amountPaid} onChange={(event) => setAmountPaid(event.target.value)} />
+        <input type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00" value={amountPaid} disabled={submitting} onChange={(event) => setAmountPaid(event.target.value)} />
       </label>
       <div className="bill-total">
         <span>Total bill</span>
         <strong>{peso.format(total)}</strong>
       </div>
-      {error && <p role="alert">{error}</p>}
-      {success && <p className="status active">{success}</p>}
+      {error && <p className="sales-feedback error" role="alert">{error}</p>}
+      {success && <p className="sales-feedback success" role="status">{success}</p>}
       <button className="primary-action" type="button" onClick={handleProcess} disabled={!cart.length || submitting || amountPaid === '' || (paymentType === 'Credit' && !customerId)}>
-        {submitting ? 'Processing Order' : 'Process Order'}
+        {submitting && <span className="sales-submit-spinner" aria-hidden="true" />}
+        {submitting ? 'Recording Sale...' : 'Record Sale'}
       </button>
     </aside>
   )

@@ -48,7 +48,7 @@ function LoginForm({ onLogin }) {
         message: authenticationFailure
           ? "Incorrect username or password."
           : forbidden
-            ? "This account is unavailable. Contact the system administrator."
+            ? "This account is inactive. Contact the owner or admin."
             : "The login service is unavailable. Please try again.",
       });
       if (import.meta.env.DEV) {
@@ -62,26 +62,26 @@ function LoginForm({ onLogin }) {
   }
 
   return (
-    <form className="login-card" onSubmit={handleSubmit}>
+    <form className="login-card" onSubmit={handleSubmit} aria-busy={loading}>
       <header className="login-card-header">
-        <span>Secure Access</span>
+        <span>Sign In</span>
         <h2>Welcome Back</h2>
         <p>Sign in to access the management system.</p>
       </header>
       <div className="input-group">
         <label htmlFor="login-username">Username</label>
-        <span className={`login-input-wrap ${validation.username ? "invalid" : ""}`}>
+        <span className={`login-input-wrap ${validation.username ? "invalid" : ""} ${loading ? "disabled" : ""}`}>
           <UserRound size={18} aria-hidden="true" />
-          <input id="login-username" name="username" type="text" placeholder="Enter your username" autoComplete="username" value={formState.username} onChange={handleChange} aria-invalid={Boolean(validation.username)} aria-describedby={validation.username ? "username-error" : undefined} />
+          <input id="login-username" name="username" type="text" placeholder="Enter your username" autoComplete="username" value={formState.username} onChange={handleChange} disabled={loading} aria-invalid={Boolean(validation.username)} aria-describedby={validation.username ? "username-error" : undefined} />
         </span>
         <small className="login-field-error" id="username-error">{validation.username || "\u00a0"}</small>
       </div>
       <div className="input-group">
         <label htmlFor="login-password">Password</label>
-        <span className={`login-input-wrap ${validation.password ? "invalid" : ""}`}>
+        <span className={`login-input-wrap ${validation.password ? "invalid" : ""} ${loading ? "disabled" : ""}`}>
           <LockKeyhole size={18} aria-hidden="true" />
-          <input id="login-password" name="password" type={showPassword ? "text" : "password"} placeholder="Enter your password" autoComplete="current-password" value={formState.password} onChange={handleChange} aria-invalid={Boolean(validation.password)} aria-describedby={validation.password ? "password-error" : undefined} />
-          <button type="button" className="password-visibility" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"}>
+          <input id="login-password" name="password" type={showPassword ? "text" : "password"} placeholder="Enter your password" autoComplete="current-password" value={formState.password} onChange={handleChange} disabled={loading} aria-invalid={Boolean(validation.password)} aria-describedby={validation.password ? "password-error" : undefined} />
+          <button type="button" className="password-visibility" onClick={() => setShowPassword((visible) => !visible)} disabled={loading} aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"}>
             {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
           </button>
         </span>

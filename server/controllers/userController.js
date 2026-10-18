@@ -80,7 +80,7 @@ export async function updateUser(request, response) {
   let connection
   try {
     const userId = positiveId(request.params.id); const details = userDetails(request.body)
-    if (userId === request.user.user_id && details.role !== 'Admin') throw new UserError(400, 'You cannot demote your own active Admin account')
+    if (userId === request.user.user_id && details.role !== 'Admin') throw new UserError(400, 'You cannot change your own Admin account to Staff')
     connection = await pool.getConnection(); await connection.beginTransaction()
     await findUser(connection, userId); await uniqueUsername(connection, details.username, userId)
     await connection.execute('UPDATE users SET fullname = ?, username = ?, role = ?, contact_number = ? WHERE user_id = ?', [details.fullname, details.username, details.role, details.contactNumber, userId])
@@ -95,7 +95,7 @@ export async function updateUserStatus(request, response) {
   let connection
   try {
     const userId = positiveId(request.params.id)
-    if (typeof request.body?.is_active !== 'boolean') throw new UserError(400, 'is_active must be boolean')
+    if (typeof request.body?.is_active !== 'boolean') throw new UserError(400, 'Account status must be active or inactive')
     if (userId === request.user.user_id && !request.body.is_active) throw new UserError(400, 'You cannot deactivate your own account')
     connection = await pool.getConnection(); await connection.beginTransaction()
     const user = await findUser(connection, userId)

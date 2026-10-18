@@ -41,16 +41,25 @@ function SupplierModal({ onClose, onCreated }) {
 
   return (
     <Modal title="Add Qualified Supplier" onClose={onClose}>
-      {fields.map(([label, name]) => (
-        <label key={name}>
-          {label}
-          <input name={name} placeholder={label} value={form[name]} onChange={handleChange} />
-        </label>
-      ))}
-      {error && <p role="alert">{error}</p>}
-      <button className="primary-action" type="button" onClick={handleSave} disabled={saving}>
-        {saving ? 'Saving Supplier' : 'Save Supplier'}
-      </button>
+      <div className="supplier-form" aria-busy={saving}>
+        {fields.map(([label, name]) => (
+          <label key={name}>
+            {label}
+            <input
+              name={name}
+              placeholder={label}
+              value={form[name]}
+              onChange={handleChange}
+              disabled={saving}
+            />
+          </label>
+        ))}
+        {error && <p className="supplier-form-error" role="alert">{error}</p>}
+        <button className="primary-action supplier-save-button" type="button" onClick={handleSave} disabled={saving}>
+          {saving && <span className="supplier-submit-spinner" aria-hidden="true" />}
+          {saving ? 'Saving Supplier' : 'Save Supplier'}
+        </button>
+      </div>
     </Modal>
   )
 }

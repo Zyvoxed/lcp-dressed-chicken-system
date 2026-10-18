@@ -13,3 +13,94 @@
 .inventory-page .data-table-shell {
   gap: 14px;
 }
+
+.inventory-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.inventory-stock-form h2 {
+  margin-bottom: 0;
+}
+
+.inventory-stock-form .loading-state {
+  min-height: 56px;
+}
+
+.inventory-stock-form :is(input, select):disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.inventory-stock-form > .primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+.inventory-feedback {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.inventory-feedback.error {
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+  background: var(--danger-bg);
+}
+
+.inventory-feedback.success {
+  border-color: var(--success-border);
+  color: var(--status-success-text);
+  background: var(--status-success-bg);
+}
+
+.inventory-submit-spinner {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: inventory-submit-spin 0.7s linear infinite;
+}
+
+.inventory-product-table :is(th, td):nth-child(3),
+.inventory-product-table :is(th, td):nth-child(4),
+.inventory-product-table :is(th, td):nth-child(5),
+.inventory-inflow-table :is(th, td):nth-child(4),
+.inventory-inflow-table :is(th, td):nth-child(5),
+.inventory-inflow-table :is(th, td):nth-child(6) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.inventory-product-table th:nth-child(3) button,
+.inventory-product-table th:nth-child(4) button,
+.inventory-product-table th:nth-child(5) button,
+.inventory-inflow-table th:nth-child(4) button,
+.inventory-inflow-table th:nth-child(5) button,
+.inventory-inflow-table th:nth-child(6) button {
+  justify-content: flex-end;
+}
+
+@keyframes inventory-submit-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 900px) {
+  .inventory-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .inventory-stats {
+    grid-template-columns: 1fr;
+  }
+}

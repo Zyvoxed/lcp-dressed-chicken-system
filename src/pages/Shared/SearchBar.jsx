@@ -4,7 +4,7 @@ function SearchBar({ className = '', placeholder, value, onChange }) {
   return (
     <label className={`search-field ${className}`}>
       <Search size={16} aria-hidden="true" />
-      <input placeholder={placeholder} value={value} onChange={onChange} />
+      <input aria-label={placeholder || 'Search'} placeholder={placeholder} value={value} onChange={onChange} />
     </label>
   )
 }

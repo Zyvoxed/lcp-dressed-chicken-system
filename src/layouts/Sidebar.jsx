@@ -26,6 +26,11 @@ const moduleIcons = {
   "User Accounts": Users,
 };
 
+const navigationLabels = {
+  "Main Dashboard": "Dashboard",
+  "Customer Credits Book": "Customer Credits",
+};
+
 const navGroups = [
   { label: "MAIN", items: ["Main Dashboard"] },
   { label: "OPERATIONS", items: ["Record Sales", "Inventory & Stock In", "Customer Credits Book", "Supplier Contracts"] },
@@ -40,7 +45,7 @@ function Sidebar({ activeModule, onSelect, onLogout, role, collapsed, mobileOpen
   const accessibleLabels = new Set(accessibleModules.map((m) => m.label));
 
   return (
-    <aside className={`sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}>
+    <aside id="primary-sidebar" className={`sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`} aria-label="Application navigation">
       <div className="sidebar-brand">
         <div className="sidebar-brand-mark" aria-hidden="true">
           <img src={lcpLogo} alt="" />
@@ -62,6 +67,7 @@ function Sidebar({ activeModule, onSelect, onLogout, role, collapsed, mobileOpen
               {groupItems.map((label) => {
                 const module = accessibleModules.find((m) => m.label === label);
                 const Icon = moduleIcons[label] || LayoutDashboard;
+                const displayLabel = navigationLabels[label] || label;
 
                 return (
                   <button
@@ -70,10 +76,10 @@ function Sidebar({ activeModule, onSelect, onLogout, role, collapsed, mobileOpen
                     aria-current={activeModule === label ? "page" : undefined}
                     type="button"
                     onClick={() => onSelect(label)}
-                    title={label}
+                    title={displayLabel}
                   >
                     <Icon size={18} aria-hidden="true" />
-                    <span className="nav-text">{label}</span>
+                    <span className="nav-text">{displayLabel}</span>
                   </button>
                 );
               })}

@@ -4,13 +4,13 @@ export async function getProducts(options = {}) {
   const response = await authenticatedApiFetch('/products', options)
 
   if (!response.ok) {
-    throw new Error(`Unable to retrieve products (HTTP ${response.status})`)
+    throw new Error('Products could not be loaded. Please try again.')
   }
 
   const result = await response.json()
 
   if (!result.success || !Array.isArray(result.data)) {
-    throw new Error('The products API returned an invalid response')
+    throw new Error('Products could not be loaded. Please try again.')
   }
 
   return result.data

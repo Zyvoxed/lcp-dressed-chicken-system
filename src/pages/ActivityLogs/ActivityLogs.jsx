@@ -6,11 +6,22 @@ import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 
 const periods = ['All Logs', 'Today', 'This Week', 'This Month']
 const actionLabels = {
-  LOGIN: 'User Login', LOGOUT: 'User Logout', SYSTEM_INITIALIZE: 'System Initialize',
+  LOGIN: 'User Login', LOGOUT: 'User Logout', SYSTEM_INITIALIZE: 'System Started',
   SALE_CREATED: 'Sale Created', STOCK_IN_CREATED: 'Stock In', PAYMENT_RECORDED: 'Payment Recorded',
   REPORT_GENERATED: 'Report Generated', USER_CREATED: 'User Created', USER_UPDATED: 'User Updated',
   USER_ACTIVATED: 'User Activated', USER_DEACTIVATED: 'User Deactivated', USER_PASSWORD_RESET: 'Password Reset',
 }
+
+const activityDateFormatter = new Intl.DateTimeFormat('en-PH', {
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+})
+
+const activityTimeFormatter = new Intl.DateTimeFormat('en-PH', {
+  hour: 'numeric',
+  minute: '2-digit',
+})
 
 function localDate(date) {
   const year = date.getFullYear()
@@ -77,26 +88,26 @@ function ActivityLogs() {
       <article className="activity-filter-panel">
         <div className="activity-filter-row">
           <label>
-            <Search size={18} />
-            <input value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder="Search by user, activity type, or details..." />
+            <Search size={18} aria-hidden="true" />
+            <input aria-label="Search activity logs" value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder="Search by user, action, or details..." />
           </label>
           <div>
             {periods.map((item) => (
-              <button className={period === item ? 'active' : ''} type="button" onClick={() => { setPeriod(item); setPage(1) }} key={item}>{item}</button>
+              <button className={period === item ? 'active' : ''} type="button" aria-pressed={period === item} onClick={() => { setPeriod(item); setPage(1) }} key={item}>{item === 'All Logs' ? 'All Activity' : item}</button>
             ))}
           </div>
         </div>
-        <footer><span>Found {logs.length} of {pagination.total} logged actions</span><span>Filter: {period}</span></footer>
+        <footer><span>Showing {logs.length} of {pagination.total} activities</span><span>Period: {period === 'All Logs' ? 'All Activity' : period}</span></footer>
       </article>
 
       {error ? (
         <div className="activity-error">
-          <p>{error}</p>
+          <p role="alert">{error}</p>
           <button type="button" onClick={() => setRefreshKey((current) => current + 1)}>Retry</button>
         </div>
       ) : (
         <article className="activity-table-panel">
-          <div className="activity-table-scroll">
+          <div className="activity-table-scroll" role="region" aria-label="Activity log records" tabIndex={0}>
             <table>
               <thead><tr><th>No.</th><th>Date</th><th>Time</th><th>User</th><th>Role</th><th>Activity</th><th>Details</th></tr></thead>
               <tbody>
@@ -105,8 +116,8 @@ function ActivityLogs() {
                   return (
                     <tr key={log.activity_id}>
                       <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
-                      <td>{timestamp.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</td>
-                      <td>{timestamp.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</td>
+                      <td>{activityDateFormatter.format(timestamp)}</td>
+                      <td>{activityTimeFormatter.format(timestamp)}</td>
                       <td><strong>{log.username || 'System'}</strong></td>
                       <td><span className={`activity-role ${String(log.role).toLowerCase()}`}>{log.role || 'System'}</span></td>
                       <td><span className={`activity-action ${actionTone(log.action)}`}>{readableAction(log.action)}</span></td>
@@ -120,9 +131,9 @@ function ActivityLogs() {
           {!logs.length && <EmptyState>{search || period !== 'All Logs' ? 'No activity records match the selected filter.' : 'No activity records found.'}</EmptyState>}
           {pagination.total_pages > 1 && (
             <footer className="activity-pagination">
-              <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}><ChevronLeft size={15} />Previous</button>
+              <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}><ChevronLeft size={15} aria-hidden="true" />Previous</button>
               <strong>Page {pagination.page} of {pagination.total_pages}</strong>
-              <button type="button" disabled={page >= pagination.total_pages} onClick={() => setPage((current) => current + 1)}>Next<ChevronRight size={15} /></button>
+              <button type="button" disabled={page >= pagination.total_pages} onClick={() => setPage((current) => current + 1)}>Next<ChevronRight size={15} aria-hidden="true" /></button>
             </footer>
           )}
         </article>

@@ -23,7 +23,7 @@ export async function createSale(data) {
   const result = await parseResponse(response, 'Unable to record sale')
 
   if (!result.data?.sale_id) {
-    throw new Error('The Sales API returned an invalid response')
+    throw new Error('The sale result could not be read. Check the sales records before trying again.')
   }
   return result.data
 }

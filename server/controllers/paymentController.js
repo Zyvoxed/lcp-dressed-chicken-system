@@ -31,7 +31,7 @@ export async function recordPayment(request, response) {
     const sale = sales[0]
 
     if (!sale) throw new PaymentError(404, 'Sale not found')
-    if (sale.payment_type !== 'Credit' || !sale.customer_id) throw new PaymentError(400, 'Payments apply only to customer Credit sales')
+    if (sale.payment_type !== 'Credit' || !sale.customer_id) throw new PaymentError(400, 'Payments can only be recorded for customer credit sales')
 
     const outstandingCents = Math.round(Number(sale.remaining_balance) * 100)
     const paymentCents = Math.round(paymentAmount * 100)
@@ -44,7 +44,7 @@ export async function recordPayment(request, response) {
     )
     if (!customers[0]) throw new PaymentError(404, 'Active customer not found')
     if (Math.round(Number(customers[0].current_balance) * 100) < paymentCents) {
-      throw new PaymentError(409, 'Customer balance is inconsistent with this payment')
+      throw new PaymentError(409, 'The customer balance does not match this payment. Please contact the owner.')
     }
 
     const newPaid = (Number(sale.amount_paid) + paymentCents / 100).toFixed(2)

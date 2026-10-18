@@ -49,8 +49,8 @@ function UserAccounts() {
   return (
     <section className="users-layout">
       <div className="full-span user-feedback-stack">
-        {error && <div className="users-feedback error" role="alert">{error}</div>}
-        {notice && <div className="users-feedback success">{notice}</div>}
+        {error && users.length > 0 && <div className="users-feedback error" role="alert">{error}</div>}
+        {notice && <div className="users-feedback success" role="status">{notice}</div>}
       </div>
       <UserStats users={users} />
       {!users.length && error

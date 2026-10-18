@@ -2,6 +2,7 @@ import { BarChart3 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { buildSmoothPath } from "../../utils/chartPaths.js";
 import { peso } from "../../utils/currency.js";
+import EmptyState from "../Shared/EmptyState.jsx";
 
 const chart = {
   width: 760,
@@ -34,19 +35,20 @@ function chartModel(data) {
 function SalesChart({ trends }) {
   const [range, setRange] = useState("weekly");
   const [activePoint, setActivePoint] = useState(null);
-  const data = trends[range] || [];
+  const data = useMemo(() => trends[range] || [], [range, trends]);
   const model = useMemo(() => chartModel(data), [data]);
   const labelStep = range === "daily" ? 4 : range === "monthly" ? 5 : 1;
+  const rangeLabel = `${range.charAt(0).toUpperCase()}${range.slice(1)}`;
 
   return (
     <article className="panel dashboard-sales-chart">
       <header className="dashboard-chart-header">
         <div>
           <h2>
-            <BarChart3 size={18} aria-hidden="true" /> Weekly Sales Performance
+            <BarChart3 size={18} aria-hidden="true" /> {rangeLabel} Sales Performance
           </h2>
           <p>
-            Aggregate distribution of completed transactions grouped by {range}
+            Recorded sales grouped by {range}
           </p>
         </div>
         <div className="dashboard-segments" aria-label="Sales chart range">
@@ -54,6 +56,7 @@ function SalesChart({ trends }) {
             <button
               className={range === item ? "active" : ""}
               type="button"
+              aria-pressed={range === item}
               key={item}
               onClick={() => {
                 setRange(item);
@@ -65,71 +68,78 @@ function SalesChart({ trends }) {
           ))}
         </div>
       </header>
-      <div className="chart-canvas">
-        {activePoint && (
-          <div
-            className="chart-tooltip"
-            style={{
-              left: `${(activePoint.x / chart.width) * 100}%`,
-              top: `${(activePoint.y / chart.height) * 100}%`,
-            }}
-          >
-            <strong>{activePoint.label}</strong>
-            <span>{peso.format(activePoint.sales)}</span>
-            <small>{activePoint.transactions} transactions</small>
-          </div>
-        )}
-        <svg
-          className="line-chart"
-          viewBox={`0 0 ${chart.width} ${chart.height}`}
-          role="img"
-          aria-label={`${range} sales performance`}
-        >
-          {model.ticks.map((tick) => (
-            <g key={tick.value}>
-              <line
-                x1={chart.left}
-                x2={chart.width - chart.right}
-                y1={tick.y}
-                y2={tick.y}
-              />
-              <text
-                className="chart-axis-label"
-                x={chart.left - 10}
-                y={tick.y + 4}
-                textAnchor="end"
+      {!data.length ? (
+        <EmptyState>No sales trend data available for this range.</EmptyState>
+      ) : (
+        <div className="dashboard-chart-scroll">
+          <div className="chart-canvas">
+            {activePoint && (
+              <div
+                className="chart-tooltip"
+                style={{
+                  left: `${(activePoint.x / chart.width) * 100}%`,
+                  top: `${(activePoint.y / chart.height) * 100}%`,
+                }}
               >
-                {peso.format(tick.value)}
-              </text>
-            </g>
-          ))}
-          <path className="chart-line" d={model.path} />
-          {model.points.map((point, index) => (
-            <g
-              className={`chart-point ${activePoint?.label === point.label ? "active" : ""}`}
-              key={point.label}
-              tabIndex="0"
-              role="button"
-              onPointerEnter={() => setActivePoint(point)}
-              onPointerLeave={() => setActivePoint(null)}
-              onFocus={() => setActivePoint(point)}
-              onBlur={() => setActivePoint(null)}
+                <strong>{activePoint.label}</strong>
+                <span>{peso.format(activePoint.sales)}</span>
+                <small>{activePoint.transactions} transactions</small>
+              </div>
+            )}
+            <svg
+              className="line-chart"
+              viewBox={`0 0 ${chart.width} ${chart.height}`}
+              role="img"
+              aria-label={`${range} sales performance`}
             >
-              <circle cx={point.x} cy={point.y} r="5" />
-              {index % labelStep === 0 && (
-                <text
-                  className="chart-x-label"
-                  x={point.x}
-                  y={chart.height - 20}
-                  textAnchor="middle"
+              {model.ticks.map((tick) => (
+                <g key={tick.value}>
+                  <line
+                    x1={chart.left}
+                    x2={chart.width - chart.right}
+                    y1={tick.y}
+                    y2={tick.y}
+                  />
+                  <text
+                    className="chart-axis-label"
+                    x={chart.left - 10}
+                    y={tick.y + 4}
+                    textAnchor="end"
+                  >
+                    {peso.format(tick.value)}
+                  </text>
+                </g>
+              ))}
+              <path className="chart-line" d={model.path} />
+              {model.points.map((point, index) => (
+                <g
+                  className={`chart-point ${activePoint?.label === point.label ? "active" : ""}`}
+                  key={point.label}
+                  tabIndex="0"
+                  role="img"
+                  aria-label={`${point.label}: ${peso.format(point.sales)}, ${point.transactions} transactions`}
+                  onPointerEnter={() => setActivePoint(point)}
+                  onPointerLeave={() => setActivePoint(null)}
+                  onFocus={() => setActivePoint(point)}
+                  onBlur={() => setActivePoint(null)}
                 >
-                  {point.label}
-                </text>
-              )}
-            </g>
-          ))}
-        </svg>
-      </div>
+                  <circle cx={point.x} cy={point.y} r="5" />
+                  {index % labelStep === 0 && (
+                    <text
+                      className="chart-x-label"
+                      x={point.x}
+                      y={chart.height - 20}
+                      textAnchor="middle"
+                    >
+                      {point.label}
+                    </text>
+                  )}
+                </g>
+              ))}
+            </svg>
+          </div>
+        </div>
+      )}
     </article>
   );
 }

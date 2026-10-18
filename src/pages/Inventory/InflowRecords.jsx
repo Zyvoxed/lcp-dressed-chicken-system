@@ -6,12 +6,12 @@ import { getStockInRecords } from '../../services/stockInService.js'
 import { peso } from '../../utils/currency.js'
 
 const columns = [
-  'Delivery Ref ID',
+  'Delivery No.',
   'Supplier Name',
-  'Product Delivery Line',
+  'Product',
   'Quantity',
   'Cost Per Unit',
-  'Gross Cost',
+  'Total Cost',
   'Delivery Date',
   'Recorded By',
 ]
@@ -55,11 +55,11 @@ function InflowRecords() {
   }, [])
 
   return (
-    <article className="panel table-panel">
-      <h2>SUPPLIER DELIVERY INFLOW RECORDS</h2>
+    <article className="panel table-panel inventory-inflow-table">
+      <h2>STOCK DELIVERY HISTORY</h2>
       {loading && <LoadingSpinner />}
       {!loading && error && <EmptyState>{error}</EmptyState>}
-      {!loading && !error && !records.length && <EmptyState>No stock-in records found.</EmptyState>}
+      {!loading && !error && !records.length && <EmptyState>No stock delivery records found.</EmptyState>}
       {!loading && !error && records.length > 0 && <DataTable
         columns={columns}
         rows={records}
@@ -72,7 +72,7 @@ function InflowRecords() {
             <td>{Number(record.quantity_received)} {record.unit}</td>
             <td>{peso.format(Number(record.cost_price))}</td>
             <td>{peso.format(Number(record.total_cost))}</td>
-            <td>{new Date(record.delivery_date).toLocaleString()}</td>
+            <td><time dateTime={record.delivery_date}>{new Date(record.delivery_date).toLocaleString()}</time></td>
             <td>{record.recorded_by}</td>
           </tr>
         )}

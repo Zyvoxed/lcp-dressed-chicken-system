@@ -10,7 +10,7 @@ async function request(path, options, fallback) {
 
 export async function getCustomers(options = {}) {
   const data = await request('/customers', options, 'Unable to retrieve customers')
-  if (!Array.isArray(data)) throw new Error('The Customers API returned an invalid response')
+  if (!Array.isArray(data)) throw new Error('Customers could not be loaded. Please try again.')
   return data
 }
 
@@ -26,12 +26,12 @@ export function getCustomer(id, options = {}) {
 
 export async function getCustomerCredits(id, options = {}) {
   const data = await request(`/customers/${id}/credits`, options, 'Unable to retrieve customer credits')
-  if (!Array.isArray(data)) throw new Error('The Customer Credits API returned an invalid response')
+  if (!Array.isArray(data)) throw new Error('Customer credit records could not be loaded. Please try again.')
   return data
 }
 
 export async function getCustomerPayments(id, options = {}) {
   const data = await request(`/customers/${id}/payments`, options, 'Unable to retrieve customer payments')
-  if (!Array.isArray(data)) throw new Error('The Customer Payments API returned an invalid response')
+  if (!Array.isArray(data)) throw new Error('Customer payment records could not be loaded. Please try again.')
   return data
 }

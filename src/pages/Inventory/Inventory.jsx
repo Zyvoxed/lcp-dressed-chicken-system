@@ -13,15 +13,15 @@ function Inventory() {
   const [inventoryVersion, setInventoryVersion] = useState(0)
 
   return (
-    <section className="page-stack">
+    <section className="page-stack inventory-page">
       <InventoryTabs activeTab={activeTab} onSelect={setActiveTab} />
       {activeTab === 'Product List' && (
         <>
           <InventoryStats />
-          <article className="panel table-panel">
-            <PageHeader title="PRODUCT INVENTORY LIST">
+          <article className="panel table-panel inventory-product-table">
+            <PageHeader title="PRODUCTS AND STOCK">
               <button className="primary-action slim" type="button" onClick={() => setShowProductModal(true)}>
-                Register Dressed Product
+                Add Product
               </button>
             </PageHeader>
             <ProductList key={inventoryVersion} />

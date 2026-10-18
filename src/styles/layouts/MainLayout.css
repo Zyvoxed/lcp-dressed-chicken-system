@@ -16,6 +16,7 @@
 }
 
 .content-area {
+  min-width: 0;
   margin-left: calc(var(--sidebar-expanded) + 28px);
   padding: 38px 22px 32px 0;
   min-height: calc(100vh - var(--header-height) - 14px);
@@ -27,6 +28,7 @@
 }
 
 .page-transition {
+  min-width: 0;
   min-height: calc(100vh - 146px);
 }
 

@@ -96,7 +96,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-color: rgba(255,255,255,0.28) transparent;
 }
 
 .sidebar nav::-webkit-scrollbar {
@@ -110,7 +110,7 @@
 .sidebar nav::-webkit-scrollbar-thumb {
   border: 0;
   border-radius: 999px;
-  background: var(--border-strong);
+  background: rgba(255,255,255,0.28);
 }
 
 /* — Nav group — */
@@ -172,7 +172,13 @@
 
 .sidebar nav button:hover {
   background: var(--nav-hover-bg);
-  color: var(--text-heading);
+  color: #ffffff;
+}
+
+.sidebar nav button:focus-visible,
+.logout-button:focus-visible {
+  outline-color: #ffffff;
+  outline-offset: -2px;
 }
 
 .sidebar nav button.active {
@@ -204,7 +210,7 @@
 .sidebar.collapsed .nav-group + .nav-group {
   margin-top: 4px;
   padding-top: 4px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(255,255,255,0.12);
 }
 
 /* — Footer — */
@@ -246,9 +252,9 @@
 }
 
 .logout-button:hover {
-  border-color: var(--danger-border);
-  color: var(--danger-text);
-  background: var(--danger-bg);
+  border-color: rgba(255,255,255,0.36);
+  color: #ffffff;
+  background: rgba(0,0,0,0.14);
 }
 
 .sidebar.collapsed .logout-button span {
@@ -266,20 +272,23 @@
     left: 10px;
     bottom: 10px;
     transform: translateX(-110%);
-    width: var(--sidebar-expanded);
+    width: min(var(--sidebar-expanded), calc(100vw - 20px));
+    visibility: hidden;
     box-shadow: none;
     border-radius: 16px;
-    transition: transform 0.25s ease;
+    transition: transform 0.25s ease, visibility 0s linear 0.25s;
   }
 
   .sidebar.collapsed {
-    width: var(--sidebar-expanded);
+    width: min(var(--sidebar-expanded), calc(100vw - 20px));
     transform: translateX(-110%);
   }
 
   .sidebar.mobile-open {
     transform: translateX(0);
+    visibility: visible;
     box-shadow: var(--shadow);
+    transition-delay: 0s;
   }
 
   .sidebar.collapsed .nav-text,

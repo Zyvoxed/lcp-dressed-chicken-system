@@ -91,12 +91,21 @@
   color: var(--text-muted);
 }
 
+.activity-filter-row > label:focus-within {
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+}
+
 .activity-filter-row input {
   width: 100%;
   min-height: 38px;
   padding: 0;
   border: 0;
   background: transparent;
+}
+
+.activity-filter-row input:focus {
+  box-shadow: none;
 }
 
 .activity-filter-row > div {
@@ -125,6 +134,15 @@
   background: var(--primary);
 }
 
+.activity-filter-row button:hover:not(.active) {
+  color: var(--text-heading);
+  background: var(--surface-hover);
+}
+
+.activity-filter-row button:focus-visible {
+  outline-offset: 2px;
+}
+
 .activity-filter-panel > footer {
   display: flex;
   justify-content: space-between;
@@ -146,6 +164,12 @@
 
 .activity-table-scroll {
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.activity-table-scroll:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
 }
 
 .activity-table-panel table {
@@ -173,6 +197,17 @@
   vertical-align: middle;
 }
 
+.activity-table-panel :is(th, td):first-child {
+  width: 64px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-table-panel :is(th, td):nth-child(2),
+.activity-table-panel :is(th, td):nth-child(3) {
+  white-space: nowrap;
+}
+
 .activity-table-panel tbody tr:last-child td {
   border-bottom: 0;
 }
@@ -194,6 +229,7 @@
   min-width: 260px;
   max-width: 500px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
   white-space: normal;
   font-weight: 400;
 }
@@ -255,6 +291,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 12px 16px;
   border-top: 1px solid var(--border);
@@ -264,7 +301,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 32px;
+  min-height: 36px;
   padding: 0 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -306,13 +343,18 @@
 }
 
 .activity-error button {
-  min-height: 32px;
+  min-height: 36px;
   padding: 0 14px;
   border: 1px solid currentColor;
   border-radius: var(--radius-sm);
   color: inherit;
   background: transparent;
   font-size: 12px;
+}
+
+.activity-table-panel > .empty-basket {
+  margin: 16px;
+  min-height: 120px;
 }
 
 /* ============================================================

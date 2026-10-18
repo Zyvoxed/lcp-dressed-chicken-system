@@ -8,7 +8,7 @@ function LoginHeader() {
         <BrandMark />
         <div>
           <p className="login-kicker">LCP DRESSED CHICKEN TRADING</p>
-          <span>Internal Operations Portal</span>
+          <span>LCP Management System</span>
         </div>
       </div>
       <div className="login-brand-copy">

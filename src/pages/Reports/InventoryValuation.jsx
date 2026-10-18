@@ -62,7 +62,7 @@ function InventoryValuation() {
         "Category",
         "Unit",
         "Stock Quantity",
-        "Cost Value",
+        "Stock Cost Value",
         "Estimated Sales Value",
         "Status",
       ],
@@ -97,9 +97,9 @@ function InventoryValuation() {
 
   return (
     <section className="report-layout">
-      <article className="panel table-panel">
+      <article className="panel table-panel report-table-panel inventory-report-panel">
         <div className="panel-title-row">
-          <h2>INVENTORY ASSETS VALUATION</h2>
+          <h2>STOCK VALUE REPORT</h2>
           <button
             className="primary-action slim"
             type="button"
@@ -118,7 +118,7 @@ function InventoryValuation() {
               "Unit",
               "Stock",
               "Reorder Level",
-              "Cost Value",
+              "Stock Cost Value",
               "Estimated Sales Value",
               "Status",
             ]}
@@ -155,14 +155,15 @@ function InventoryValuation() {
       <aside className="panel donut-panel">
         <div
           className="donut-wrap"
-          tabIndex="0"
-          data-tooltip={`FIFO remaining inventory cost: ${peso.format(totalCost)}`}
+          role="img"
+          tabIndex={0}
+          aria-label={`Remaining stock cost by category. FIFO stock cost: ${peso.format(totalCost)}`}
+          data-tooltip={`FIFO stock cost: ${peso.format(totalCost)}`}
         >
           <div
             className="donut"
             style={{ background: `conic-gradient(${gradient})` }}
-            role="img"
-            aria-label="Inventory cost valuation mix by product category"
+            aria-hidden="true"
           ></div>
         </div>
         {categories.map(([label, value], index) => (
@@ -172,7 +173,7 @@ function InventoryValuation() {
           </p>
         ))}
         <p>Total products: {report.summary.total_products}</p>
-        <p>FIFO cost value: {peso.format(totalCost)}</p>
+        <p>Remaining Stock Cost (FIFO): {peso.format(totalCost)}</p>
         <p>
           Estimated sales value:{" "}
           {peso.format(Number(report.summary.estimated_total_sales_value))}

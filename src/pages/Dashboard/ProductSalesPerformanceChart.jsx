@@ -14,29 +14,35 @@ function ProductSalesPerformanceChart({ products }) {
         <div>
           <h2>
             <BarChart3 size={17} />
-            PRODUCT SALES PERFORMANCE OVERVIEW
+            PRODUCT SALES
           </h2>
-          <p>Distribution of total units sold per poultry listing</p>
+          <p>Total quantity sold by product</p>
         </div>
-        <span>VOLUME DISTRIBUTION</span>
+        <span>QUANTITY SOLD</span>
       </header>
       {!chartProducts.length ? (
         <EmptyState>No product sales data yet.</EmptyState>
       ) : (
         <div
           className="analytics-bar-chart"
-          role="img"
+          role="group"
           aria-label="Product sales volume chart"
         >
           {chartProducts.map((product, index) => (
-            <div className="analytics-bar-column" key={product.product_id}>
+            <div
+              className="analytics-bar-column"
+              key={product.product_id}
+              role="img"
+              tabIndex={0}
+              aria-label={`${product.product_name}: ${Number(product.quantity_sold)} ${product.unit}`}
+              data-tooltip={`${product.product_name}: ${Number(product.quantity_sold)} ${product.unit}`}
+            >
               <span>{Number(product.quantity_sold)}</span>
               <div
                 className={index === 0 ? "leading" : ""}
                 style={{
                   height: `${Math.max((Number(product.quantity_sold) / maximum) * 100, 3)}%`,
                 }}
-                title={`${product.product_name}: ${Number(product.quantity_sold)} ${product.unit}`}
               />
               <small title={product.product_name}>{product.product_name}</small>
             </div>

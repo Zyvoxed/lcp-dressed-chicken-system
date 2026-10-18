@@ -67,7 +67,7 @@ function StockInForm({ onCreated }) {
 
     try {
       await createStockIn(form)
-      setSuccess('Stock-in recorded successfully')
+      setSuccess('Stock delivery recorded successfully')
       setForm((current) => ({
         ...initialForm,
         supplier_id: current.supplier_id,
@@ -83,11 +83,11 @@ function StockInForm({ onCreated }) {
   }
 
   return (
-    <form className="panel centered-form" onSubmit={handleSubmit}>
-      <h2>Record Incoming Supplier Stock Delivery</h2>
+    <form className="panel centered-form inventory-stock-form" onSubmit={handleSubmit} aria-busy={loading || submitting}>
+      <h2>Record Stock Delivery</h2>
       <label>
         Supplier
-        <select name="supplier_id" value={form.supplier_id} onChange={handleChange} required disabled={loading}>
+        <select name="supplier_id" value={form.supplier_id} onChange={handleChange} required disabled={loading || submitting}>
           <option value="">Select supplier</option>
           {suppliers.map((supplier) => (
             <option key={supplier.supplier_id} value={supplier.supplier_id}>{supplier.supplier_name}</option>
@@ -96,7 +96,7 @@ function StockInForm({ onCreated }) {
       </label>
       <label>
         Chicken Type
-        <select name="product_id" value={form.product_id} onChange={handleChange} required disabled={loading}>
+        <select name="product_id" value={form.product_id} onChange={handleChange} required disabled={loading || submitting}>
           <option value="">Select product</option>
           {products.map((product) => (
             <option key={product.product_id} value={product.product_id}>{product.product_name}</option>
@@ -105,21 +105,22 @@ function StockInForm({ onCreated }) {
       </label>
       <label>
         Quantity Received
-        <input name="quantity_received" type="number" min="0.001" step="0.001" placeholder="0" value={form.quantity_received} onChange={handleChange} required />
+        <input name="quantity_received" type="number" inputMode="decimal" min="0.001" step="0.001" placeholder="0" value={form.quantity_received} onChange={handleChange} required disabled={loading || submitting} />
       </label>
       <label>
-        Unit Purchase Cost
-        <input name="cost_price" type="number" min="0" step="0.01" placeholder="0.00" value={form.cost_price} onChange={handleChange} required />
+        Cost per Unit
+        <input name="cost_price" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00" value={form.cost_price} onChange={handleChange} required disabled={loading || submitting} />
       </label>
       <label>
         Delivery Date
-        <input name="delivery_date" type="datetime-local" value={form.delivery_date} onChange={handleChange} required />
+        <input name="delivery_date" type="datetime-local" value={form.delivery_date} onChange={handleChange} required disabled={loading || submitting} />
       </label>
       {loading && <LoadingSpinner />}
-      {error && <p role="alert">{error}</p>}
-      {success && <p className="status active">{success}</p>}
+      {error && <p className="inventory-feedback error" role="alert">{error}</p>}
+      {success && <p className="inventory-feedback success" role="status">{success}</p>}
       <button className="primary-action" type="submit" disabled={loading || submitting}>
-        {submitting ? 'Submitting Delivery' : 'Submit Stock Delivery'}
+        {submitting && <span className="inventory-submit-spinner" aria-hidden="true" />}
+        {submitting ? 'Saving Delivery...' : 'Save Stock Delivery'}
       </button>
     </form>
   )

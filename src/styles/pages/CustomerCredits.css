@@ -14,6 +14,14 @@
   gap: 14px;
 }
 
+.ledger-panel > h2 {
+  margin-bottom: 0;
+}
+
+.credit-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .debtor-list,
 .history-grid {
   display: grid;
@@ -21,6 +29,7 @@
 }
 
 .debtor-row {
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -28,16 +37,38 @@
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  color: inherit;
   background: var(--card-bg-soft);
   cursor: pointer;
+  font: inherit;
+  text-align: left;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease;
 }
 
-.debtor-row:hover {
+.debtor-row:hover:not(.selected) {
   border-color: var(--border-strong);
   background: var(--row-hover);
+}
+
+.debtor-row.selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.debtor-row > div:first-child {
+  min-width: 0;
+}
+
+.debtor-row > div:last-child {
+  flex: 0 0 auto;
+}
+
+.debtor-row strong,
+.debtor-row p,
+.debtor-row span {
+  overflow-wrap: anywhere;
 }
 
 .debtor-row span {
@@ -66,10 +97,54 @@
   font-size: 26px;
   font-weight: 700;
   letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.payment-form {
+  display: grid;
+  gap: 12px;
+}
+
+.payment-form :is(input, select):disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.payment-form > .primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+.payment-feedback {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.payment-feedback.error {
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+  background: var(--danger-bg);
+}
+
+.payment-submit-spinner {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: payment-submit-spin 0.7s linear infinite;
 }
 
 .history-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .history-grid h3 {
@@ -79,14 +154,96 @@
   font-weight: 600;
 }
 
+.history-grid > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
+.history-list {
+  display: grid;
+  gap: 7px;
+}
+
+.history-row {
+  min-width: 0;
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: var(--card-bg);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-row.credit {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.history-row.payment {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.history-row strong {
+  color: var(--money-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+@keyframes payment-submit-spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 1180px) {
   .credits-layout {
     grid-template-columns: 1fr;
   }
 }
 
+@media (max-width: 900px) {
+  .credit-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 640px) {
+  .credit-stats {
+    grid-template-columns: 1fr;
+  }
+
   .history-grid {
     grid-template-columns: 1fr;
+  }
+
+  .debtor-row > div:last-child {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .debtor-row b {
+    margin-bottom: 0;
+    text-align: left;
+  }
+
+  .history-row.credit {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .history-row.credit .status {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 }

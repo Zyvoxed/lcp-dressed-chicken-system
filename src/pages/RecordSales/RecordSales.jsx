@@ -100,8 +100,8 @@ function RecordSales() {
       <div className="sales-layout">
       <article className="panel catalog-panel">
         <div className="section-heading">
-          <p>PRODUCT CATALOG (SALES POS)</p>
-          <span>{visibleProducts.length} product lines</span>
+          <p>PRODUCTS</p>
+          <span>{visibleProducts.length} products</span>
         </div>
         <SearchBar placeholder="Search product catalog" value={query} onChange={(event) => setQuery(event.target.value)} />
         <CategoryFilter category={category} onCategory={setCategory} />

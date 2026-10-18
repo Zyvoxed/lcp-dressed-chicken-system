@@ -3,9 +3,15 @@ import DataTable from '../Shared/DataTable.jsx'
 import EmptyState from '../Shared/EmptyState.jsx'
 import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import ReportMetrics from './ReportMetrics.jsx'
+import StatusBadge from '../Shared/StatusBadge.jsx'
 import { getSalesReport, logReportExport } from '../../services/reportService.js'
 import { exportCsv } from '../../utils/csvExport.js'
 import { peso } from '../../utils/currency.js'
+
+const reportDateTime = new Intl.DateTimeFormat('en-PH', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+})
 
 function RevenueReport() {
   const [filters, setFilters] = useState({ start_date: '', end_date: '', payment_type: '' })
@@ -42,16 +48,16 @@ function RevenueReport() {
     <>
       <ReportMetrics summary={report.summary} />
       <section className="report-layout">
-        <article className="panel table-panel">
+        <article className="panel table-panel report-table-panel sales-report-panel">
           <h2>SALES & REVENUE AUDIT</h2>
           {!report.records.length ? <EmptyState>No sales transactions match the filters.</EmptyState> : <DataTable
             columns={['Sale ID', 'Date', 'Customer', 'Recorded By', 'Payment Type', 'Total', 'Paid', 'Balance', 'Status']}
             rows={report.records}
             getSortValue={(sale, index) => [sale.sale_id, sale.sale_date, sale.customer_name, sale.recorded_by, sale.payment_type, Number(sale.total_amount), Number(sale.amount_paid), Number(sale.remaining_balance), sale.status][index]}
-            renderRow={(sale) => <tr key={sale.sale_id}><td>OR-{sale.sale_id}</td><td>{new Date(sale.sale_date).toLocaleString()}</td><td>{sale.customer_name}</td><td>{sale.recorded_by}</td><td>{sale.payment_type}</td><td>{peso.format(Number(sale.total_amount))}</td><td>{peso.format(Number(sale.amount_paid))}</td><td>{peso.format(Number(sale.remaining_balance))}</td><td>{sale.status}</td></tr>}
+            renderRow={(sale) => <tr key={sale.sale_id}><td>OR-{sale.sale_id}</td><td>{reportDateTime.format(new Date(sale.sale_date))}</td><td>{sale.customer_name}</td><td>{sale.recorded_by}</td><td>{sale.payment_type}</td><td>{peso.format(Number(sale.total_amount))}</td><td>{peso.format(Number(sale.amount_paid))}</td><td>{peso.format(Number(sale.remaining_balance))}</td><td><StatusBadge value={sale.status} /></td></tr>}
           />}
         </article>
-        <aside className="receipt-panel">
+        <aside className="receipt-panel report-filter-panel">
           <h2>Report Filters</h2>
           <label>Start Date<input type="date" value={filters.start_date} onChange={(event) => setFilters((current) => ({ ...current, start_date: event.target.value }))} /></label>
           <label>End Date<input type="date" value={filters.end_date} onChange={(event) => setFilters((current) => ({ ...current, end_date: event.target.value }))} /></label>

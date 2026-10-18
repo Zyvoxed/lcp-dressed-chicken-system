@@ -24,11 +24,11 @@ function CustomerModal({ onClose, onCreated }) {
   }
 
   return (
-    <Modal title="Quick Register Customer" onClose={onClose}>
-      <label>Customer Name<input name="customer_name" value={form.customer_name} onChange={change} placeholder="Customer Name" /></label>
-      <label>Contact Number<input name="contact_number" value={form.contact_number} onChange={change} placeholder="Contact Number" /></label>
-      <label>Address<input name="address" value={form.address} onChange={change} placeholder="Address" /></label>
-      {error && <p role="alert">{error}</p>}
+    <Modal title="Add Customer" onClose={onClose}>
+      <label>Customer Name<input name="customer_name" value={form.customer_name} onChange={change} placeholder="Customer Name" disabled={saving} /></label>
+      <label>Contact Number<input name="contact_number" value={form.contact_number} onChange={change} placeholder="Contact Number" disabled={saving} /></label>
+      <label>Address<input name="address" value={form.address} onChange={change} placeholder="Address" disabled={saving} /></label>
+      {error && <p className="sales-feedback error" role="alert">{error}</p>}
       <button className="primary-action" type="button" onClick={save} disabled={saving}>{saving ? 'Saving Customer' : 'Save Customer'}</button>
     </Modal>
   )

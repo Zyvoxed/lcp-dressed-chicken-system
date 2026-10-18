@@ -148,8 +148,8 @@ tbody tr:last-child td {
 }
 
 .table-pagination button {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   border: 1px solid var(--border);
@@ -183,5 +183,9 @@ tbody tr:last-child td {
   .table-pagination {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .table-pagination div {
+    justify-content: space-between;
   }
 }

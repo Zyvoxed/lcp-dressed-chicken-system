@@ -46,6 +46,8 @@ function MainLayout({
         role={role}
         user={user}
         activeModule={activeModule}
+        sidebarCollapsed={sidebarCollapsed}
+        mobileOpen={mobileOpen}
         onToggleSidebar={toggleCollapse}
         onToggleMobile={toggleMobile}
       />

@@ -98,7 +98,7 @@ export async function createSale(request, response) {
       }
 
       if (Number(product.stock_quantity) < item.quantity) {
-        throw new SaleError(409, `Insufficient inventory for product ${item.productId}`)
+        throw new SaleError(409, `Not enough stock for product ${item.productId}`)
       }
 
       const [batches] = await connection.execute(
@@ -112,7 +112,7 @@ export async function createSale(request, response) {
       const fifoAvailable = batches.reduce((sum, batch) => sum + Number(batch.remaining_quantity), 0)
 
       if (fifoAvailable < item.quantity) {
-        throw new SaleError(409, `Insufficient FIFO inventory for product ${item.productId}`)
+        throw new SaleError(409, `Available stock records do not cover product ${item.productId}. Please contact the owner.`)
       }
 
       const priceCents = Math.round(Number(product.selling_price) * 100)

@@ -22,7 +22,7 @@ function ProductPerformanceLists({ title, products, mode }) {
               <div>
                 <strong>{product.product_name}</strong>
                 <p>
-                  {mode === "top" ? "Quantity" : "Sales Volume"}:{" "}
+                  {mode === "top" ? "Quantity" : "Quantity Sold"}:{" "}
                   <em>
                     {Number(product.quantity_sold)} {product.unit}
                   </em>
@@ -31,7 +31,7 @@ function ProductPerformanceLists({ title, products, mode }) {
               {mode === "top" ? (
                 <div>
                   <b>{peso.format(Number(product.gross_sales))}</b>
-                  <span>Gross Sale</span>
+                  <span>Total Sales</span>
                 </div>
               ) : (
                 <div>
