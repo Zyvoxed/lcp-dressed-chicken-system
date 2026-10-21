@@ -189,6 +189,10 @@
   text-transform: uppercase;
 }
 
+.activity-table-panel :is(th, td):not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
 .activity-table-panel td {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
@@ -223,6 +227,22 @@
 .activity-table-panel td strong,
 .activity-details {
   color: var(--text-heading);
+}
+
+.activity-user {
+  min-width: 130px;
+  display: grid;
+  gap: 2px;
+}
+
+.activity-user strong,
+.activity-user span {
+  overflow-wrap: anywhere;
+}
+
+.activity-user span {
+  color: var(--text-muted);
+  font-size: 10px;
 }
 
 .activity-details {

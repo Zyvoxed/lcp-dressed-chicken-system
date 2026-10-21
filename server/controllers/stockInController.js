@@ -191,3 +191,75 @@ export async function getStockInRecords(request, response) {
     })
   }
 }
+
+export async function getStockInBatchAllocations(request, response) {
+  try {
+    const stockInId = parsePositiveInteger(request.params.id, 'Batch')
+    const [batches] = await pool.execute(
+      `SELECT
+          si.stockin_id,
+          si.supplier_id,
+          s.supplier_name,
+          si.product_id,
+          p.product_name,
+          p.unit,
+          si.quantity_received,
+          si.remaining_quantity,
+          si.cost_price,
+          si.total_cost,
+          CONCAT(DATE_FORMAT(si.delivery_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS delivery_date,
+          u.fullname AS recorded_by
+       FROM stock_in si
+       JOIN suppliers s ON si.supplier_id = s.supplier_id
+       JOIN products p ON si.product_id = p.product_id
+       JOIN users u ON si.user_id = u.user_id
+       WHERE si.stockin_id = ?
+       LIMIT 1`,
+      [stockInId],
+    )
+
+    if (!batches[0]) {
+      return response.status(404).json({ success: false, message: 'Stock-in batch not found' })
+    }
+
+    const [allocations] = await pool.execute(
+      `SELECT allocation_id, sale_id, salesitem_id, stockin_id,
+              quantity_deducted, cost_price, sale_date, allocation_order
+       FROM (
+         SELECT sba.allocation_id,
+                sa.sale_id,
+                item.salesitem_id,
+                sba.stockin_id,
+                sba.quantity_deducted,
+                sba.cost_price,
+                CONCAT(DATE_FORMAT(sa.sale_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS sale_date,
+                ROW_NUMBER() OVER (
+                  PARTITION BY item.salesitem_id
+                  ORDER BY batch.delivery_date ASC, batch.stockin_id ASC
+                ) AS allocation_order
+         FROM sale_batch_allocations sba
+         JOIN sales_items item ON sba.salesitem_id = item.salesitem_id
+         JOIN sales sa ON item.sale_id = sa.sale_id
+         JOIN stock_in batch ON sba.stockin_id = batch.stockin_id
+       ) allocation_history
+       WHERE stockin_id = ?
+       ORDER BY sale_date DESC, allocation_id DESC`,
+      [stockInId],
+    )
+
+    return response.json({
+      success: true,
+      data: {
+        batch: batches[0],
+        allocations,
+      },
+    })
+  } catch (error) {
+    if (error instanceof RequestError) {
+      return response.status(error.status).json({ success: false, message: error.message })
+    }
+
+    console.error('Unable to retrieve stock-in batch allocations:', error.message)
+    return response.status(500).json({ success: false, message: 'Unable to retrieve stock-in batch allocations' })
+  }
+}

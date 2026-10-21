@@ -1,48 +1,36 @@
-import { Award } from "lucide-react";
-import { peso } from "../../utils/currency.js";
+import { Award, PhilippinePeso, ReceiptText, Sigma } from 'lucide-react'
+import { peso } from '../../utils/currency.js'
+
+function formatQuantity(value) {
+  return Number(value).toLocaleString('en-PH', { maximumFractionDigits: 3 })
+}
+
 function BusinessAnalyticsStats({ summary }) {
-  const topSeller = summary.top_seller;
+  const topSeller = summary.top_seller
   return (
     <div className="business-kpi-grid">
       <article>
-        <header>
-          <span>TOTAL TRANSACTIONS</span>
-          <b>ALL TIME</b>
-        </header>
-        <strong>{summary.total_transactions}</strong>
-        <p>Completed purchases recorded</p>
+        <header><span>COMPLETED SALES</span><ReceiptText size={18} aria-hidden="true" /></header>
+        <strong>{Number(summary.total_transactions).toLocaleString('en-PH')}</strong>
+        <p>Recorded transactions</p>
       </article>
       <article className="outlined">
-        <header>
-          <span>TOTAL SALES</span>
-          <b>₱ PHP</b>
-        </header>
+        <header><span>GROSS SALES</span><PhilippinePeso size={18} aria-hidden="true" /></header>
         <strong>{peso.format(Number(summary.gross_revenue))}</strong>
-        <p className="positive">• All cash and credit sales</p>
+        <p>Cash and credit sales</p>
       </article>
       <article className="outlined">
-        <header>
-          <span>AVERAGE SALE AMOUNT</span>
-          <b>PER SALE</b>
-        </header>
+        <header><span>AVERAGE SALE AMOUNT</span><Sigma size={18} aria-hidden="true" /></header>
         <strong>{peso.format(Number(summary.average_ticket_value))}</strong>
-        <p>Average amount per completed sale</p>
+        <p>Average amount per sale</p>
       </article>
       <article>
-        <header>
-          <span className="accent">TOP-SELLING PRODUCT</span>
-          <Award size={18} />
-        </header>
-        <strong className="seller-name">
-          {topSeller?.product_name || "No sales data yet"}
-        </strong>
-        <p>
-          {topSeller
-            ? `${Number(topSeller.quantity_sold)} ${topSeller.unit} units sold`
-            : "No completed product sales"}
-        </p>
+        <header><span className="accent">TOP-SELLING PRODUCT</span><Award size={18} aria-hidden="true" /></header>
+        <strong className="seller-name">{topSeller?.product_name || 'No sales data yet'}</strong>
+        <p>{topSeller ? `${formatQuantity(topSeller.quantity_sold)} ${topSeller.unit} sold` : 'No completed product sales'}</p>
       </article>
     </div>
-  );
+  )
 }
-export default BusinessAnalyticsStats;
+
+export default BusinessAnalyticsStats

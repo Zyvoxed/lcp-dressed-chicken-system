@@ -6,7 +6,7 @@ import ReportMetrics from './ReportMetrics.jsx'
 import StatusBadge from '../Shared/StatusBadge.jsx'
 import TransactionDetailsModal from './TransactionDetailsModal.jsx'
 import { getSalesReport, logReportExport } from '../../services/reportService.js'
-import { exportCsv } from '../../utils/csvExport.js'
+import { exportCsv, manilaDateStamp } from '../../utils/csvExport.js'
 import { peso } from '../../utils/currency.js'
 import { formatActivityTimestamp } from '../../utils/activityDateTime.js'
 
@@ -66,7 +66,7 @@ function RevenueReport() {
   async function download() {
     try { await logReportExport('Sales & Revenue') } catch (logError) { console.error(logError.message) }
     exportCsv(
-      `sales-report-${new Date().toISOString().slice(0, 10)}.csv`,
+      `sales-report-${manilaDateStamp()}.csv`,
       ['Sale ID', 'Date', 'Customer', 'Recorded By', 'Payment Type', 'Total Amount', 'Amount Paid', 'Remaining Balance', 'Status'],
       filteredRecords.map((sale) => [`OR-${sale.sale_id}`, formatActivityTimestamp(sale.sale_date).dateTime, sale.customer_name, sale.recorded_by, sale.payment_type, sale.total_amount, sale.amount_paid, sale.remaining_balance, sale.status]),
     )

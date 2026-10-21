@@ -7,7 +7,7 @@ import {
   getReceivablesReport,
   logReportExport,
 } from "../../services/reportService.js";
-import { exportCsv } from "../../utils/csvExport.js";
+import { exportCsv, manilaDateStamp } from "../../utils/csvExport.js";
 import { peso } from "../../utils/currency.js";
 import { formatActivityTimestamp } from "../../utils/activityDateTime.js";
 
@@ -36,7 +36,7 @@ function ReceivablesLedger() {
       console.error(logError.message);
     }
     exportCsv(
-      `receivables-report-${new Date().toISOString().slice(0, 10)}.csv`,
+      `receivables-report-${manilaDateStamp()}.csv`,
       [
         "Customer",
         "Contact Number",

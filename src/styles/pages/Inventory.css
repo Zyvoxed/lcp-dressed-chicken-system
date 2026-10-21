@@ -69,6 +69,99 @@
   min-width: 850px;
 }
 
+.inventory-inflow-table {
+  min-width: 0;
+}
+
+.inventory-inflow-table table {
+  min-width: 1540px;
+}
+
+.inventory-inflow-table thead th {
+  padding: 12px 14px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.inventory-inflow-table tbody td {
+  padding: 13px 14px;
+  vertical-align: middle;
+}
+
+.inventory-inflow-table :is(th, td):not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+.inventory-inflow-table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid var(--border);
+}
+
+.inventory-inflow-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.inventory-inflow-table tbody tr:hover td {
+  background-color: var(--row-hover);
+}
+
+.inventory-inflow-heading {
+  margin-bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.inventory-inflow-heading h2,
+.inventory-inflow-heading p {
+  margin: 0;
+}
+
+.inventory-inflow-heading p {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.inventory-inflow-heading > span {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  font-size: 11px;
+}
+
+.inventory-batch-row td:first-child {
+  border-left: 3px solid transparent;
+}
+
+.inventory-batch-row.partially-used td:first-child {
+  border-left-color: var(--warning);
+}
+
+.inventory-batch-row.used-up td:first-child {
+  border-left-color: var(--danger);
+}
+
+.inventory-batch-reference,
+.inventory-batch-product {
+  color: var(--text-heading);
+}
+
+.inventory-inflow-table .status.used-up,
+.fifo-batch-modal .status.used-up {
+  color: var(--status-danger-text);
+  background: var(--status-danger-bg);
+}
+
+.inventory-inflow-table .status.partially-used,
+.fifo-batch-modal .status.partially-used {
+  color: var(--status-warn-text);
+  background: var(--status-warn-bg);
+}
+
 .inventory-product-table :is(th, td):first-child {
   width: 24%;
   white-space: normal;
@@ -176,6 +269,127 @@
   width: min(100%, 600px);
 }
 
+.fifo-batch-modal {
+  width: min(100%, 720px);
+}
+
+.fifo-batch-section {
+  display: grid;
+  gap: 10px;
+}
+
+.fifo-batch-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.fifo-batch-section-heading h3,
+.fifo-batch-section-heading p {
+  margin: 0;
+}
+
+.fifo-batch-section-heading h3 {
+  color: var(--text-heading);
+  font-size: 14px;
+}
+
+.fifo-batch-section-heading p {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.fifo-allocation-count {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.fifo-batch-summary {
+  padding-block: 2px;
+}
+
+.fifo-batch-state {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.fifo-batch-state .empty-basket {
+  width: 100%;
+}
+
+.fifo-allocation-list {
+  max-height: 310px;
+  display: grid;
+  gap: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 3px;
+}
+
+.fifo-allocation-list article {
+  padding: 12px 14px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
+.fifo-allocation-list article > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fifo-allocation-list article > div strong {
+  color: var(--text-heading);
+  font-size: 13px;
+}
+
+.fifo-allocation-list article > div span {
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.fifo-allocation-list dl,
+.fifo-allocation-list dl div {
+  margin: 0;
+}
+
+.fifo-allocation-list dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+}
+
+.fifo-allocation-list dl div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.fifo-allocation-list dt {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.fifo-allocation-list dd {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 .inventory-review-section {
   display: grid;
   gap: 8px;
@@ -274,9 +488,11 @@
 .inventory-product-table :is(th, td):nth-child(3),
 .inventory-product-table :is(th, td):nth-child(4),
 .inventory-product-table :is(th, td):nth-child(5),
-.inventory-inflow-table :is(th, td):nth-child(4),
 .inventory-inflow-table :is(th, td):nth-child(5),
-.inventory-inflow-table :is(th, td):nth-child(6) {
+.inventory-inflow-table :is(th, td):nth-child(6),
+.inventory-inflow-table :is(th, td):nth-child(7),
+.inventory-inflow-table :is(th, td):nth-child(9),
+.inventory-inflow-table :is(th, td):nth-child(10) {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -284,9 +500,11 @@
 .inventory-product-table th:nth-child(3) button,
 .inventory-product-table th:nth-child(4) button,
 .inventory-product-table th:nth-child(5) button,
-.inventory-inflow-table th:nth-child(4) button,
 .inventory-inflow-table th:nth-child(5) button,
-.inventory-inflow-table th:nth-child(6) button {
+.inventory-inflow-table th:nth-child(6) button,
+.inventory-inflow-table th:nth-child(7) button,
+.inventory-inflow-table th:nth-child(9) button,
+.inventory-inflow-table th:nth-child(10) button {
   justify-content: flex-end;
 }
 
@@ -330,5 +548,16 @@
   .selected-stock-summary .status-badge {
     grid-column: 1 / -1;
     justify-self: start;
+  }
+
+  .inventory-inflow-heading,
+  .fifo-batch-section-heading,
+  .fifo-allocation-list article > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .fifo-allocation-list dl {
+    grid-template-columns: 1fr;
   }
 }

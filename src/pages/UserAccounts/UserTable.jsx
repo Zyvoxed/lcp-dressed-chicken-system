@@ -2,7 +2,16 @@ import { KeyRound, MailCheck, Pencil, Power, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import DataTable from '../Shared/DataTable.jsx'
 
-const columns = ['Full Name', 'Username', 'Recovery Email', 'Contact Number', 'Role', 'Actions']
+const columns = ['Full Name', 'Username', 'Recovery Email', 'Contact Number', 'Role', 'Status', 'Actions']
+const sortAccessors = [
+  (user) => user.fullname,
+  (user) => user.username,
+  (user) => user.email,
+  (user) => user.contact_number,
+  (user) => user.role,
+  (user) => user.is_active,
+  () => '',
+]
 
 function UserTable({ users, currentUserId, onEdit, onResetPassword, onToggleStatus, onSendVerification, busyId, verificationBusyId }) {
   const [roleFilter, setRoleFilter] = useState('All')
@@ -48,6 +57,7 @@ function UserTable({ users, currentUserId, onEdit, onResetPassword, onToggleStat
         columns={columns}
         rows={filteredUsers}
         searchable={false}
+        getSortValue={(user, columnIndex) => sortAccessors[columnIndex](user)}
         renderRow={(user) => {
           const current = Number(user.user_id) === Number(currentUserId)
           const updating = busyId === user.user_id
@@ -58,7 +68,6 @@ function UserTable({ users, currentUserId, onEdit, onResetPassword, onToggleStat
                 <div className="user-identity">
                   <strong>{user.fullname}</strong>
                   {current && <b>YOUR ACCOUNT</b>}
-                  {!user.is_active && <b className="inactive">INACTIVE</b>}
                   <span>UID: usr-{user.user_id}</span>
                 </div>
               </td>
@@ -71,6 +80,7 @@ function UserTable({ users, currentUserId, onEdit, onResetPassword, onToggleStat
               </td>
               <td>{user.contact_number || '—'}</td>
               <td><span className={`user-role-badge ${user.role.toLowerCase()}`}>{user.role}</span></td>
+              <td><span className={`user-status-badge ${user.is_active ? 'active' : 'inactive'}`}>{user.is_active ? 'Active' : 'Inactive'}</span></td>
               <td>
                 <div className="user-table-actions">
                   <button className="table-action" type="button" onClick={() => onEdit(user)}>

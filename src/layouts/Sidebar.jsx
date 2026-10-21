@@ -29,6 +29,7 @@ const moduleIcons = {
 const navigationLabels = {
   "Main Dashboard": "Dashboard",
   "Customer Credits Book": "Customer Credits",
+  "Supplier Contracts": "Suppliers & Deliveries",
 };
 
 const navGroups = [

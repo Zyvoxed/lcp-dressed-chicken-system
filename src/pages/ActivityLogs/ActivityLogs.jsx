@@ -7,10 +7,11 @@ import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 
 const periods = ['All Logs', 'Today', 'This Week', 'This Month']
 const actionLabels = {
-  LOGIN: 'User Login', LOGOUT: 'User Logout', SYSTEM_INITIALIZE: 'System Started',
-  SALE_CREATED: 'Sale Created', STOCK_IN_CREATED: 'Stock In', PAYMENT_RECORDED: 'Payment Recorded',
-  REPORT_GENERATED: 'Report Generated', USER_CREATED: 'User Created', USER_UPDATED: 'User Updated',
-  USER_ACTIVATED: 'User Activated', USER_DEACTIVATED: 'User Deactivated', USER_PASSWORD_RESET: 'Password Reset',
+  LOGIN: 'Signed In', LOGOUT: 'Signed Out', SYSTEM_INITIALIZE: 'System Started',
+  SALE_CREATED: 'Recorded a Sale', STOCK_IN_CREATED: 'Added Stock', PAYMENT_RECORDED: 'Recorded a Payment',
+  REPORT_GENERATED: 'Created a Report', PRODUCT_CREATED: 'Added a Product', PRODUCT_UPDATED: 'Updated a Product',
+  USER_CREATED: 'Added an Account', USER_UPDATED: 'Updated an Account',
+  USER_ACTIVATED: 'Activated an Account', USER_DEACTIVATED: 'Deactivated an Account', USER_PASSWORD_RESET: 'Reset a Password',
 }
 
 function readableAction(action) {
@@ -67,7 +68,7 @@ function ActivityLogs() {
             ))}
           </div>
         </div>
-        <footer><span>Showing {logs.length} of {pagination.total} activities</span><span>Period: {period === 'All Logs' ? 'All Activity' : period}</span></footer>
+        <footer><span>Showing {logs.length} of {pagination.total} records</span></footer>
       </article>
 
       {error ? (
@@ -78,7 +79,7 @@ function ActivityLogs() {
       ) : (
         <article className="activity-table-panel">
           <div className="activity-table-scroll" role="region" aria-label="Activity log records" tabIndex={0}>
-            <table>
+            <table className="system-data-table">
               <thead><tr><th>No.</th><th>Date</th><th>Time</th><th>User</th><th>Role</th><th>Activity</th><th>Details</th></tr></thead>
               <tbody>
                 {logs.map((log, index) => {
@@ -88,7 +89,7 @@ function ActivityLogs() {
                       <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                       <td><time dateTime={log.created_at}>{timestamp.date}</time></td>
                       <td>{timestamp.time}</td>
-                      <td><strong>{log.username || 'System'}</strong></td>
+                      <td><div className="activity-user"><strong>{log.fullname || log.username || 'System'}</strong>{log.username && log.username !== 'System' && <span>@{log.username}</span>}</div></td>
                       <td><span className={`activity-role ${String(log.role).toLowerCase()}`}>{log.role || 'System'}</span></td>
                       <td><span className={`activity-action ${actionTone(log.action)}`}>{readableAction(log.action)}</span></td>
                       <td className="activity-details">{log.description || '—'}</td>

@@ -99,7 +99,7 @@
 /* — Stats grid — */
 .user-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -308,7 +308,7 @@
 }
 
 .user-registry-panel table {
-  min-width: 1060px;
+  min-width: 1140px;
 }
 
 .user-registry-panel th {
@@ -321,6 +321,18 @@
   padding-block: 12px;
   color: var(--text-secondary);
   font-size: 12px;
+}
+
+.user-registry-panel :is(th, td):not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+.user-registry-panel tbody tr:not(:last-child) td {
+  border-bottom: 1px solid var(--border);
+}
+
+.user-registry-panel tbody tr:hover td {
+  background: var(--row-hover);
 }
 
 /* — User identity cell — */
@@ -418,6 +430,27 @@
   border-color: var(--success-border);
   color: var(--status-success-text);
   background: var(--status-success-bg);
+}
+
+.user-status-badge {
+  display: inline-flex;
+  padding: 3px 8px;
+  border: 1px solid;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.user-status-badge.active {
+  border-color: var(--success-border);
+  color: var(--status-success-text);
+  background: var(--status-success-bg);
+}
+
+.user-status-badge.inactive {
+  border-color: var(--danger-border);
+  color: var(--status-danger-text);
+  background: var(--status-danger-bg);
 }
 
 .inactive-user-row {
@@ -608,6 +641,33 @@
   gap: 8px;
 }
 
+.user-confirmation-modal {
+  width: min(100%, 480px);
+}
+
+.user-confirmation-modal > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.user-confirmation-modal > p strong {
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+
+.user-confirmation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.user-confirmation-actions .primary-action.danger {
+  color: var(--primary-action-text);
+  background: var(--danger);
+}
+
 /* — Feedback — */
 .form-error,
 .users-feedback {
@@ -643,10 +703,6 @@
    ============================================================ */
 
 @media (max-width: 1280px) {
-  .user-stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .user-registry-header {
     align-items: flex-start;
     flex-direction: column;
@@ -703,6 +759,14 @@
 
   .role-cards {
     grid-template-columns: 1fr;
+  }
+
+  .user-confirmation-actions {
+    flex-direction: column-reverse;
+  }
+
+  .user-confirmation-actions button {
+    width: 100%;
   }
 }
 

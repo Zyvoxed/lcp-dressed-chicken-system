@@ -93,6 +93,8 @@ function findChrome() {
 const projectRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 const screenshotRoot = join(projectRoot, 'test-results', 'dashboard-chart')
 const inventoryScreenshotRoot = join(projectRoot, 'test-results', 'inventory-phase5')
+const analyticsScreenshotRoot = join(projectRoot, 'test-results', 'business-analytics-phase8')
+const adminScreenshotRoot = join(projectRoot, 'test-results', 'admin-phase9')
 const temporaryRoot = await mkdtemp(join(tmpdir(), 'lcp-inventory-ui-'))
 const safeTempRoot = `${resolve(tmpdir())}${sep}`
 const browserPort = await getFreePort()
@@ -135,7 +137,11 @@ import ProductList from '/@fs/${sourceRoot}/src/pages/Inventory/ProductList.jsx'
 import InventoryStats from '/@fs/${sourceRoot}/src/pages/Inventory/InventoryStats.jsx'
 import ProductModal from '/@fs/${sourceRoot}/src/pages/Inventory/ProductModal.jsx'
 import StockInForm from '/@fs/${sourceRoot}/src/pages/Inventory/StockInForm.jsx'
+import InflowRecords from '/@fs/${sourceRoot}/src/pages/Inventory/InflowRecords.jsx'
 import ActivityLogs from '/@fs/${sourceRoot}/src/pages/ActivityLogs/ActivityLogs.jsx'
+import BusinessAnalytics from '/@fs/${sourceRoot}/src/pages/Dashboard/BusinessAnalytics.jsx'
+import UserAccounts from '/@fs/${sourceRoot}/src/pages/UserAccounts/UserAccounts.jsx'
+import { AuthContext } from '/@fs/${sourceRoot}/src/context/AuthContext.jsx'
 import SalesChart from '/@fs/${sourceRoot}/src/pages/Dashboard/SalesChart.jsx'
 import SalesSummary from '/@fs/${sourceRoot}/src/pages/Dashboard/SalesSummary.jsx'
 import TopSellingProducts from '/@fs/${sourceRoot}/src/pages/Dashboard/TopSellingProducts.jsx'
@@ -152,8 +158,37 @@ import '/@fs/${sourceRoot}/src/styles/shared/Modal.css'
 import '/@fs/${sourceRoot}/src/styles/pages/Dashboard.css'
 import '/@fs/${sourceRoot}/src/styles/pages/Inventory.css'
 import '/@fs/${sourceRoot}/src/styles/pages/ActivityLogs.css'
+import '/@fs/${sourceRoot}/src/styles/pages/UserAccounts.css'
 
 const fixtures = ${JSON.stringify(products)}
+const stockInRecords = [
+  { stockin_id: 16, supplier_id: 7, supplier_name: 'Test Poultry Supplier', product_id: 3, product_name: 'Chicken Wings', unit: 'kg', user_id: 1, recorded_by: 'Inventory Admin', quantity_received: '200.000', remaining_quantity: '0.000', cost_price: '20000.00', total_cost: '4000000.00', delivery_date: '2026-09-27T17:32:00+08:00' },
+  { stockin_id: 17, supplier_id: 7, supplier_name: 'Test Poultry Supplier', product_id: 3, product_name: 'Chicken Wings', unit: 'kg', user_id: 1, recorded_by: 'Inventory Admin', quantity_received: '300.000', remaining_quantity: '180.000', cost_price: '210.00', total_cost: '63000.00', delivery_date: '2026-10-21T00:25:00+08:00' },
+  { stockin_id: 18, supplier_id: 7, supplier_name: 'Test Poultry Supplier', product_id: 4, product_name: 'Chicken Liver', unit: 'kg', user_id: 1, recorded_by: 'Inventory Admin', quantity_received: '100.000', remaining_quantity: '100.000', cost_price: '130.00', total_cost: '13000.00', delivery_date: '2026-10-21T00:59:00+08:00' },
+]
+const allocationDetails = {
+  16: [
+    { allocation_id: 33, sale_id: 33, salesitem_id: 29, stockin_id: 16, quantity_deducted: '110.000', cost_price: '20000.00', sale_date: '2026-10-20T18:00:00+08:00', allocation_order: 1 },
+    { allocation_id: 34, sale_id: 34, salesitem_id: 30, stockin_id: 16, quantity_deducted: '90.000', cost_price: '20000.00', sale_date: '2026-10-21T01:00:00+08:00', allocation_order: 1 },
+  ],
+  17: [
+    { allocation_id: 35, sale_id: 34, salesitem_id: 30, stockin_id: 17, quantity_deducted: '100.000', cost_price: '210.00', sale_date: '2026-10-21T01:00:00+08:00', allocation_order: 2 },
+    { allocation_id: 36, sale_id: 35, salesitem_id: 31, stockin_id: 17, quantity_deducted: '20.000', cost_price: '210.00', sale_date: '2026-10-21T02:00:00+08:00', allocation_order: 1 },
+  ],
+  18: [],
+}
+const userFixtures = Array.from({ length: 10 }, (_, index) => ({
+  user_id: index + 1,
+  fullname: ['Zena Owner', 'Ana Staff', 'Mario Admin', 'Bea Staff', 'Carlo Staff', 'Dina Staff', 'Erik Staff', 'Faye Staff', 'Gina Staff', 'Hugo Staff'][index],
+  username: 'user' + (index + 1),
+  email: index === 1 ? 'ana@example.com' : null,
+  email_verified_at: index === 1 ? null : '2026-10-20T10:00:00+08:00',
+  contact_number: index === 1 ? '09171234567' : null,
+  role: index === 0 || index === 2 ? 'Admin' : 'Staff',
+  is_active: index !== 1,
+  created_at: '2026-10-' + String(20 - index).padStart(2, '0') + 'T10:00:00+08:00',
+  updated_at: '2026-10-' + String(20 - index).padStart(2, '0') + 'T10:00:00+08:00',
+}))
 const dashboardFixtures = {
   trends: {
     daily: Array.from({ length: 24 }, (_, index) => ({
@@ -193,6 +228,37 @@ const dashboardFixtures = {
     { activity_id: 2, action: 'PRODUCT_UPDATED', description: 'A long but valid activity description that should remain readable without overflowing its card.', created_at: '2026-10-20T16:05:00Z', operator_name: 'Inventory Administrator', username: 'admin', fullname: 'Inventory Administrator', role: 'Admin' },
     { activity_id: 1, action: 'STOCK_IN_CREATED', description: 'Stock delivery recorded.', created_at: '2026-10-20T23:55:00+08:00', operator_name: 'Store Employee', username: 'employee', fullname: 'Store Employee', role: 'Staff' },
   ],
+  business: {
+    summary: {
+      total_transactions: 42,
+      gross_revenue: '125000.50',
+      average_ticket_value: '2976.20238',
+      top_seller: { product_id: 1, product_name: 'Whole Chicken Premium Extra Long Product Name', unit: 'kg', quantity_sold: '1250.500', gross_sales: '90000.50', current_stock: '30.000', reorder_level: '20.000' },
+    },
+    product_performance: [
+      { product_id: 1, product_name: 'Whole Chicken Premium Extra Long Product Name', unit: 'kg', quantity_sold: '1250.500', gross_sales: '90000.50', current_stock: '30.000', reorder_level: '20.000' },
+      { product_id: 2, product_name: 'Chicken Liver', unit: 'kg', quantity_sold: '240.000', gross_sales: '24000.00', current_stock: '1.000', reorder_level: '5.000' },
+      { product_id: 3, product_name: 'Chicken Wings', unit: 'kg', quantity_sold: '80.000', gross_sales: '11000.00', current_stock: '0.000', reorder_level: '8.000' },
+      { product_id: 4, product_name: 'Chicken Feet', unit: 'kg', quantity_sold: '0.000', gross_sales: '0.00', current_stock: '12.000', reorder_level: '4.000' },
+    ],
+    top_performing: [
+      { product_id: 1, product_name: 'Whole Chicken Premium Extra Long Product Name', unit: 'kg', quantity_sold: '1250.500', gross_sales: '90000.50', current_stock: '30.000', reorder_level: '20.000' },
+      { product_id: 2, product_name: 'Chicken Liver', unit: 'kg', quantity_sold: '240.000', gross_sales: '24000.00', current_stock: '1.000', reorder_level: '5.000' },
+    ],
+    slow_selling: [
+      { product_id: 4, product_name: 'Chicken Feet', unit: 'kg', quantity_sold: '0.000', gross_sales: '0.00', current_stock: '12.000', reorder_level: '4.000' },
+      { product_id: 3, product_name: 'Chicken Wings', unit: 'kg', quantity_sold: '80.000', gross_sales: '11000.00', current_stock: '0.000', reorder_level: '8.000' },
+    ],
+    restock_alerts: [
+      { product_id: 3, product_name: 'Chicken Wings', unit: 'kg', quantity_sold: '80.000', gross_sales: '11000.00', current_stock: '0.000', reorder_level: '8.000' },
+      { product_id: 2, product_name: 'Chicken Liver', unit: 'kg', quantity_sold: '240.000', gross_sales: '24000.00', current_stock: '1.000', reorder_level: '5.000' },
+    ],
+    insights: {
+      sales_driver: { product_id: 1, product_name: 'Whole Chicken Premium Extra Long Product Name', unit: 'kg', quantity_sold: '1250.500' },
+      lagging_product: { product_id: 4, product_name: 'Chicken Feet', unit: 'kg', quantity_sold: '0.000' },
+      procurement_priority: { product_id: 3, product_name: 'Chicken Wings', unit: 'kg', current_stock: '0.000', reorder_level: '8.000' },
+    },
+  },
 }
 globalThis.inventoryFixtures = fixtures
 globalThis.inventoryDashboardFixtures = dashboardFixtures
@@ -201,9 +267,31 @@ globalThis.productRequests = []
 globalThis.stockInRequests = []
 globalThis.stockInCreatedCount = 0
 globalThis.failNextStockIn = false
+globalThis.userRequests = []
+globalThis.failNextUserRequest = false
 localStorage.setItem('authToken', 'inventory-ui-test-token')
 globalThis.fetch = async (url, options = {}) => {
   const requestUrl = String(url)
+  if (requestUrl.endsWith('/api/analytics/dashboard/business')) {
+    return new Response(JSON.stringify({ success: true, data: dashboardFixtures.business }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
+  if (requestUrl.endsWith('/api/users') && (!options.method || options.method === 'GET')) {
+    return new Response(JSON.stringify({ success: true, data: userFixtures }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
+  const userMatch = requestUrl.match(new RegExp('/api/users/([0-9]+)(/status|/password|/email-verification)?$'))
+  if (userMatch) {
+    const userId = Number(userMatch[1])
+    const action = userMatch[2] || 'edit'
+    const body = options.body ? JSON.parse(options.body) : {}
+    globalThis.userRequests.push({ userId, action, method: options.method, body })
+    if (globalThis.failNextUserRequest) {
+      globalThis.failNextUserRequest = false
+      return new Response(JSON.stringify({ success: false, message: 'Safe account fixture failure.' }), { status: 422, headers: { 'Content-Type': 'application/json' } })
+    }
+    const user = userFixtures.find((item) => item.user_id === userId)
+    if (action === '/status') user.is_active = body.is_active
+    return new Response(JSON.stringify({ success: true, message: action === '/password' ? 'Password reset successfully' : action === '/status' ? 'User ' + (body.is_active ? 'activated' : 'deactivated') + ' successfully' : 'User updated successfully', data: user }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
   if (String(url).includes('/activity-logs')) {
     return new Response(JSON.stringify({
       success: true,
@@ -216,6 +304,14 @@ globalThis.fetch = async (url, options = {}) => {
   }
   if (requestUrl.endsWith('/api/suppliers') && (!options.method || options.method === 'GET')) {
     return new Response(JSON.stringify({ success: true, data: [{ supplier_id: 7, supplier_name: 'Test Poultry Supplier' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
+  if (requestUrl.endsWith('/api/stock-in') && (!options.method || options.method === 'GET')) {
+    return new Response(JSON.stringify({ success: true, data: stockInRecords }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
+  const allocationMatch = requestUrl.match(new RegExp('/api/stock-in/([0-9]+)/allocations$'))
+  if (allocationMatch && (!options.method || options.method === 'GET')) {
+    const stockinId = Number(allocationMatch[1])
+    return new Response(JSON.stringify({ success: true, data: { batch: stockInRecords.find((record) => record.stockin_id === stockinId), allocations: allocationDetails[stockinId] || [] } }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   const body = JSON.parse(options.body || '{}')
   if (requestUrl.endsWith('/api/stock-in') && options.method === 'POST') {
@@ -260,6 +356,7 @@ function Harness() {
     <button id="open-stock-in" type="button" onClick={() => setShowStockIn(true)}>Open Stock In</button>
     <InventoryStats products={products} loading={false} error="" />
     <ProductList products={products} loading={false} error="" onEdit={() => {}} />
+    <section id="inflow-records-test"><InflowRecords /></section>
     <section id="dashboard-test-harness" className="dashboard-page">
       <div className="dashboard-primary-grid">
         <SalesChart trends={dashboardTrends} />
@@ -275,6 +372,10 @@ function Harness() {
       </div>
     </section>
     <section id="activity-logs-test"><ActivityLogs /></section>
+    <section id="business-analytics-test"><BusinessAnalytics /></section>
+    <AuthContext.Provider value={{ user: { user_id: 1, fullname: 'Zena Owner', username: 'user1', role: 'admin' } }}>
+      <section id="user-accounts-test"><UserAccounts /></section>
+    </AuthContext.Provider>
     {showStockIn && <section id="stock-in-test"><StockInForm onCreated={() => { globalThis.stockInCreatedCount += 1 }} /></section>}
     {modalMode && <ProductModal
       product={modalMode === 'edit' ? fixtures[0] : null}
@@ -337,6 +438,14 @@ createRoot(document.getElementById('root')).render(<Harness />)
     }
 
     return result.result.value
+  }
+
+  async function waitForCondition(expression) {
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      if (await evaluate(expression)) return
+      await delay(100)
+    }
+    throw new Error(`Timed out waiting for browser condition: ${expression}`)
   }
 
   async function waitForProducts() {
@@ -594,6 +703,102 @@ createRoot(document.getElementById('root')).render(<Harness />)
   ].map((row) => ({ date: row.cells[1].textContent.trim(), time: row.cells[2].textContent.trim() }))`)
   assert(activityTableTimestamps[0].date === 'Oct 21, 2026' && activityTableTimestamps[0].time === '12:05 AM', 'Activity Logs and Recent Activity formatted the same record differently')
   assert(activityTableTimestamps[1].date === 'Oct 20, 2026' && activityTableTimestamps[1].time === '11:55 PM', 'Activity Logs mishandled the pre-midnight timestamp')
+  assert(await evaluate("document.querySelector('#activity-logs-test tbody tr').textContent.includes('Updated a Product')"), 'Activity Logs did not translate a known action into plain language')
+  assert(await evaluate("document.querySelector('#activity-logs-test .activity-user').textContent.includes('Inventory Administrator') && document.querySelector('#activity-logs-test .activity-user').textContent.includes('@admin')"), 'Activity Logs did not identify the person and username clearly')
+  const activityBorders = await evaluate(`(() => {
+    const row = document.querySelector('#activity-logs-test tbody tr')
+    return [...row.cells].slice(0, -1).every((cell) => getComputedStyle(cell).borderRightWidth === '1px')
+  })()`)
+  assert(activityBorders, 'Activity Log vertical column separators were missing')
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    if (await evaluate("document.querySelectorAll('#user-accounts-test tbody tr').length === 8")) break
+    await delay(50)
+  }
+  assert(await evaluate("[...document.querySelectorAll('#user-accounts-test th')].some((cell) => cell.textContent.includes('Status'))"), 'User Accounts did not provide a clear Status column')
+  assert(await evaluate("document.querySelector('#user-accounts-test .user-status-badge.inactive').textContent.trim() === 'Inactive'"), 'Inactive account status was not readable')
+  assert(await evaluate("document.querySelector('#user-accounts-test .table-pagination').textContent.includes('1 / 2')"), 'User Account pagination did not include every account')
+  await evaluate("[...document.querySelectorAll('#user-accounts-test th button')].find((button) => button.textContent.includes('Full Name')).click()")
+  await delay(50)
+  assert(await evaluate("document.querySelector('#user-accounts-test .user-identity strong').textContent.trim()") === 'Ana Staff', 'Full Name sorting used the wrong account field')
+  const anaRowSelector = `(() => [...document.querySelectorAll('#user-accounts-test tbody tr')].find((row) => row.textContent.includes('Ana Staff')))`
+  await evaluate(`${anaRowSelector}().querySelector('.table-action.success').click()`)
+  assert(await evaluate("document.querySelector('.user-confirmation-modal').textContent.includes('Ana Staff')"), 'Status confirmation did not identify the affected account')
+  assert(await evaluate("document.activeElement?.getAttribute('aria-label') === 'Close modal'"), 'Account confirmation did not use shared modal focus behavior')
+  await click('.user-confirmation-modal .secondary-action')
+  assert(!await evaluate("Boolean(document.querySelector('.user-confirmation-modal'))"), 'Cancel did not close the account confirmation')
+  await evaluate(`${anaRowSelector}().querySelector('.table-action.success').click(); failNextUserRequest = true`)
+  await click('.user-confirmation-modal .primary-action')
+  await waitForCondition("document.querySelector('.user-confirmation-modal [role=alert]')?.textContent.includes('Safe account fixture failure.')")
+  assert(await evaluate("Boolean(document.querySelector('.user-confirmation-modal'))"), 'Failed account status change closed its confirmation')
+  const statusRequestCount = await evaluate("userRequests.filter((request) => request.action === '/status').length")
+  await evaluate("document.querySelector('.user-confirmation-modal .primary-action').click(); document.querySelector('.user-confirmation-modal .primary-action').click()")
+  await waitForCondition("!document.querySelector('.user-confirmation-modal')")
+  assert(await evaluate("userRequests.filter((request) => request.action === '/status').length") === statusRequestCount + 1, 'Account status duplicate-submit lock did not enforce one request')
+  assert(await evaluate("document.querySelector('#user-accounts-test .users-feedback.success').textContent.includes('activated')"), 'Successful account activation did not show backend-confirmed feedback')
+
+  await evaluate(`${anaRowSelector}().querySelectorAll('.table-action')[1].click()`)
+  await setInput('#user-accounts-test #user-password', 'NewSecurePassword1!')
+  const passwordInputs = await evaluate("document.querySelectorAll('#user-accounts-test .profile-panel input[autocomplete=new-password]').length")
+  assert(passwordInputs === 2, 'Password reset form did not retain both password fields')
+  await setInput('#user-accounts-test #user-confirm-password', 'NewSecurePassword1!')
+  const passwordRequestCount = await evaluate("userRequests.filter((request) => request.action === '/password').length")
+  await click('#user-accounts-test .profile-panel form .primary-action')
+  assert(await evaluate("document.querySelector('.user-confirmation-modal').textContent.includes('Ana Staff')"), 'Password reset confirmation did not identify the affected account')
+  assert(await evaluate(`userRequests.filter((request) => request.action === '/password').length`) === passwordRequestCount, 'Password reset was submitted before confirmation')
+  await evaluate('failNextUserRequest = true')
+  await click('.user-confirmation-modal .primary-action')
+  await waitForCondition("document.querySelector('.user-confirmation-modal [role=alert]')?.textContent.includes('Safe account fixture failure.')")
+  assert(await evaluate("document.querySelector('#user-accounts-test #user-password').value === 'NewSecurePassword1!'"), 'Failed password reset did not preserve the entered password')
+  const successfulPasswordRequestCount = await evaluate("userRequests.filter((request) => request.action === '/password').length")
+  await evaluate("document.querySelector('.user-confirmation-modal .primary-action').click(); document.querySelector('.user-confirmation-modal .primary-action').click()")
+  await waitForCondition("!document.querySelector('.user-confirmation-modal')")
+  assert(await evaluate("userRequests.filter((request) => request.action === '/password').length") === successfulPasswordRequestCount + 1, 'Password reset duplicate-submit lock did not enforce one request')
+  assert(await evaluate("document.querySelector('#user-accounts-test .users-feedback.success').textContent.includes('Password reset successfully')"), 'Successful password reset did not show backend-confirmed feedback')
+
+  await click('#user-accounts-test [aria-label="Next page"]')
+  assert(await evaluate("document.querySelector('#user-accounts-test .table-pagination').textContent.includes('2 / 2')"), 'User Account next-page navigation failed')
+  await click('#user-accounts-test [aria-label="Previous page"]')
+  await setInput('#user-accounts-test .user-registry-search input', 'Ana Staff')
+  await delay(100)
+  assert(await evaluate("document.querySelectorAll('#user-accounts-test tbody tr').length === 1 && document.querySelector('#user-accounts-test tbody tr').textContent.includes('Ana Staff')"), 'User Account search did not filter the account list')
+  await setInput('#user-accounts-test .user-registry-search input', '')
+  await click('#user-accounts-test .user-role-filter button:nth-child(2)')
+  assert(await evaluate("[...document.querySelectorAll('#user-accounts-test tbody tr')].every((row) => row.textContent.includes('Admin'))"), 'User Account role filter returned the wrong roles')
+  await click('#user-accounts-test .user-role-filter button:first-child')
+  const userBorders = await evaluate(`(() => {
+    const row = document.querySelector('#user-accounts-test tbody tr')
+    return [...row.cells].slice(0, -1).every((cell) => getComputedStyle(cell).borderRightWidth === '1px')
+  })()`)
+  assert(userBorders, 'User Account vertical column separators were missing')
+  await mkdir(adminScreenshotRoot, { recursive: true })
+  await evaluate("document.querySelector('#user-accounts-test').scrollIntoView({ block: 'start' })")
+  await delay(100)
+  let adminScreenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
+  await writeFile(join(adminScreenshotRoot, 'desktop-user-accounts.png'), adminScreenshot.data, 'base64')
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    if (await evaluate("Boolean(document.querySelector('#business-analytics-test .business-kpi-grid'))")) break
+    await delay(50)
+  }
+  assert(!await evaluate("Boolean(document.querySelector('#business-analytics-test .analytics-context-row'))"), 'Redundant Business Analytics introduction was not removed')
+  const analyticsKpis = await evaluate("[...document.querySelectorAll('#business-analytics-test .business-kpi-grid article > strong')].map((node) => node.textContent.trim())")
+  assert(analyticsKpis[0] === '42' && analyticsKpis[1].includes('125,000.50') && analyticsKpis[2].includes('2,976.20'), 'Business Analytics KPI formatting changed the source values')
+  assert(analyticsKpis[3] === 'Whole Chicken Premium Extra Long Product Name', 'Business Analytics top seller changed')
+  assert(await evaluate("document.querySelectorAll('#business-analytics-test .analytics-bar-column').length") === 3, 'Product chart did not exclude only zero-sales products')
+  const firstAnalyticsBarLabel = await evaluate("document.querySelector('#business-analytics-test .analytics-bar-column').getAttribute('aria-label')")
+  assert(firstAnalyticsBarLabel.includes('1,250.5 kg sold') && firstAnalyticsBarLabel.includes('90,000.50 gross sales'), 'Product chart tooltip omitted real quantity or PHP sales values')
+  await evaluate("document.querySelector('#business-analytics-test .analytics-bar-column').focus()")
+  assert(await evaluate("document.activeElement.classList.contains('analytics-bar-column')"), 'Product chart bars were not keyboard focusable')
+  const analyticsRanks = await evaluate("[...document.querySelectorAll('#business-analytics-test .analytics-performance-list.top .analytics-performance-row strong')].map((node) => node.textContent.trim())")
+  assert(JSON.stringify(analyticsRanks) === JSON.stringify(['Whole Chicken Premium Extra Long Product Name', 'Chicken Liver']), 'Top-performing product ranking order changed')
+  assert(await evaluate("document.querySelector('#business-analytics-test .analytics-restock-panel').textContent.includes('0 kg') && document.querySelector('#business-analytics-test .analytics-restock-panel').textContent.includes('Reorder at: 8 kg')"), 'Restock analytics did not show actual stock and reorder values')
+  assert(await evaluate("document.querySelector('#business-analytics-test .analytics-performance-list.top h2').textContent.includes('PRODUCTS SELLING MOST') && document.querySelector('#business-analytics-test .analytics-performance-list.slow h2').textContent.includes('PRODUCTS SELLING LEAST')"), 'Product ranking labels were not simplified')
+  await mkdir(analyticsScreenshotRoot, { recursive: true })
+  await evaluate("document.querySelector('#business-analytics-test').scrollIntoView({ block: 'start' })")
+  await delay(100)
+  let analyticsScreenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
+  await writeFile(join(analyticsScreenshotRoot, 'desktop-business-analytics.png'), analyticsScreenshot.data, 'base64')
 
   await evaluate("[...document.querySelectorAll('#dashboard-test-harness .dashboard-segments button')].find((button) => button.textContent.trim() === 'Week').click()")
   await delay(100)
@@ -681,8 +886,69 @@ createRoot(document.getElementById('root')).render(<Harness />)
   assert(await evaluate("document.querySelector('#dashboard-test-harness').scrollWidth <= document.querySelector('#dashboard-test-harness').clientWidth"), 'Dashboard cards overflowed horizontally at mobile width')
   assert(await evaluate("document.querySelector('#activity-logs-test').scrollWidth <= document.querySelector('#activity-logs-test').clientWidth"), 'Activity Logs page overflowed horizontally at mobile width')
   assert(await evaluate("document.querySelector('#activity-logs-test .activity-table-scroll').scrollWidth > document.querySelector('#activity-logs-test .activity-table-scroll').clientWidth"), 'Activity Logs table did not preserve its mobile scroll region')
+  await evaluate("document.querySelector('#activity-logs-test').scrollIntoView({ block: 'start' })")
+  await delay(100)
+  adminScreenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
+  await writeFile(join(adminScreenshotRoot, 'mobile-activity-logs.png'), adminScreenshot.data, 'base64')
+  await evaluate("document.querySelector('#user-accounts-test').scrollIntoView({ block: 'start' })")
+  await delay(100)
+  assert(await evaluate("document.querySelector('#user-accounts-test').scrollWidth <= document.querySelector('#user-accounts-test').clientWidth"), 'User Accounts overflowed the mobile viewport')
+  assert(await evaluate("document.querySelector('#user-accounts-test .table-scroll').scrollWidth > document.querySelector('#user-accounts-test .table-scroll').clientWidth"), 'User Account table did not preserve contained horizontal scrolling')
+  adminScreenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
+  await writeFile(join(adminScreenshotRoot, 'mobile-user-accounts.png'), adminScreenshot.data, 'base64')
+  await evaluate("document.querySelector('#business-analytics-test').scrollIntoView({ block: 'start' })")
+  await delay(100)
+  assert(await evaluate("document.querySelector('#business-analytics-test').scrollWidth <= document.querySelector('#business-analytics-test').clientWidth"), 'Business Analytics overflowed the mobile viewport')
+  assert(await evaluate("getComputedStyle(document.querySelector('#business-analytics-test .business-kpi-grid')).gridTemplateColumns.split(' ').length === 1"), 'Business Analytics KPI cards did not stack on mobile')
+  analyticsScreenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
+  await writeFile(join(analyticsScreenshotRoot, 'mobile-business-analytics.png'), analyticsScreenshot.data, 'base64')
   await browserConnection.command('Emulation.clearDeviceMetricsOverride')
   await delay(100)
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    if (await evaluate("document.querySelectorAll('#inflow-records-test tbody tr').length === 3")) break
+    await delay(50)
+  }
+  assert(await evaluate("document.querySelector('#inflow-records-test').textContent.includes('DLV-16') && document.querySelector('#inflow-records-test').textContent.includes('DLV-17')"), 'Inflow Records did not display the verified FIFO batches')
+  assert(await evaluate("document.querySelector('#inflow-records-test').textContent.includes('Used Up') && document.querySelector('#inflow-records-test').textContent.includes('Partially Used') && document.querySelector('#inflow-records-test').textContent.includes('Available')"), 'Inflow Records did not distinguish all batch usage states in plain language')
+  assert(await evaluate("document.querySelector('#inflow-records-test').textContent.includes('The system automatically uses stock from older deliveries before newer deliveries.')"), 'Inflow Records did not explain FIFO in plain language')
+  assert(await evaluate(`(() => {
+    const rows = [...document.querySelectorAll('#inflow-records-test tbody tr')]
+    const batch16 = rows.find((row) => row.textContent.includes('DLV-16'))?.textContent || ''
+    const batch17 = rows.find((row) => row.textContent.includes('DLV-17'))?.textContent || ''
+    return batch16.includes('200 kg') && batch16.includes('0 kg') && batch17.includes('300 kg') && batch17.includes('180 kg') && batch17.includes('120 kg')
+  })()`), 'Received, remaining, or consumed FIFO quantities were inaccurate')
+
+  await click('button[aria-label="View FIFO details for batch DLV-16"]')
+  await waitForCondition("Boolean(document.querySelector('.fifo-allocation-list'))")
+  assert(await evaluate("document.querySelector('.fifo-batch-modal').textContent.includes('Used Up') && document.querySelector('.fifo-batch-modal').textContent.includes('200 kg')"), 'Batch 16 summary did not show its used-up balance')
+  assert(await evaluate(`(() => {
+    const sale = [...document.querySelectorAll('.fifo-allocation-list article')].find((article) => article.textContent.includes('Sale Reference: OR-34'))
+    return Boolean(sale && sale.textContent.includes('90 kg') && sale.textContent.includes('Quantity Used') && !sale.textContent.includes('Allocation order'))
+  })()`), 'Batch 16 did not show the verified Sale 34 quantity in plain language')
+  assert(await evaluate("document.activeElement?.getAttribute('aria-label') === 'Close modal'"), 'FIFO batch modal did not use shared modal focus behavior')
+  const fifoBackdrop = await evaluate(`(() => { const rect = document.querySelector('.modal-backdrop').getBoundingClientRect(); return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight } })()`)
+  assert(fifoBackdrop.left === 0 && fifoBackdrop.top === 0 && fifoBackdrop.width === fifoBackdrop.viewportWidth && fifoBackdrop.height === fifoBackdrop.viewportHeight, 'FIFO batch backdrop did not cover the viewport')
+  await mkdir(inventoryScreenshotRoot, { recursive: true })
+  let fifoScreenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
+  await writeFile(join(inventoryScreenshotRoot, 'desktop-fifo-batch-16.png'), fifoScreenshot.data, 'base64')
+  await click('.fifo-batch-modal > .primary-action')
+
+  await click('button[aria-label="View FIFO details for batch DLV-17"]')
+  await waitForCondition("Boolean(document.querySelector('.fifo-allocation-list'))")
+  assert(await evaluate("document.querySelector('.fifo-batch-modal').textContent.includes('Partially Used') && document.querySelector('.fifo-batch-modal').textContent.includes('180 kg') && document.querySelector('.fifo-batch-modal').textContent.includes('120 kg')"), 'Batch 17 summary did not show its verified remaining balance')
+  assert(await evaluate(`(() => {
+    const sale = [...document.querySelectorAll('.fifo-allocation-list article')].find((article) => article.textContent.includes('Sale Reference: OR-34'))
+    return Boolean(sale && sale.textContent.includes('100 kg') && sale.textContent.includes('Quantity Used') && !sale.textContent.includes('Allocation order'))
+  })()`), 'Batch 17 did not show the verified Sale 34 quantity without technical allocation order')
+  fifoScreenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
+  await writeFile(join(inventoryScreenshotRoot, 'desktop-fifo-batch-17.png'), fifoScreenshot.data, 'base64')
+  await click('.fifo-batch-modal > .primary-action')
+
+  await click('button[aria-label="View FIFO details for batch DLV-18"]')
+  await waitForCondition("document.querySelector('.fifo-batch-modal')?.textContent.includes('No sales have used stock from this delivery.')")
+  assert(await evaluate("document.querySelector('.fifo-batch-modal').textContent.includes('Available') && document.querySelector('.fifo-batch-modal').textContent.includes('100 kg')"), 'Available batch empty allocation state was inaccurate')
+  await click('.fifo-batch-modal > .primary-action')
 
   await click('#open-add-product')
   assert(await evaluate("document.activeElement?.getAttribute('aria-label')") === 'Close modal', 'Modal did not preserve its existing initial focus behavior')
@@ -787,6 +1053,12 @@ createRoot(document.getElementById('root')).render(<Harness />)
   assert(await evaluate("document.querySelector('.inventory-product-list .table-scroll').scrollWidth > document.querySelector('.inventory-product-list .table-scroll').clientWidth"), 'Inventory table did not retain its responsive horizontal scroll container')
   inventoryScreenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
   await writeFile(join(inventoryScreenshotRoot, 'mobile-product-table.png'), inventoryScreenshot.data, 'base64')
+  await evaluate("document.querySelector('#inflow-records-test').scrollIntoView({ block: 'start' })")
+  await delay(100)
+  assert(await evaluate("document.querySelector('#inflow-records-test').scrollWidth <= document.querySelector('#inflow-records-test').clientWidth"), 'Inflow Records overflowed the mobile viewport')
+  assert(await evaluate("document.querySelector('#inflow-records-test .table-scroll').scrollWidth > document.querySelector('#inflow-records-test .table-scroll').clientWidth"), 'FIFO batch table did not retain its responsive horizontal scroll container')
+  inventoryScreenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
+  await writeFile(join(inventoryScreenshotRoot, 'mobile-fifo-batch-table.png'), inventoryScreenshot.data, 'base64')
   await browserConnection.command('Emulation.clearDeviceMetricsOverride')
 
   console.log('PASS 17-product pagination, Next/Previous, page counts, and clamping')
@@ -794,8 +1066,14 @@ createRoot(document.getElementById('root')).render(<Harness />)
   console.log('PASS reactive inventory statistics for create, edit, and Stock In refreshes')
   console.log('PASS dashboard chart periods, tooltips, edge states, rankings, formatting, and mobile layout')
   console.log('PASS Activity Logs and Recent Activity Philippine timestamp consistency')
+  console.log('PASS Activity Logs plain-language actions, identity display, filters, separators, and mobile layout')
+  console.log('PASS User Accounts search, role filter, sorting, pagination, statuses, confirmations, failure preservation, and mobile layout')
+  console.log(`ADMIN_SCREENSHOTS ${adminScreenshotRoot}`)
   console.log('PASS Add/Edit Product continuous typing, focus, keyboard, close, and submission behavior')
   console.log('PASS Product success confirmation and Stock In validation, review, failure, success, refresh, and duplicate prevention')
+  console.log('PASS FIFO batch balances, consumption states, Sale 34 allocations, detail modal, and mobile containment')
+  console.log('PASS Business Analytics KPI accuracy, chart tooltips, ranking order, keyboard access, and responsive layout')
+  console.log(`ANALYTICS_SCREENSHOTS ${analyticsScreenshotRoot}`)
   console.log(`INVENTORY_SCREENSHOTS ${inventoryScreenshotRoot}`)
 } finally {
   browserConnection?.socket.close()

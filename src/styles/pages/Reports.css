@@ -147,6 +147,42 @@
   overflow-wrap: anywhere;
 }
 
+.inventory-report-panel tbody tr {
+  box-shadow: inset 3px 0 transparent;
+}
+
+.inventory-report-panel tbody tr.valuation-row-low-stock {
+  box-shadow: inset 3px 0 var(--warning);
+}
+
+.inventory-report-panel tbody tr.valuation-row-out-of-stock {
+  box-shadow: inset 3px 0 var(--danger);
+}
+
+.valuation-product-name {
+  color: var(--text-heading);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.valuation-category {
+  display: inline-block;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.valuation-money,
+.valuation-quantity {
+  font-variant-numeric: tabular-nums;
+}
+
+.valuation-money {
+  color: var(--money-text);
+  font-weight: 600;
+}
+
 .report-address-cell {
   max-width: 260px;
   white-space: normal;
@@ -242,98 +278,229 @@
 }
 
 /* — Donut chart — */
-.donut-panel {
+.inventory-valuation-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+}
+
+.inventory-valuation-state {
+  min-height: 220px;
+  align-content: center;
+}
+
+.inventory-valuation-chart-panel {
   display: grid;
-  justify-items: center;
-  gap: 10px;
+  min-width: 0;
+  justify-items: stretch;
+  gap: 16px;
 }
 
-.donut-panel p {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 12px;
-  text-align: center;
+.valuation-chart-heading {
+  text-align: left;
 }
 
-.donut-panel p span {
-  font-size: 14px;
-}
-
-.donut-wrap {
-  position: relative;
-}
-
-.donut-wrap::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 12px);
-  width: max-content;
-  max-width: 220px;
-  padding: 8px 10px;
-  border: 1px solid var(--border-strong);
-  border-left: 3px solid var(--primary);
-  border-radius: var(--radius);
-  color: var(--tooltip-text);
-  background: var(--tooltip-bg);
-  box-shadow: var(--shadow);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.35;
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, 6px);
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.donut-wrap:hover::after,
-.donut-wrap:focus-visible::after {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
-
-.donut {
-  width: 180px;
+.valuation-donut-stage {
+  width: min(100%, 264px);
   aspect-ratio: 1;
-  border-radius: 50%;
-  background: conic-gradient(
-    var(--chart-series-1) 0 42%,
-    var(--chart-series-2) 42% 68%,
-    var(--chart-series-3) 68% 84%,
-    var(--chart-series-4) 84% 100%
-  );
   position: relative;
+  justify-self: center;
+}
+
+.valuation-donut {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+.valuation-donut-track,
+.valuation-donut-segment {
+  fill: none;
+}
+
+.valuation-donut-track {
+  stroke: var(--surface-inset);
+  stroke-width: 28;
+}
+
+.valuation-donut-segment {
+  stroke-width: 28;
   cursor: pointer;
-  animation: donut-render 0.6s ease both;
-  transition: transform 0.2s ease;
+  outline: none;
+  transition: opacity 150ms ease, stroke-width 150ms ease, filter 150ms ease;
 }
 
-.donut-wrap:hover .donut,
-.donut-wrap:focus-visible .donut {
-  transform: scale(1.03);
+.valuation-donut-segment.is-muted {
+  opacity: 0.28;
 }
 
-.donut::after {
-  content: '';
+.valuation-donut-segment:is(:hover, :focus-visible, .is-active) {
+  stroke-width: 34;
+  filter: drop-shadow(0 4px 5px var(--chart-accent-shadow));
+}
+
+.valuation-donut-segment:focus-visible {
+  filter: drop-shadow(0 0 4px var(--primary));
+}
+
+.valuation-donut-center {
   position: absolute;
-  inset: 36px;
+  inset: 26%;
+  display: grid;
+  place-content: center;
+  gap: 4px;
   border-radius: 50%;
+  color: var(--text-muted);
   background: var(--card-bg);
+  text-align: center;
+  pointer-events: none;
 }
 
-.donut::before {
-  content: 'Stock value by category';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  z-index: 1;
-  color: var(--text-muted);
-  font-size: 11px;
+.valuation-donut-center span {
+  font-size: 10px;
   font-weight: 600;
-  text-align: center;
-  text-transform: uppercase;
+  line-height: 1.25;
   letter-spacing: 0.03em;
-  transform: translate(-50%, -50%);
+  text-transform: uppercase;
+}
+
+.valuation-donut-center strong {
+  color: var(--text-heading);
+  font-size: clamp(14px, 1.4vw, 18px);
+  font-variant-numeric: tabular-nums;
+}
+
+.valuation-tooltip {
+  min-height: 132px;
+  padding: 13px 14px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.valuation-tooltip > strong {
+  color: var(--text-heading);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.valuation-tooltip dl,
+.valuation-tooltip dl div {
+  margin: 0;
+}
+
+.valuation-tooltip dl {
+  display: grid;
+  gap: 5px;
+}
+
+.valuation-tooltip dl div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.valuation-tooltip dt {
+  color: var(--text-muted);
+}
+
+.valuation-tooltip dd {
+  margin: 0;
+  color: var(--text-heading);
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.valuation-legend {
+  max-height: 246px;
+  display: grid;
+  gap: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 3px;
+}
+
+.valuation-legend button {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.valuation-legend button:is(:hover, :focus-visible, .is-active) {
+  border-color: var(--border);
+  background: var(--surface-hover);
+}
+
+.valuation-legend button i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.valuation-legend button span {
+  overflow: hidden;
+  color: var(--text-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.valuation-legend button strong {
+  color: var(--text-heading);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.valuation-chart-summary {
+  padding-top: 12px;
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.valuation-chart-summary span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.valuation-chart-summary strong {
+  color: var(--text-heading);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.valuation-reconciliation-warning {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  color: var(--status-warn-text);
+  background: var(--status-warn-bg);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .highlight-money {
@@ -424,17 +591,6 @@
   background: var(--surface-inset);
 }
 
-@keyframes donut-render {
-  from {
-    opacity: 0;
-    transform: scale(0.95) rotate(-6deg);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) rotate(0);
-  }
-}
-
 @media (max-width: 1180px) {
   .report-layout {
     grid-template-columns: 1fr;
@@ -495,13 +651,14 @@
     gap: 2px;
   }
 
-  .donut {
-    width: min(180px, 58vw);
+  .valuation-donut-stage {
+    width: min(100%, 240px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .donut {
-    animation: none;
+  .valuation-donut-segment,
+  .valuation-legend button {
+    transition: none;
   }
 }

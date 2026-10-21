@@ -23,25 +23,29 @@
   border-radius: var(--radius-lg);
 }
 
-table {
+.system-data-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   min-width: 700px;
 }
 
-th,
-td {
+.system-data-table :is(th, td) {
   padding: 11px 14px;
   border-bottom: 1px solid var(--border);
   text-align: left;
   white-space: nowrap;
 }
 
-th {
+.system-data-table :is(th, td):not(:last-child) {
+  border-right: 1px solid var(--border-subtle);
+}
+
+.system-data-table thead th {
   position: sticky;
   top: 0;
   z-index: 1;
+  border-bottom-color: var(--border-strong);
   background: var(--table-header-bg);
   color: var(--table-heading-text);
   font-size: 11px;
@@ -51,7 +55,7 @@ th {
   backdrop-filter: blur(8px);
 }
 
-th button {
+.system-data-table th button {
   width: 100%;
   display: inline-flex;
   align-items: center;
@@ -67,31 +71,31 @@ th button {
   letter-spacing: inherit;
 }
 
-th button:hover {
+.system-data-table th button:hover {
   color: var(--text-heading);
 }
 
-td {
+.system-data-table td {
   color: var(--text-soft);
   font-size: 13px;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 
-td:has(.status),
-td:last-child {
+.system-data-table td:has(.status),
+.system-data-table td:last-child {
   white-space: nowrap;
 }
 
-tbody tr {
+.system-data-table tbody tr {
   transition: background-color 0.15s ease;
 }
 
-tbody tr:hover {
+.system-data-table tbody tr:hover {
   background: var(--row-hover);
 }
 
-tbody tr:last-child td {
+.system-data-table tbody tr:last-child td {
   border-bottom: 0;
 }
 

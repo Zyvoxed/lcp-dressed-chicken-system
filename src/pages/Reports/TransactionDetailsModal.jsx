@@ -58,7 +58,7 @@ function TransactionDetailsModal({ saleId, onClose }) {
         <section className="report-detail-section" aria-labelledby="purchased-products-heading">
           <h3 id="purchased-products-heading">Purchased Products</h3>
           <div className="report-detail-table-wrap">
-            <table className="report-detail-table">
+            <table className="system-data-table report-detail-table">
               <thead><tr><th>Product</th><th>Quantity</th><th>Unit Price</th><th>Subtotal</th></tr></thead>
               <tbody>{details.items.map((item) => <tr key={item.salesitem_id}>
                 <td>{item.product_name}</td>

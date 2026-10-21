@@ -27,6 +27,17 @@ export async function getStockInRecords(options = {}) {
   return result.data
 }
 
+export async function getStockInBatchAllocations(stockInId, options = {}) {
+  const response = await authenticatedApiFetch(`/stock-in/${stockInId}/allocations`, options)
+  const result = await parseResponse(response, 'Unable to retrieve FIFO batch allocations')
+
+  if (!result.data?.batch || !Array.isArray(result.data.allocations)) {
+    throw new Error('The FIFO batch details could not be loaded. Please try again.')
+  }
+
+  return result.data
+}
+
 export async function createStockIn(data) {
   const response = await authenticatedApiFetch('/stock-in', {
     method: 'POST',

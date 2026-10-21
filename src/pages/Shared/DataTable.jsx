@@ -87,7 +87,7 @@ function DataTable({
         </div>
       )}
       <div className="table-scroll">
-        <table>
+        <table className="system-data-table">
           <thead>
             <tr>
               {columns.map((column, index) => (

@@ -20,7 +20,7 @@ function SummaryMetrics({ rows }) {
 function DetailTable({ columns, children }) {
   return (
     <div className="dashboard-detail-table-wrap">
-      <table className="dashboard-detail-table">
+      <table className="system-data-table dashboard-detail-table">
         <thead>
           <tr>
             {columns.map((column) => (

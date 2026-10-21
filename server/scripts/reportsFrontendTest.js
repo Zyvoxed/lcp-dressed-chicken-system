@@ -129,7 +129,12 @@ const details = { sale: { ...records[1], customer_id: 8, customer_type: 'Credit 
   { salesitem_id: 1, product_id: 3, product_name: 'Chicken Breast', unit: 'kg', quantity: '2.000', price: '750.00', subtotal: '1500.00' },
   { salesitem_id: 2, product_id: 4, product_name: 'Chicken Wings', unit: 'kg', quantity: '2.000', price: '500.00', subtotal: '1000.00' },
 ], payments: [{ payment_id: 41, payment_amount: '500.00', remaining_balance: '2000.00', payment_date: '2026-10-21T11:00:00+08:00', recorded_by: 'Test Admin' }] }
-const inventoryReport = { summary: { total_products: 1, total_inventory_cost_value: '500.00', estimated_total_sales_value: '800.00', low_stock_count: 0, out_of_stock_count: 0 }, records: [{ product_id: 1, product_name: 'Whole Chicken', category: 'Whole Chicken', unit: 'kg', stock_quantity: '5', reorder_level: '2', inventory_cost_value: '500', estimated_sales_value: '800', status: 'Available' }] }
+const inventoryReport = { summary: { total_products: 4, total_inventory_cost_value: '1000.00', estimated_total_sales_value: '1620.00', low_stock_count: 1, out_of_stock_count: 1 }, records: [
+  { product_id: 1, product_name: 'Whole Chicken', category: 'Whole Chicken', unit: 'kg', stock_quantity: '5', reorder_level: '2', inventory_cost_value: '500', estimated_sales_value: '800', status: 'In Stock' },
+  { product_id: 2, product_name: 'Chicken Breast Fillet Extra Long Product Name', category: 'Chicken Parts', unit: 'kg', stock_quantity: '3.5', reorder_level: '4', inventory_cost_value: '300', estimated_sales_value: '520', status: 'Low Stock' },
+  { product_id: 3, product_name: 'Chicken Wings', category: 'Chicken Parts', unit: 'kg', stock_quantity: '2', reorder_level: '1', inventory_cost_value: '200', estimated_sales_value: '300', status: 'In Stock' },
+  { product_id: 4, product_name: 'Chicken Liver', category: 'Offal', unit: 'kg', stock_quantity: '0', reorder_level: '2', inventory_cost_value: null, estimated_sales_value: null, status: 'Out of Stock' },
+] }
 const receivablesReport = { summary: { customers_with_balance: 1, total_receivables: '2000.00' }, records: [{ customer_id: 8, customer_name: 'Maria Santos', contact_number: '09171234567', address: 'Quezon City', current_balance: '2000.00', total_original_credit_amount: '2500.00', open_credit_sales: 1, oldest_unpaid_sale_date: '2026-10-21T10:30:00+08:00' }] }
 
 globalThis.fetch = async (input, options = {}) => {
@@ -224,16 +229,36 @@ createRoot(document.getElementById('root')).render(<main className="content-area
 
   await evaluate("[...document.querySelectorAll('.tabs button')].find((button) => button.textContent.includes('Inventory Assets')).click()")
   await waitFor("document.body.textContent.includes('Inventory Assets Valuation')")
-  assert(await evaluate("document.body.textContent.includes('Whole Chicken') && document.body.textContent.includes('FIFO Stock Cost') && document.body.textContent.includes('₱500.00')"), 'Inventory report tab or summary cards did not retain their data')
+  assert(await evaluate("document.body.textContent.includes('Whole Chicken') && document.body.textContent.includes('FIFO Stock Cost') && document.body.textContent.includes('₱1,000.00')"), 'Inventory report tab or summary cards did not retain their data')
+  assert(await evaluate("document.querySelector('.valuation-donut').dataset.chartTotal === '1000.00' && !document.querySelector('.valuation-reconciliation-warning')"), 'Product chart values did not reconcile with the authoritative report total')
+  assert(await evaluate("document.querySelectorAll('.valuation-donut-segment').length === 3 && document.querySelectorAll('.valuation-legend button').length === 3"), 'Zero-value products were not handled consistently in the chart and legend')
+  assert(await evaluate("new Set([...document.querySelectorAll('.valuation-donut-segment')].map((segment) => segment.getAttribute('stroke'))).size === 3"), 'Product chart colors were not distinguishable')
+  const colorsBeforeSort = await evaluate("[...document.querySelectorAll('.valuation-donut-segment')].map((segment) => segment.getAttribute('stroke')).join('|')")
+  await evaluate("document.querySelector('.inventory-report-panel th button').click()")
+  const colorsAfterSort = await evaluate("[...document.querySelectorAll('.valuation-donut-segment')].map((segment) => segment.getAttribute('stroke')).join('|')")
+  assert(colorsBeforeSort === colorsAfterSort, 'Product chart colors changed after table sorting')
+  await evaluate("document.querySelectorAll('.valuation-donut-segment')[1].focus()")
+  await waitFor("document.querySelector('.valuation-tooltip').textContent.includes('Chicken Breast Fillet')")
+  assert(await evaluate("document.querySelector('.valuation-tooltip').textContent.includes('₱300.00') && document.querySelector('.valuation-tooltip').textContent.includes('30.0%') && document.querySelector('.valuation-tooltip').textContent.includes('3.5 kg') && document.querySelector('.valuation-tooltip').textContent.includes('Chicken Parts')"), 'Product hover/focus details were incomplete or inaccurate')
+  await evaluate("document.querySelectorAll('.valuation-legend button')[2].click()")
+  assert(await evaluate("document.querySelector('.valuation-tooltip').textContent.includes('Chicken Wings') && document.querySelectorAll('.valuation-donut-segment')[2].getAttribute('aria-pressed') === 'true'"), 'Legend selection did not expose the matching product segment')
   screenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
   await writeFile(join(screenshotRoot, 'desktop-inventory-valuation.png'), screenshot.data, 'base64')
+
+  await browserConnection.command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+  await delay(150)
+  assert(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth'), 'Inventory valuation overflowed the mobile viewport')
+  assert(await evaluate("document.querySelector('.inventory-valuation-chart-panel').getBoundingClientRect().width <= document.documentElement.clientWidth - 32"), 'Inventory valuation chart card did not fit the mobile content width')
+  await evaluate("document.querySelector('.inventory-valuation-chart-panel').scrollIntoView({ block: 'start' })")
+  await delay(100)
+  screenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
+  await writeFile(join(screenshotRoot, 'mobile-inventory-valuation.png'), screenshot.data, 'base64')
+
   await evaluate("[...document.querySelectorAll('.tabs button')].find((button) => button.textContent.includes('Credit Receivables')).click()")
   await waitFor("document.body.textContent.includes('Credit Receivables Ledger')")
   assert(await evaluate("document.body.textContent.includes('Maria Santos') && document.body.textContent.includes('₱2,500.00') && document.body.textContent.includes('₱2,000.00')"), 'Receivables report tab did not retain credit and balance data')
   assert(await evaluate("document.body.textContent.includes('Oct 21, 2026, 10:30 AM') && !document.body.textContent.includes('PHT')"), 'Receivables timestamp was not the expected Manila date/time format')
 
-  await browserConnection.command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
-  await delay(150)
   assert(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth'), 'Reports page overflowed the mobile viewport')
   screenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
   await writeFile(join(screenshotRoot, 'mobile-receivables.png'), screenshot.data, 'base64')
@@ -241,6 +266,7 @@ createRoot(document.getElementById('root')).render(<main className="content-area
   console.log('PASS formatted transaction/customer search, status filtering, result count, and pagination')
   console.log('PASS historical products, prices, customer details, payment records, and Manila timestamps')
   console.log('PASS shared modal focus, Escape, scroll lock, and full-viewport backdrop')
+  console.log('PASS product-level valuation reconciliation, stable colors, keyboard details, legend selection, and zero-value handling')
   console.log('PASS inventory and receivables tabs, PHP formatting, and mobile containment')
   console.log(`REPORT_SCREENSHOTS ${screenshotRoot}`)
 } finally {
