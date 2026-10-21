@@ -17,6 +17,7 @@ function CustomerCredits() {
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [detailsError, setDetailsError] = useState('')
   const [customerModalOpen, setCustomerModalOpen] = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -86,6 +87,20 @@ function CustomerCredits() {
     if (customer) selectCustomer(customer)
   }
 
+  async function customerUpdated(updatedCustomer) {
+    const [customerList, customer] = await Promise.all([
+      getCustomers(),
+      getCustomer(updatedCustomer.customer_id),
+    ])
+    setCustomers(customerList)
+    setSelectedCustomer(customer)
+  }
+
+  function closeCustomerModal() {
+    setCustomerModalOpen(false)
+    setEditingCustomer(null)
+  }
+
   return (
     <section className="credits-page page-stack">
       <div className="credits-layout">
@@ -97,11 +112,19 @@ function CustomerCredits() {
           customers={customers}
           selectedCustomer={selectedCustomer}
           onSelect={selectCustomer}
-          onAddCustomer={() => setCustomerModalOpen(true)}
+          onAddCustomer={() => { setEditingCustomer(null); setCustomerModalOpen(true) }}
         />
       )}
-      {!loading && !error && <CustomerLedger customer={selectedCustomer} credits={credits} payments={payments} onPayment={refreshCustomer} loading={detailsLoading} error={detailsError} />}
-      {customerModalOpen && <CustomerModal onClose={() => setCustomerModalOpen(false)} onCreated={customerCreated} />}
+      {!loading && !error && <CustomerLedger customer={selectedCustomer} credits={credits} payments={payments} onPayment={refreshCustomer} onEdit={(customer) => { setEditingCustomer(customer); setCustomerModalOpen(true) }} loading={detailsLoading} error={detailsError} />}
+      {customerModalOpen && (
+        <CustomerModal
+          key={editingCustomer ? `edit-${editingCustomer.customer_id}` : 'add-customer'}
+          customer={editingCustomer}
+          onClose={closeCustomerModal}
+          onCreated={customerCreated}
+          onUpdated={customerUpdated}
+        />
+      )}
       </div>
     </section>
   )

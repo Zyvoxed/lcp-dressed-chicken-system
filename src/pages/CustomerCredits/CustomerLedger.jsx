@@ -1,3 +1,4 @@
+import { Pencil } from 'lucide-react'
 import PaymentHistory from './PaymentHistory.jsx'
 import PaymentForm from './PaymentForm.jsx'
 import { peso } from '../../utils/currency.js'
@@ -5,7 +6,7 @@ import { formatActivityTimestamp } from '../../utils/activityDateTime.js'
 import EmptyState from '../Shared/EmptyState.jsx'
 import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 
-function CustomerLedger({ customer, credits, payments, onPayment, loading, error }) {
+function CustomerLedger({ customer, credits, payments, onPayment, onEdit, loading, error }) {
   if (!customer) return <article className="panel ledger-panel"><h2>Customer Details</h2><EmptyState>No customers found.</EmptyState></article>
   const hasCreditHistory = credits.length > 0
 
@@ -16,9 +17,14 @@ function CustomerLedger({ customer, credits, payments, onPayment, loading, error
           <span>CUSTOMER DETAILS</span>
           <h2>{customer.customer_name}</h2>
         </div>
-        <span className={`customer-type-badge ${hasCreditHistory ? 'credit' : ''}`}>
-          {hasCreditHistory ? 'Credit Customer' : 'Registered Customer'}
-        </span>
+        <div className="ledger-heading-actions">
+          <span className={`customer-type-badge ${hasCreditHistory ? 'credit' : ''}`}>
+            {hasCreditHistory ? 'Credit Customer' : 'Registered Customer'}
+          </span>
+          <button className="secondary-action slim edit-customer-action" type="button" onClick={() => onEdit(customer)}>
+            <Pencil size={14} aria-hidden="true" /> Edit Customer
+          </button>
+        </div>
       </div>
       <section className="customer-information" aria-labelledby="customer-information-heading">
         <h3 id="customer-information-heading">Customer Information</h3>

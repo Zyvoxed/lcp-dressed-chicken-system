@@ -1,8 +1,43 @@
 import pool from '../config/database.js'
 
+class CustomerError extends Error {
+  constructor(status, message) {
+    super(message)
+    this.status = status
+  }
+}
+
+const editableCustomerFields = new Set(['customer_name', 'contact_number', 'address'])
+
 function parseCustomerId(value) {
   const customerId = Number(value)
   return Number.isInteger(customerId) && customerId > 0 ? customerId : null
+}
+
+function parseCustomerName(value) {
+  if (typeof value !== 'string') throw new CustomerError(400, 'Customer name must be text')
+  const customerName = value.trim()
+  if (!customerName) throw new CustomerError(400, 'Customer name is required')
+  if (customerName.length > 100) throw new CustomerError(400, 'Customer name must not exceed 100 characters')
+  return customerName
+}
+
+function parseOptionalText(value, label, maximumLength) {
+  if (value === null || value === undefined) return null
+  if (typeof value !== 'string') throw new CustomerError(400, `${label} must be text`)
+  const normalized = value.trim()
+  if (maximumLength && normalized.length > maximumLength) {
+    throw new CustomerError(400, `${label} must not exceed ${maximumLength} characters`)
+  }
+  return normalized || null
+}
+
+function failure(error, response, fallback) {
+  if (error instanceof CustomerError) {
+    return response.status(error.status).json({ success: false, message: error.message })
+  }
+  console.error(`${fallback}:`, error.message)
+  return response.status(500).json({ success: false, message: fallback })
 }
 
 export async function getCustomers(request, response) {
@@ -21,15 +56,10 @@ export async function getCustomers(request, response) {
 }
 
 export async function createCustomer(request, response) {
-  const customerName = typeof request.body?.customer_name === 'string' ? request.body.customer_name.trim() : ''
-  const contactNumber = typeof request.body?.contact_number === 'string' ? request.body.contact_number.trim() || null : null
-  const address = typeof request.body?.address === 'string' ? request.body.address.trim() || null : null
-
-  if (!customerName) {
-    return response.status(400).json({ success: false, message: 'Customer name is required' })
-  }
-
   try {
+    const customerName = parseCustomerName(request.body?.customer_name)
+    const contactNumber = parseOptionalText(request.body?.contact_number, 'Contact number', 20)
+    const address = parseOptionalText(request.body?.address, 'Address')
     const [result] = await pool.execute(
       'INSERT INTO customers (customer_name, contact_number, address) VALUES (?, ?, ?)',
       [customerName, contactNumber, address],
@@ -40,8 +70,84 @@ export async function createCustomer(request, response) {
       data: { customer_id: result.insertId },
     })
   } catch (error) {
-    console.error('Unable to create customer:', error.message)
-    return response.status(500).json({ success: false, message: 'Unable to create customer' })
+    return failure(error, response, 'Unable to create customer')
+  }
+}
+
+export async function updateCustomer(request, response) {
+  let connection
+  let transactionStarted = false
+
+  try {
+    const customerId = parseCustomerId(request.params.id)
+    if (!customerId) throw new CustomerError(400, 'Invalid customer ID')
+    const body = request.body
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      throw new CustomerError(400, 'A customer update is required')
+    }
+
+    const submittedFields = Object.keys(body)
+    if (!submittedFields.length) throw new CustomerError(400, 'At least one customer field is required')
+    if (submittedFields.some((field) => !editableCustomerFields.has(field))) {
+      throw new CustomerError(400, 'Only customer name, contact number, and address can be updated')
+    }
+
+    const updates = []
+    const values = []
+    if (Object.hasOwn(body, 'customer_name')) {
+      updates.push('customer_name = ?')
+      values.push(parseCustomerName(body.customer_name))
+    }
+    if (Object.hasOwn(body, 'contact_number')) {
+      updates.push('contact_number = ?')
+      values.push(parseOptionalText(body.contact_number, 'Contact number', 20))
+    }
+    if (Object.hasOwn(body, 'address')) {
+      updates.push('address = ?')
+      values.push(parseOptionalText(body.address, 'Address'))
+    }
+
+    connection = await pool.getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
+    const [customers] = await connection.execute(
+      `SELECT customer_id
+       FROM customers
+       WHERE customer_id = ? AND is_active = TRUE
+       LIMIT 1
+       FOR UPDATE`,
+      [customerId],
+    )
+    if (!customers[0]) throw new CustomerError(404, 'Customer not found')
+
+    await connection.execute(
+      `UPDATE customers SET ${updates.join(', ')} WHERE customer_id = ?`,
+      [...values, customerId],
+    )
+    await connection.execute(
+      `INSERT INTO activity_logs (user_id, action, description, created_at)
+       VALUES (?, 'CUSTOMER_UPDATED', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
+      [request.user.user_id, `Customer ${customerId} details updated`],
+    )
+    const [updatedCustomers] = await connection.execute(
+      `SELECT customer_id, customer_name, contact_number, address, current_balance, created_at
+       FROM customers
+       WHERE customer_id = ? AND is_active = TRUE
+       LIMIT 1`,
+      [customerId],
+    )
+    await connection.commit()
+    transactionStarted = false
+    return response.json({
+      success: true,
+      message: 'Customer updated successfully',
+      data: updatedCustomers[0],
+    })
+  } catch (error) {
+    if (transactionStarted) await connection.rollback()
+    return failure(error, response, 'Unable to update customer')
+  } finally {
+    connection?.release()
   }
 }
 

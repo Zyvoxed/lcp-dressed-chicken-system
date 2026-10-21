@@ -1,12 +1,22 @@
 import { useRef, useState } from 'react'
 import Modal from '../Shared/Modal.jsx'
 import TransactionSuccessModal from '../Shared/TransactionSuccessModal.jsx'
-import { createCustomer } from '../../services/customerService.js'
+import { createCustomer, updateCustomer } from '../../services/customerService.js'
 
 const initialForm = { customer_name: '', contact_number: '', address: '' }
 
-function CustomerModal({ onClose, onCreated }) {
-  const [form, setForm] = useState(initialForm)
+function customerForm(customer) {
+  if (!customer) return initialForm
+  return {
+    customer_name: customer.customer_name || '',
+    contact_number: customer.contact_number || '',
+    address: customer.address || '',
+  }
+}
+
+function CustomerModal({ onClose, onCreated, onUpdated, customer = null }) {
+  const editing = Boolean(customer?.customer_id)
+  const [form, setForm] = useState(() => customerForm(customer))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [refreshWarning, setRefreshWarning] = useState('')
@@ -30,15 +40,21 @@ function CustomerModal({ onClose, onCreated }) {
     setSaving(true)
     setError('')
     try {
-      const result = await createCustomer({
+      const payload = {
         customer_name: form.customer_name.trim(),
         contact_number: form.contact_number.trim(),
         address: form.address.trim(),
-      })
-      const customer = { ...form, customer_name: form.customer_name.trim(), customer_id: result.customer_id }
-      setSavedCustomer(customer)
+      }
+      const result = editing
+        ? await updateCustomer(customer.customer_id, payload)
+        : await createCustomer(payload)
+      const saved = editing
+        ? result
+        : { ...payload, customer_id: result.customer_id }
+      setSavedCustomer(saved)
       try {
-        await onCreated(result.customer_id)
+        if (editing) await onUpdated(saved)
+        else await onCreated(result.customer_id)
       } catch (refreshError) {
         setRefreshWarning(`Customer saved, but the customer list could not be refreshed: ${refreshError.message}`)
       }
@@ -58,8 +74,8 @@ function CustomerModal({ onClose, onCreated }) {
     ]
     return (
       <TransactionSuccessModal
-        title="Customer Added Successfully!"
-        message="The customer record has been created and is ready for use."
+        title={editing ? 'Customer Updated Successfully!' : 'Customer Added Successfully!'}
+        message={editing ? 'The customer information has been updated.' : 'The customer record has been created and is ready for use.'}
         details={details}
         notice={refreshWarning}
         onDone={onClose}
@@ -68,7 +84,7 @@ function CustomerModal({ onClose, onCreated }) {
   }
 
   return (
-    <Modal title="Add Customer" onClose={() => { if (!saving) onClose() }} className="customer-form-modal">
+    <Modal title={editing ? 'Edit Customer' : 'Add Customer'} onClose={() => { if (!saving) onClose() }} className="customer-form-modal">
       <form className="customer-form" onSubmit={save} noValidate aria-busy={saving}>
         <label htmlFor="customer-name">
           <span>Customer Name <b className="required-marker" aria-hidden="true">*</b></span>
@@ -87,7 +103,7 @@ function CustomerModal({ onClose, onCreated }) {
           <button className="secondary-action" type="button" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="primary-action" type="submit" disabled={saving}>
             {saving && <span className="sales-submit-spinner" aria-hidden="true" />}
-            {saving ? 'Saving Customer...' : 'Save Customer'}
+            {saving ? 'Saving Customer...' : editing ? 'Save Changes' : 'Save Customer'}
           </button>
         </div>
       </form>

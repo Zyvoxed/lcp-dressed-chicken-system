@@ -185,6 +185,21 @@
   min-width: 0;
 }
 
+.ledger-heading-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-customer-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
 .ledger-heading > div > span {
   color: var(--text-muted);
   font-size: 11px;
@@ -549,8 +564,13 @@
   }
 
   .customer-list-heading .primary-action,
-  .customer-type-badge {
+  .customer-type-badge,
+  .ledger-heading-actions {
     align-self: flex-start;
+  }
+
+  .ledger-heading-actions {
+    flex-wrap: wrap;
   }
 
   .customer-information-grid {

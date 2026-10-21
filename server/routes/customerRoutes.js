@@ -6,6 +6,7 @@ import {
   getCustomerCredits,
   getCustomerPayments,
   getCustomers,
+  updateCustomer,
 } from '../controllers/customerController.js'
 
 const router = Router()
@@ -14,5 +15,6 @@ router.get('/', getCustomers)
 router.post('/', createCustomer)
 router.get('/:id/credits', getCustomerCredits)
 router.get('/:id/payments', getCustomerPayments)
+router.patch('/:id', updateCustomer)
 router.get('/:id', getCustomer)
 export default router

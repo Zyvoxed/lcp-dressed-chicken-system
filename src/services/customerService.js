@@ -20,6 +20,12 @@ export function createCustomer(data) {
   }, 'Unable to create customer')
 }
 
+export function updateCustomer(id, data) {
+  return request(`/customers/${id}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }, 'Unable to update customer')
+}
+
 export function getCustomer(id, options = {}) {
   return request(`/customers/${id}`, options, 'Unable to retrieve customer')
 }

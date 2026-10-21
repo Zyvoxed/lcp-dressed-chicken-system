@@ -136,10 +136,12 @@ const payments = [{ payment_id: 900, sale_id: 700, payment_amount: '200.00', rem
 globalThis.salesRequests = []
 globalThis.paymentRequests = []
 globalThis.customerRequests = []
+globalThis.customerUpdateRequests = []
 globalThis.productLoads = 0
 globalThis.ledgerRefreshes = 0
 globalThis.saleShouldFail = false
 globalThis.paymentShouldFail = false
+globalThis.customerUpdateShouldFail = false
 globalThis.nextCustomerId = 9
 localStorage.setItem('authToken', 'transaction-ui-test-token')
 
@@ -154,6 +156,18 @@ globalThis.fetch = async (url, options = {}) => {
   const customerId = Number(pathParts[2])
   if (pathParts.length === 3 && pathParts[1] === 'customers' && Number.isInteger(customerId) && method === 'GET') {
     const customer = customers.find((item) => item.customer_id === customerId)
+    return new Response(JSON.stringify({ success: true, data: customer }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
+  if (pathParts.length === 3 && pathParts[1] === 'customers' && Number.isInteger(customerId) && method === 'PATCH') {
+    const body = JSON.parse(options.body)
+    globalThis.customerUpdateRequests.push({ customer_id: customerId, ...body })
+    await new Promise((resolveRequest) => setTimeout(resolveRequest, 100))
+    if (globalThis.customerUpdateShouldFail) {
+      return new Response(JSON.stringify({ success: false, message: 'Controlled customer update failure' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+    }
+    const customer = customers.find((item) => item.customer_id === customerId)
+    if (!customer) return new Response(JSON.stringify({ success: false, message: 'Customer not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } })
+    Object.assign(customer, body)
     return new Response(JSON.stringify({ success: true, data: customer }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   if (pathParts.length === 4 && pathParts[1] === 'customers' && pathParts[3] === 'credits' && method === 'GET') {
@@ -449,8 +463,44 @@ createRoot(document.getElementById('root')).render(<Harness />)
   assert(await evaluate("document.querySelector('#customer-credits-test').textContent.includes('Customer Information') && document.querySelector('#customer-credits-test').textContent.includes('Sales History') && document.querySelector('#customer-credits-test').textContent.includes('Payment History')"), 'Customer details sections were incomplete')
   assert(await evaluate("document.querySelector('#customer-credits-test').textContent.includes('Credit Customer') && document.querySelector('#customer-credits-test').textContent.includes('09171234567') && document.querySelector('#customer-credits-test').textContent.includes('Quezon City')"), 'Customer type and contact details were incomplete')
   assert(await evaluate("document.querySelector('#customer-credits-test').textContent.includes('Partially Paid') && document.querySelector('#customer-credits-test').textContent.includes('\\u20b1300.00')"), 'Credit status or outstanding balance was inaccurate')
+  await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Maria')
+  await setSelect("document.querySelector('#customer-credits-test .customer-list-controls select')", 'Outstanding')
+  await click("document.querySelector('#customer-credits-test .edit-customer-action')")
+  assert(await evaluate("document.querySelector('[role=dialog] h2').textContent") === 'Edit Customer', 'Edit Customer modal did not open')
+  assert(await evaluate("document.querySelector('[role=dialog] input[name=customer_name]').value") === 'Maria Santos', 'Edit Customer did not prefill the customer name')
+  assert(await evaluate("document.querySelector('[role=dialog] input[name=contact_number]').value") === '09171234567', 'Edit Customer did not prefill the contact number')
+  assert(await evaluate("document.querySelector('[role=dialog] textarea[name=address]').value") === 'Quezon City', 'Edit Customer did not prefill the address')
+  await setInput("document.querySelector('[role=dialog] input[name=customer_name]')", '')
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  assert(await evaluate("document.querySelector('[role=dialog] [role=alert]').textContent.trim()") === 'Customer name is required.', 'Edit Customer required-name validation did not run')
+  assert(await evaluate('customerUpdateRequests.length') === 0, 'Invalid customer edit submitted a request')
+  await setInput("document.querySelector('[role=dialog] input[name=customer_name]')", 'Maria Santos Updated')
+  await setInput("document.querySelector('[role=dialog] input[name=contact_number]')", '09990001111')
+  await setInput("document.querySelector('[role=dialog] textarea[name=address]')", 'Pasig City')
+  await capture('mobile-edit-customer.png', 390, "document.querySelector('[role=dialog]')")
+  assert(await evaluate("document.querySelector('[role=dialog]').scrollWidth <= document.querySelector('[role=dialog]').clientWidth"), 'Edit Customer modal overflowed horizontally on mobile')
+  await evaluate('customerUpdateShouldFail = true')
+  await evaluate("(() => { const button = document.querySelector('[role=dialog] .primary-action'); button.click(); button.click() })()")
+  await waitFor("document.querySelector('[role=dialog] [role=alert]')?.textContent.includes('Controlled customer update failure')", 'Failed customer update did not show its API error')
+  assert(await evaluate('customerUpdateRequests.length') === 1, 'Failed customer update was submitted more than once')
+  assert(await evaluate("document.querySelector('[role=dialog] input[name=customer_name]').value") === 'Maria Santos Updated', 'Failed customer update did not preserve the customer name')
+  assert(await evaluate("document.querySelector('[role=dialog] input[name=contact_number]').value") === '09990001111', 'Failed customer update did not preserve the contact number')
+  assert(await evaluate("document.querySelector('[role=dialog] textarea[name=address]').value") === 'Pasig City', 'Failed customer update did not preserve the address')
+  await evaluate('customerUpdateShouldFail = false')
+  await evaluate("(() => { const button = document.querySelector('[role=dialog] .primary-action'); button.click(); button.click() })()")
+  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Customer Updated Successfully!'", 'Customer edit did not show backend-confirmed success')
+  assert(await evaluate('customerUpdateRequests.length') === 2, 'Successful customer update was submitted more than once')
+  assert(await evaluate("Object.keys(customerUpdateRequests.at(-1)).sort().join(',')") === 'address,contact_number,customer_id,customer_name', 'Customer edit submitted unsupported fields')
+  await click("document.querySelector('[role=dialog] .transaction-done-button')")
+  await waitFor("document.querySelector('#customer-credits-test .ledger-heading h2')?.textContent === 'Maria Santos Updated'", 'Updated customer details did not refresh')
+  assert(await evaluate("document.querySelector('#customer-credits-test .customer-list-controls input').value") === 'Maria', 'Customer search was reset after editing')
+  assert(await evaluate("document.querySelector('#customer-credits-test .customer-list-controls select').value") === 'Outstanding', 'Customer balance filter was reset after editing')
+  assert(await evaluate("document.querySelector('#customer-credits-test .balance-display').textContent.includes('\\u20b1300.00')"), 'Customer edit changed the credit balance')
+  assert(await evaluate("document.querySelector('#customer-credits-test').textContent.includes('OR-700') && document.querySelector('#customer-credits-test').textContent.includes('PAY-900')"), 'Customer edit changed transaction history')
+  await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", '')
+  await setSelect("document.querySelector('#customer-credits-test .customer-list-controls select')", 'All')
   await click("document.querySelector('#customer-credits-test [aria-label=\"Next customer page\"]')")
-  assert(await evaluate("document.querySelectorAll('#customer-credits-test .debtor-row').length") === 2, 'Customer pagination did not show the remaining customers')
+  assert(await evaluate("document.querySelectorAll('#customer-credits-test .debtor-row').length") === 3, 'Customer pagination did not include the refreshed customer list')
   await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Maria')
   assert(await evaluate("document.querySelectorAll('#customer-credits-test .debtor-row').length") === 1, 'Customer search did not filter across all customers')
   await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", '')
@@ -526,6 +576,7 @@ createRoot(document.getElementById('root')).render(<Harness />)
   console.log('PASS product search, availability, cart quantity, removal, summaries, and responsive layout')
   console.log('PASS cash/credit confirmation, confirmed success, failure preservation, request locking, and stock refresh')
   console.log('PASS customer search, balance filtering, pagination, details, credit and payment history')
+  console.log('PASS customer editing, validation, failure preservation, duplicate prevention, refresh, and mobile layout')
   console.log('PASS payment review, confirmed success, Manila timestamp, failure preservation, request locking, and ledger refresh')
   console.log(`SCREENSHOTS ${screenshotRoot}`)
 } finally {
