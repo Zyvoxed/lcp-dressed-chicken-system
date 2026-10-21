@@ -5,12 +5,14 @@ import {
   getInventoryReport,
   getReceivablesReport,
   getSalesReport,
+  getSalesReportDetail,
   logReportGeneration,
 } from '../controllers/reportController.js'
 
 const router = Router()
 router.use(authenticate, authorizeRoles('Admin'))
 router.get('/sales', getSalesReport)
+router.get('/sales/:id', getSalesReportDetail)
 router.get('/inventory', getInventoryReport)
 router.get('/receivables', getReceivablesReport)
 router.post('/log', logReportGeneration)

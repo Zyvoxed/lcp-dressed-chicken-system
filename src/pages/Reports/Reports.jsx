@@ -8,7 +8,7 @@ function Reports() {
   const [activeTab, setActiveTab] = useState('Sales & Revenue Audit')
 
   return (
-    <section className="page-stack">
+    <section className="reports-page page-stack">
       <ReportsTabs activeTab={activeTab} onSelect={setActiveTab} />
       {activeTab === 'Sales & Revenue Audit' && <RevenueReport />}
       {activeTab === 'Inventory Assets Valuation' && <InventoryValuation />}

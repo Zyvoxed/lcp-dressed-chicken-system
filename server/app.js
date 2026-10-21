@@ -15,6 +15,10 @@ import userRoutes from './routes/userRoutes.js'
 
 const app = express()
 
+if (environment.trustedProxies.length > 0) {
+  app.set('trust proxy', environment.trustedProxies)
+}
+
 app.use(cors({
   origin(origin, callback) {
     if (!origin || origin === environment.frontendUrl) return callback(null, true)

@@ -1,11 +1,17 @@
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { X } from 'lucide-react'
 import PageHeader from './PageHeader.jsx'
 
-function Modal({ title, children, onClose }) {
+function Modal({ title, children, onClose, className = '' }) {
   const dialogRef = useRef(null)
   const closeButtonRef = useRef(null)
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     const previouslyFocused = document.activeElement
@@ -16,7 +22,7 @@ function Modal({ title, children, onClose }) {
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
         event.preventDefault()
-        onClose()
+        onCloseRef.current()
         return
       }
 
@@ -47,13 +53,13 @@ function Modal({ title, children, onClose }) {
       document.body.style.overflow = previousOverflow
       previouslyFocused?.focus()
     }
-  }, [onClose])
+  }, [])
 
-  return (
+  return createPortal(
     <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
       <motion.section
         ref={dialogRef}
-        className="modal-card"
+        className={`modal-card ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -68,7 +74,8 @@ function Modal({ title, children, onClose }) {
         </PageHeader>
         {children}
       </motion.section>
-    </motion.div>
+    </motion.div>,
+    document.body,
   )
 }
 

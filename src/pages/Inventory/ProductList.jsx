@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { Search } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import DataTable from '../Shared/DataTable.jsx'
 import EmptyState from '../Shared/EmptyState.jsx'
 import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import StatusBadge from '../Shared/StatusBadge.jsx'
-import { getProducts } from '../../services/productService.js'
+import { productCategories } from '../../utils/constants.js'
 import { peso } from '../../utils/currency.js'
 
 const columns = [
@@ -11,7 +12,7 @@ const columns = [
   'Category',
   'Selling Price',
   'Current Stock',
-  'Low Stock Level',
+  'Reorder Level',
   'Status',
   'Actions',
 ]
@@ -26,33 +27,27 @@ const sortAccessors = [
   () => '',
 ]
 
-function ProductList() {
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+function normalizeCategory(category = '') {
+  return category.toLowerCase().replaceAll('&', 'and').replace(/\s+/g, ' ').trim()
+}
 
-  useEffect(() => {
-    const controller = new AbortController()
+function ProductList({ products, loading, error, onEdit }) {
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState('All')
 
-    async function loadProducts() {
-      try {
-        const data = await getProducts({ signal: controller.signal })
-        setProducts(data)
-      } catch (requestError) {
-        if (requestError.name !== 'AbortError') {
-          setError(requestError.message)
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false)
-        }
-      }
-    }
+  const filteredProducts = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase()
+    const normalizedCategory = normalizeCategory(category)
 
-    loadProducts()
+    return products.filter((product) => {
+      const matchesCategory = category === 'All'
+        || normalizeCategory(product.category) === normalizedCategory
+      const matchesSearch = !normalizedQuery
+        || Object.values(product).join(' ').toLowerCase().includes(normalizedQuery)
 
-    return () => controller.abort()
-  }, [])
+      return matchesCategory && matchesSearch
+    })
+  }, [category, products, query])
 
   if (loading) {
     return <LoadingSpinner />
@@ -67,28 +62,71 @@ function ProductList() {
   }
 
   return (
-    <DataTable
-      columns={columns}
-      rows={products}
-      getSortValue={(product, columnIndex) => sortAccessors[columnIndex](product)}
-      renderRow={(product) => (
-        <tr key={product.product_id}>
-          <td>{product.product_name}</td>
-          <td>{product.category}</td>
-          <td>{peso.format(Number(product.selling_price))}</td>
-          <td>{Number(product.stock_quantity)} {product.unit}</td>
-          <td>{Number(product.reorder_level)} {product.unit}</td>
-          <td>
-            <StatusBadge value={product.status} />
-          </td>
-          <td>
-            <button className="table-action" type="button">
-              Edit
-            </button>
-          </td>
-        </tr>
-      )}
-    />
+    <div className="inventory-product-list">
+      <div className="inventory-product-controls">
+        <label className="table-search">
+          <Search size={15} aria-hidden="true" />
+          <input
+            value={query}
+            placeholder="Search products"
+            onChange={(event) => setQuery(event.target.value)}
+            aria-label="Search products"
+          />
+        </label>
+        <select
+          className="inventory-category-filter"
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+          aria-label="Filter products by category"
+        >
+          {productCategories.map((productCategory) => (
+            <option key={productCategory} value={productCategory}>
+              {productCategory === 'All' ? 'All Categories' : productCategory}
+            </option>
+          ))}
+        </select>
+        <span className="inventory-result-count" aria-live="polite">
+          {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
+        </span>
+      </div>
+      <DataTable
+        key={`${category}:${query}`}
+        columns={columns}
+        rows={filteredProducts}
+        searchable={false}
+        getSortValue={(product, columnIndex) => sortAccessors[columnIndex](product)}
+        renderRow={(product) => (
+          <tr
+            key={product.product_id}
+            className={`inventory-product-row ${product.status.toLowerCase().replaceAll(' ', '-')}`}
+          >
+            <td><strong className="inventory-product-name">{product.product_name}</strong></td>
+            <td><span className="inventory-product-category">{product.category}</span></td>
+            <td><strong className="inventory-money-value">{peso.format(Number(product.selling_price))}</strong></td>
+            <td>
+              <strong className="inventory-stock-value">{Number(product.stock_quantity)}</strong>{' '}
+              <span className="inventory-unit">{product.unit}</span>
+            </td>
+            <td>
+              {Number(product.reorder_level)} <span className="inventory-unit">{product.unit}</span>
+            </td>
+            <td>
+              <StatusBadge value={product.status} />
+            </td>
+            <td>
+              <button
+                className="table-action"
+                type="button"
+                onClick={() => onEdit(product)}
+                aria-label={`Edit ${product.product_name}`}
+              >
+                Edit
+              </button>
+            </td>
+          </tr>
+        )}
+      />
+    </div>
   )
 }
 

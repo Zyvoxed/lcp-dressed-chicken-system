@@ -1,4 +1,5 @@
 import EmptyState from "../Shared/EmptyState.jsx";
+import { quantity } from '../../utils/currency.js'
 
 function LowSellingProducts({ products }) {
   return (
@@ -16,12 +17,12 @@ function LowSellingProducts({ products }) {
               <div>
                 <strong>{product.product_name}</strong>
                 <span>
-                  {Number(product.quantity_sold)} {product.unit} sold
+                  {quantity.format(Number(product.quantity_sold))} {product.unit} sold
                 </span>
               </div>
               <div>
                 <em>
-                  {Number(product.stock_quantity)} {product.unit}
+                  {quantity.format(Number(product.stock_quantity))} {product.unit}
                 </em>
                 <b>LOW DEMAND</b>
               </div>

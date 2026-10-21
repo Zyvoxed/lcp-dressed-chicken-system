@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { getActivityLogs } from '../../services/activityLogService.js'
+import { activityDateRange, formatActivityTimestamp } from '../../utils/activityDateTime.js'
 import EmptyState from '../Shared/EmptyState.jsx'
 import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 
@@ -10,37 +11,6 @@ const actionLabels = {
   SALE_CREATED: 'Sale Created', STOCK_IN_CREATED: 'Stock In', PAYMENT_RECORDED: 'Payment Recorded',
   REPORT_GENERATED: 'Report Generated', USER_CREATED: 'User Created', USER_UPDATED: 'User Updated',
   USER_ACTIVATED: 'User Activated', USER_DEACTIVATED: 'User Deactivated', USER_PASSWORD_RESET: 'Password Reset',
-}
-
-const activityDateFormatter = new Intl.DateTimeFormat('en-PH', {
-  month: 'long',
-  day: 'numeric',
-  year: 'numeric',
-})
-
-const activityTimeFormatter = new Intl.DateTimeFormat('en-PH', {
-  hour: 'numeric',
-  minute: '2-digit',
-})
-
-function localDate(date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function dateRange(period) {
-  if (period === 'All Logs') return {}
-  const today = new Date()
-  let start = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const end = start
-  if (period === 'This Week') {
-    const mondayOffset = (start.getDay() + 6) % 7
-    start = new Date(start.getFullYear(), start.getMonth(), start.getDate() - mondayOffset)
-  }
-  if (period === 'This Month') start = new Date(today.getFullYear(), today.getMonth(), 1)
-  return { start_date: localDate(start), end_date: localDate(end) }
 }
 
 function readableAction(action) {
@@ -74,7 +44,7 @@ function ActivityLogs() {
 
   useEffect(() => {
     const controller = new AbortController()
-    getActivityLogs({ page, limit: 20, search, ...dateRange(period) }, { signal: controller.signal })
+    getActivityLogs({ page, limit: 20, search, ...activityDateRange(period) }, { signal: controller.signal })
       .then((result) => { setLogs(result.data); setPagination(result.pagination); setError('') })
       .catch((requestError) => { if (requestError.name !== 'AbortError') setError(requestError.message) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
@@ -112,12 +82,12 @@ function ActivityLogs() {
               <thead><tr><th>No.</th><th>Date</th><th>Time</th><th>User</th><th>Role</th><th>Activity</th><th>Details</th></tr></thead>
               <tbody>
                 {logs.map((log, index) => {
-                  const timestamp = new Date(log.created_at)
+                  const timestamp = formatActivityTimestamp(log.created_at)
                   return (
                     <tr key={log.activity_id}>
                       <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
-                      <td>{activityDateFormatter.format(timestamp)}</td>
-                      <td>{activityTimeFormatter.format(timestamp)}</td>
+                      <td><time dateTime={log.created_at}>{timestamp.date}</time></td>
+                      <td>{timestamp.time}</td>
                       <td><strong>{log.username || 'System'}</strong></td>
                       <td><span className={`activity-role ${String(log.role).toLowerCase()}`}>{log.role || 'System'}</span></td>
                       <td><span className={`activity-action ${actionTone(log.action)}`}>{readableAction(log.action)}</span></td>

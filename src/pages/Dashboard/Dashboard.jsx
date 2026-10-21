@@ -29,16 +29,16 @@ function Dashboard() {
 
   return (
     <section className="page-stack dashboard-page">
-      <DashboardStats summary={dashboard.summary} />
+      <DashboardStats dashboard={dashboard} />
       <div className="dashboard-primary-grid">
         <SalesChart trends={dashboard.trends} />
         <SalesSummary summary={dashboard.summary} />
       </div>
-      <div className="dashboard-two-column-grid">
+      <div className="dashboard-two-column-grid dashboard-product-grid">
         <TopSellingProducts products={dashboard.top_products} />
         <LowSellingProducts products={dashboard.low_products} />
       </div>
-      <div className="dashboard-two-column-grid">
+      <div className="dashboard-two-column-grid dashboard-operations-grid">
         <RestockChecklist products={dashboard.low_stock_alerts} total={dashboard.summary.low_stock_count} />
         <RecentActivity activities={dashboard.recent_activity} />
       </div>

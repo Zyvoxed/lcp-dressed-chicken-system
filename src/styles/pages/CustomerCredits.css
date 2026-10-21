@@ -4,8 +4,9 @@
 
 .credits-layout {
   display: grid;
+  align-items: start;
   gap: 20px;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
 }
 
 .ledger-panel {
@@ -16,6 +17,56 @@
 
 .ledger-panel > h2 {
   margin-bottom: 0;
+}
+
+.customer-list-panel {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.customer-list-heading,
+.ledger-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.customer-list-heading h2,
+.customer-list-heading p,
+.ledger-heading h2 {
+  margin: 0;
+}
+
+.customer-list-heading p {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.customer-list-heading .primary-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.customer-list-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 9px;
+}
+
+.customer-list-controls .table-search,
+.customer-list-controls select {
+  width: 100%;
+}
+
+.customer-list-summary {
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .credit-stats {
@@ -65,6 +116,22 @@
   flex: 0 0 auto;
 }
 
+.debtor-identity {
+  display: grid;
+  gap: 3px;
+}
+
+.debtor-identity p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.debtor-balance {
+  display: grid;
+  justify-items: end;
+}
+
 .debtor-row strong,
 .debtor-row p,
 .debtor-row span {
@@ -81,6 +148,115 @@
   margin-bottom: 6px;
   color: var(--text-heading);
   text-align: right;
+}
+
+.customer-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.customer-pagination > div {
+  display: flex;
+  gap: 6px;
+}
+
+.customer-pagination button {
+  width: 34px;
+  min-height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+}
+
+.customer-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ledger-heading > div {
+  min-width: 0;
+}
+
+.ledger-heading > div > span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.ledger-heading h2 {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.customer-type-badge {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.customer-type-badge.credit {
+  color: var(--status-warn-text);
+  background: var(--status-warn-bg);
+}
+
+.customer-information {
+  display: grid;
+  gap: 8px;
+}
+
+.customer-information h3 {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 14px;
+}
+
+.customer-information-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--border);
+}
+
+.customer-information-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  background: var(--surface-inset);
+}
+
+.customer-information-grid .wide {
+  grid-column: 1 / -1;
+}
+
+.customer-information-grid dt {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.customer-information-grid dd {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .balance-display {
@@ -100,9 +276,53 @@
   overflow-wrap: anywhere;
 }
 
+.balance-display small {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 .payment-form {
   display: grid;
   gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg-soft);
+}
+
+.payment-form-heading h3,
+.payment-form-heading p {
+  margin: 0;
+}
+
+.payment-form-heading h3 {
+  color: var(--text-heading);
+  font-size: 14px;
+}
+
+.payment-form-heading p {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.payment-balance-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  font-size: 12px;
+}
+
+.payment-balance-preview strong {
+  color: var(--money-text);
 }
 
 .payment-form :is(input, select):disabled {
@@ -111,6 +331,45 @@
 }
 
 .payment-form > .primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+.payment-settled-note {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--success-border);
+  border-radius: var(--radius-md);
+  color: var(--status-success-text);
+  background: var(--status-success-bg);
+  font-size: 12px;
+}
+
+.payment-confirmation-modal {
+  width: min(100%, 580px);
+}
+
+.payment-review-copy {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.payment-review-section {
+  display: grid;
+  gap: 8px;
+}
+
+.payment-review-section h3 {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 13px;
+}
+
+.payment-confirmation-modal .primary-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -165,6 +424,63 @@
 .history-list {
   display: grid;
   gap: 7px;
+}
+
+.history-record {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+}
+
+.history-record header,
+.history-record dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-record header > strong {
+  color: var(--text-heading);
+}
+
+.history-record header > span {
+  color: var(--money-text);
+  font-weight: 600;
+}
+
+.history-record time,
+.history-record footer {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.history-record dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.history-record dt,
+.history-record dd {
+  font-size: 12px;
+}
+
+.history-record dt {
+  color: var(--text-muted);
+}
+
+.history-record dd {
+  margin: 0;
+  color: var(--text-heading);
+  font-weight: 600;
+  text-align: right;
 }
 
 .history-row {
@@ -224,6 +540,25 @@
 
   .history-grid {
     grid-template-columns: 1fr;
+  }
+
+  .customer-list-heading,
+  .ledger-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .customer-list-heading .primary-action,
+  .customer-type-badge {
+    align-self: flex-start;
+  }
+
+  .customer-information-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-information-grid .wide {
+    grid-column: auto;
   }
 
   .debtor-row > div:last-child {

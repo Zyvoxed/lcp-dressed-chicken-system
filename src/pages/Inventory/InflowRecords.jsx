@@ -4,6 +4,7 @@ import EmptyState from '../Shared/EmptyState.jsx'
 import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import { getStockInRecords } from '../../services/stockInService.js'
 import { peso } from '../../utils/currency.js'
+import { formatActivityTimestamp } from '../../utils/activityDateTime.js'
 
 const columns = [
   'Delivery No.',
@@ -72,7 +73,7 @@ function InflowRecords() {
             <td>{Number(record.quantity_received)} {record.unit}</td>
             <td>{peso.format(Number(record.cost_price))}</td>
             <td>{peso.format(Number(record.total_cost))}</td>
-            <td><time dateTime={record.delivery_date}>{new Date(record.delivery_date).toLocaleString()}</time></td>
+            <td><time dateTime={record.delivery_date}>{formatActivityTimestamp(record.delivery_date).dateTime}</time></td>
             <td>{record.recorded_by}</td>
           </tr>
         )}

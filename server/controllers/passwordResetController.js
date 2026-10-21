@@ -6,13 +6,9 @@ import {
   revokePasswordResetToken,
 } from '../services/passwordResetService.js'
 import { sendPasswordReset } from '../services/emailDeliveryService.js'
+import { getRequestIp } from '../utils/requestIp.js'
 
 const minimumResponseMilliseconds = 700
-
-function requestIp(request) {
-  const forwarded = request.get('x-forwarded-for')?.split(',')[0]?.trim()
-  return forwarded || request.ip || request.socket?.remoteAddress || '<unknown>'
-}
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds))
@@ -23,7 +19,7 @@ export async function requestPasswordReset(request, response) {
   response.set('Cache-Control', 'no-store')
 
   try {
-    const reset = await preparePasswordReset(request.body?.email, requestIp(request))
+    const reset = await preparePasswordReset(request.body?.email, getRequestIp(request))
 
     if (reset) {
       try {
@@ -45,7 +41,7 @@ export async function requestPasswordReset(request, response) {
 export async function resetPassword(request, response) {
   response.set('Cache-Control', 'no-store')
   try {
-    await completePasswordReset(request.body?.token, request.body?.password, requestIp(request))
+    await completePasswordReset(request.body?.token, request.body?.password, getRequestIp(request))
     return response.json({ success: true, message: 'Password changed successfully. You can now sign in.' })
   } catch (error) {
     if (error instanceof PasswordResetError) {

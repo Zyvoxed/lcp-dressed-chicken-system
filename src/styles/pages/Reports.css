@@ -5,15 +5,128 @@
 .report-layout {
   display: grid;
   gap: 20px;
+  align-items: start;
   grid-template-columns: minmax(0, 1fr) 320px;
 }
 
-.report-table-panel {
+.report-heading-row {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.report-heading h2,
+.report-heading p {
+  margin: 0;
+}
+
+.report-heading p {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.report-result-count {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.reports-page > .tabs {
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.reports-page > .tabs button {
+  flex: 0 0 auto;
+}
+
+.report-tab-content {
+  display: grid;
+  gap: 18px;
+}
+
+.report-inventory-stats {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.report-receivables-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.report-heading-row {
+  margin-bottom: 18px;
+}
+
+.report-heading {
   min-width: 0;
 }
 
+.report-heading h2,
+.report-table-panel .report-heading h2,
+.report-filter-panel .report-heading h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.report-result-count {
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.report-local-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(170px, 220px);
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
+.report-inline-error {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  color: var(--danger-text);
+  background: var(--danger-bg);
+  font-size: 12px;
+}
+
+.report-state-panel {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.report-state-panel .empty-basket {
+  width: 100%;
+}
+
+.report-table-panel {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .sales-report-panel table {
-  min-width: 1120px;
+  min-width: 1180px;
 }
 
 .inventory-report-panel table {
@@ -21,7 +134,40 @@
 }
 
 .receivables-report-panel table {
-  min-width: 900px;
+  min-width: 1080px;
+}
+
+.sales-report-panel :is(th, td):nth-child(2) {
+  min-width: 190px;
+}
+
+.inventory-report-panel td:first-child {
+  min-width: 180px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.report-address-cell {
+  max-width: 260px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.report-transaction-link {
+  padding: 2px 0;
+  border: 0;
+  color: var(--primary);
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+
+.report-transaction-link:hover {
+  color: var(--primary-strong);
+  text-decoration-color: currentColor;
 }
 
 .sales-report-panel :is(th, td):nth-child(6),
@@ -32,13 +178,14 @@
 .inventory-report-panel :is(th, td):nth-child(6),
 .inventory-report-panel :is(th, td):nth-child(7),
 .receivables-report-panel :is(th, td):nth-child(4),
-.receivables-report-panel :is(th, td):nth-child(5) {
+.receivables-report-panel :is(th, td):nth-child(5),
+.receivables-report-panel :is(th, td):nth-child(6) {
   text-align: right;
 }
 
 .sales-report-panel :is(th:nth-child(6), th:nth-child(7), th:nth-child(8)) button,
 .inventory-report-panel :is(th:nth-child(4), th:nth-child(5), th:nth-child(6), th:nth-child(7)) button,
-.receivables-report-panel :is(th:nth-child(4), th:nth-child(5)) button {
+.receivables-report-panel :is(th:nth-child(4), th:nth-child(5), th:nth-child(6)) button {
   justify-content: flex-end;
 }
 
@@ -64,6 +211,14 @@
 
 .report-filter-panel h2 {
   margin-bottom: 4px;
+}
+
+.report-filter-heading {
+  margin-bottom: 4px;
+}
+
+.report-filter-heading p {
+  color: #716663;
 }
 
 .report-filter-panel label {
@@ -186,6 +341,89 @@
   font-weight: 600;
 }
 
+/* Transaction audit details */
+.report-transaction-modal {
+  width: min(100%, 820px);
+}
+
+.report-detail-content,
+.report-detail-section,
+.report-payment-records {
+  display: grid;
+  gap: 12px;
+}
+
+.report-detail-content {
+  gap: 20px;
+}
+
+.report-detail-section h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.report-detail-emphasis {
+  background: var(--primary-soft);
+}
+
+.report-detail-emphasis dd {
+  color: var(--primary);
+  font-size: 16px;
+}
+
+.report-detail-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.report-detail-table {
+  min-width: 620px;
+}
+
+.report-detail-table :is(th, td):nth-child(n + 2) {
+  text-align: right;
+}
+
+.report-payment-records article {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
+.report-payment-records article > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.report-payment-records strong {
+  color: var(--text-heading);
+}
+
+.report-payment-records span,
+.report-payment-records p,
+.report-detail-note {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.report-payment-records p,
+.report-detail-note {
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+
+.report-detail-note {
+  padding: 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
 @keyframes donut-render {
   from {
     opacity: 0;
@@ -213,11 +451,48 @@
   .report-filter-panel .secondary-action {
     grid-column: 1 / -1;
   }
+
+  .report-inventory-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
+  .report-heading-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .report-result-count,
+  .report-heading-row .primary-action.slim {
+    width: 100%;
+    text-align: center;
+  }
+
+  .report-local-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-page > .tabs,
+  .report-inventory-stats,
+  .report-receivables-stats {
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+
   .report-filter-panel {
     grid-template-columns: 1fr;
+  }
+
+  .report-transaction-modal {
+    width: 100%;
+  }
+
+  .report-payment-records article > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .donut {

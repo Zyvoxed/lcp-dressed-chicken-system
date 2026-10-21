@@ -15,6 +15,10 @@ export function getSalesReport(filters = {}, options = {}) {
   return request(`/reports/sales${suffix}`, options, 'Unable to retrieve sales report')
 }
 
+export function getSalesReportDetail(saleId, options = {}) {
+  return request(`/reports/sales/${saleId}`, options, 'Unable to retrieve transaction details')
+}
+
 export function getInventoryReport(options = {}) {
   return request('/reports/inventory', options, 'Unable to retrieve inventory report')
 }

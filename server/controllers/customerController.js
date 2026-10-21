@@ -69,7 +69,9 @@ export async function getCustomerCredits(request, response) {
 
   try {
     const [credits] = await pool.execute(
-      `SELECT sa.sale_id, sa.sale_date, sa.total_amount, sa.amount_paid,
+      `SELECT sa.sale_id,
+              CONCAT(DATE_FORMAT(sa.sale_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS sale_date,
+              sa.total_amount, sa.amount_paid,
               sa.remaining_balance, sa.status, u.fullname AS recorded_by
        FROM sales sa JOIN users u ON sa.user_id = u.user_id
        WHERE sa.customer_id = ? AND sa.payment_type = 'Credit'
@@ -90,7 +92,8 @@ export async function getCustomerPayments(request, response) {
   try {
     const [payments] = await pool.execute(
       `SELECT pa.payment_id, pa.sale_id, pa.payment_amount, pa.remaining_balance,
-              pa.payment_date, u.fullname AS recorded_by
+              CONCAT(DATE_FORMAT(pa.payment_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS payment_date,
+              u.fullname AS recorded_by
        FROM payments pa JOIN users u ON pa.user_id = u.user_id
        WHERE pa.customer_id = ?
        ORDER BY pa.payment_date DESC, pa.payment_id DESC`,

@@ -6,22 +6,23 @@
   "scripts": {
     "create-admin": "node scripts/createAdmin.js",
     "reset-admin-password": "node scripts/resetAdminPassword.js",
+    "test:products": "node scripts/productCreationTest.js",
+    "test:dashboard": "node scripts/dashboardTrendTest.js",
+    "test:activity": "node scripts/activityTimestampTest.js",
+    "test:suppliers": "node scripts/supplierIntegrationTest.js",
     "test:transactions": "node scripts/predeployTransactionTest.js",
     "test:email": "node --test tests/emailDeliveryService.test.js",
     "test:password-reset": "node --test tests/passwordResetSecurity.test.js",
-    "dev": "nodemon server.js",
+    "dev": "node --watch server.js",
     "start": "node server.js"
   },
   "dependencies": {
     "bcrypt": "latest",
     "cors": "latest",
     "dotenv": "latest",
-    "express": "latest",
+    "express": "5.2.1",
     "jsonwebtoken": "latest",
     "mysql2": "latest",
     "nodemailer": "10.1.6"
-  },
-  "devDependencies": {
-    "nodemon": "latest"
   }
 }

@@ -67,8 +67,8 @@ export async function recordPayment(request, response) {
       [saleId, sale.customer_id, request.user.user_id, paymentValue, newRemaining, new Date()],
     )
     await connection.execute(
-      `INSERT INTO activity_logs (user_id, action, description)
-       VALUES (?, 'PAYMENT_RECORDED', ?)`,
+      `INSERT INTO activity_logs (user_id, action, description, created_at)
+       VALUES (?, 'PAYMENT_RECORDED', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
       [request.user.user_id, `Payment ${result.insertId} recorded for sale ${saleId} (${paymentValue})`],
     )
 

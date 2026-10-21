@@ -1,6 +1,23 @@
 import pool from '../config/database.js'
 
 const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const manilaCurrentDate = "DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))"
+
+function manilaCalendar() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: 'short',
+  }).formatToParts(new Date())
+  const year = Number(parts.find((part) => part.type === 'year').value)
+  const monthLabel = parts.find((part) => part.type === 'month').value
+  const month = new Date(`${monthLabel} 1, ${year} 00:00:00 UTC`).getUTCMonth() + 1
+
+  return {
+    daysInMonth: new Date(Date.UTC(year, month, 0)).getUTCDate(),
+    monthLabel,
+  }
+}
 
 function fillSeries(length, rows, indexField, labelForIndex) {
   const values = new Map(rows.map((row) => [Number(row[indexField]), row]))
@@ -49,7 +66,8 @@ export async function getDashboard(request, response) {
       ORDER BY stock_quantity ASC, product_name ASC
     `)
     const [activities] = await pool.execute(`
-      SELECT al.activity_id, al.action, al.description, al.created_at,
+      SELECT al.activity_id, al.action, al.description,
+             CONCAT(DATE_FORMAT(al.created_at, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS created_at,
              COALESCE(u.fullname, 'System') AS operator_name,
              COALESCE(u.username, 'system') AS username,
              COALESCE(u.role, 'System') AS role
@@ -60,25 +78,30 @@ export async function getDashboard(request, response) {
     `)
     const [dailyRows] = await pool.execute(`
       SELECT HOUR(sale_date) AS bucket_index, SUM(total_amount) AS sales, COUNT(*) AS transactions
-      FROM sales WHERE DATE(sale_date) = CURRENT_DATE()
+      FROM sales
+      WHERE sale_date >= ${manilaCurrentDate}
+        AND sale_date < ${manilaCurrentDate} + INTERVAL 1 DAY
       GROUP BY HOUR(sale_date)
+      ORDER BY bucket_index
     `)
     const [weeklyRows] = await pool.execute(`
       SELECT WEEKDAY(sale_date) AS bucket_index, SUM(total_amount) AS sales, COUNT(*) AS transactions
       FROM sales
-      WHERE sale_date >= DATE_SUB(CURRENT_DATE(), INTERVAL WEEKDAY(CURRENT_DATE()) DAY)
-        AND sale_date < DATE_ADD(DATE_SUB(CURRENT_DATE(), INTERVAL WEEKDAY(CURRENT_DATE()) DAY), INTERVAL 7 DAY)
+      WHERE sale_date >= DATE_SUB(${manilaCurrentDate}, INTERVAL WEEKDAY(${manilaCurrentDate}) DAY)
+        AND sale_date < DATE_ADD(DATE_SUB(${manilaCurrentDate}, INTERVAL WEEKDAY(${manilaCurrentDate}) DAY), INTERVAL 7 DAY)
       GROUP BY WEEKDAY(sale_date)
+      ORDER BY bucket_index
     `)
     const [monthlyRows] = await pool.execute(`
       SELECT DAY(sale_date) - 1 AS bucket_index, SUM(total_amount) AS sales, COUNT(*) AS transactions
       FROM sales
-      WHERE YEAR(sale_date) = YEAR(CURRENT_DATE()) AND MONTH(sale_date) = MONTH(CURRENT_DATE())
+      WHERE sale_date >= DATE_FORMAT(${manilaCurrentDate}, '%Y-%m-01')
+        AND sale_date < DATE_FORMAT(${manilaCurrentDate}, '%Y-%m-01') + INTERVAL 1 MONTH
       GROUP BY DAY(sale_date) - 1
+      ORDER BY bucket_index
     `)
 
-    const today = new Date()
-    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+    const { daysInMonth, monthLabel } = manilaCalendar()
     return response.json({
       success: true,
       data: {
@@ -86,7 +109,7 @@ export async function getDashboard(request, response) {
         trends: {
           daily: fillSeries(24, dailyRows, 'bucket_index', (index) => `${String(index).padStart(2, '0')}:00`),
           weekly: fillSeries(7, weeklyRows, 'bucket_index', (index) => dayLabels[index]),
-          monthly: fillSeries(daysInMonth, monthlyRows, 'bucket_index', (index) => `${today.toLocaleString('en-US', { month: 'short' })} ${index + 1}`),
+          monthly: fillSeries(daysInMonth, monthlyRows, 'bucket_index', (index) => `${monthLabel} ${index + 1}`),
         },
         top_products: topProducts,
         low_products: lowProducts,

@@ -120,8 +120,8 @@ export async function completeEmailVerification(token) {
       [user.user_id],
     )
     await connection.execute(
-      `INSERT INTO activity_logs (user_id, action, description)
-       VALUES (?, 'USER_EMAIL_VERIFIED', ?)`,
+      `INSERT INTO activity_logs (user_id, action, description, created_at)
+       VALUES (?, 'USER_EMAIL_VERIFIED', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
       [user.user_id, `Recovery email verified for user ${user.user_id}`],
     )
     await connection.commit()

@@ -109,8 +109,8 @@ export async function createStockIn(request, response) {
     )
 
     await connection.execute(
-      `INSERT INTO activity_logs (user_id, action, description)
-       VALUES (?, 'STOCK_IN_CREATED', ?)`,
+      `INSERT INTO activity_logs (user_id, action, description, created_at)
+       VALUES (?, 'STOCK_IN_CREATED', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
       [request.user.user_id, `Stock-In ${result.insertId} created for product ${productId}`],
     )
 
@@ -167,7 +167,7 @@ export async function getStockInRecords(request, response) {
           si.remaining_quantity,
           si.cost_price,
           si.total_cost,
-          si.delivery_date,
+          CONCAT(DATE_FORMAT(si.delivery_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS delivery_date,
           si.created_at
       FROM stock_in si
       JOIN suppliers s

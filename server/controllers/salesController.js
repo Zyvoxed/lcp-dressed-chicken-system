@@ -139,8 +139,8 @@ export async function createSale(request, response) {
       `INSERT INTO sales (
          customer_id, user_id, payment_type, total_amount,
          amount_paid, remaining_balance, status, sale_date
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [customerId, request.user.user_id, paymentType, totalAmount, paidAmount, remainingBalance, status, new Date()],
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
+      [customerId, request.user.user_id, paymentType, totalAmount, paidAmount, remainingBalance, status],
     )
 
     for (const item of preparedItems) {
@@ -191,8 +191,8 @@ export async function createSale(request, response) {
     }
 
     await connection.execute(
-      `INSERT INTO activity_logs (user_id, action, description)
-       VALUES (?, 'SALE_CREATED', ?)`,
+      `INSERT INTO activity_logs (user_id, action, description, created_at)
+       VALUES (?, 'SALE_CREATED', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
       [request.user.user_id, `Sale ${saleResult.insertId} created (${paymentType}, ${totalAmount})`],
     )
 

@@ -1,5 +1,8 @@
 import pool from '../config/database.js'
 
+// New activity_logs DATETIME values store Manila wall-clock time. The API adds
+// the explicit offset so clients never infer a timezone from the server host.
+
 function positiveInteger(value, fallback, maximum = Number.MAX_SAFE_INTEGER) {
   const parsed = Number(value)
   return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, maximum) : fallback
@@ -44,7 +47,8 @@ export async function getActivityLogs(request, response) {
       ${where}
     `, parameters)
     const [logs] = await pool.execute(`
-      SELECT al.activity_id, al.user_id, al.action, al.description, al.created_at,
+      SELECT al.activity_id, al.user_id, al.action, al.description,
+             CONCAT(DATE_FORMAT(al.created_at, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS created_at,
              COALESCE(u.username, 'System') AS username,
              COALESCE(u.fullname, 'System') AS fullname,
              COALESCE(u.role, 'System') AS role

@@ -35,6 +35,12 @@ async function request(path, token, body) {
   })
 }
 
+async function read(path, token) {
+  return fetch(`${baseUrl}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
 async function snapshot(connection, productId, customerId) {
   const [[product]] = await connection.query('SELECT stock_quantity FROM products WHERE product_id = ?', [productId])
   const [batches] = await connection.query(
@@ -74,6 +80,11 @@ try {
     [passwordHash],
   )
   const adminId = userResult.insertId
+  const [employeeResult] = await admin.execute(
+    `INSERT INTO users (fullname, username, password, role) VALUES
+     ('Transaction Staff', 'transaction_staff', ?, 'Staff')`,
+    [passwordHash],
+  )
   const [supplierResult] = await admin.execute("INSERT INTO suppliers (supplier_name) VALUES ('Test Supplier')")
   const [customerResult] = await admin.execute("INSERT INTO customers (customer_name) VALUES ('Test Customer')")
   const [productResult] = await admin.execute(
@@ -96,6 +107,7 @@ try {
   })
   await waitForServer(api)
   const token = jwt.sign({ user_id: adminId, role: 'Admin' }, process.env.JWT_SECRET, { expiresIn: '10m' })
+  const employeeToken = jwt.sign({ user_id: employeeResult.insertId, role: 'Staff' }, process.env.JWT_SECRET, { expiresIn: '10m' })
 
   const original = await snapshot(admin, productId, customerId)
   await admin.query("CREATE TRIGGER fail_sale_allocation BEFORE INSERT ON sale_batch_allocations FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'controlled sale failure'")
@@ -140,6 +152,30 @@ try {
   assert(afterPaymentFailure.balance === 200 && Number(afterPaymentFailure.counts.payments) === 0, 'Payment rollback left partial data')
   await admin.query('DROP TRIGGER fail_payment_activity')
   console.log('PASS payment rollback')
+
+  const successfulPayment = await request('/payments', token, { sale_id: creditBody.data.sale_id, payment_amount: 50 })
+  assert(successfulPayment.status === 201, 'Successful payment setup failed')
+  const detailResponse = await read(`/reports/sales/${creditBody.data.sale_id}`, token)
+  const detailBody = await detailResponse.json()
+  assert(detailResponse.status === 200, 'Admin could not retrieve sale report details')
+  assert(detailBody.data.sale.sale_id === creditBody.data.sale_id, 'Sale detail returned the wrong transaction')
+  assert(detailBody.data.items.length === 1 && Number(detailBody.data.items[0].price) === 100, 'Sale detail did not preserve stored item pricing')
+  assert(detailBody.data.payments.length === 1 && Number(detailBody.data.payments[0].payment_amount) === 50, 'Sale detail did not return sale-specific payments')
+  const creditHistoryResponse = await read(`/customers/${customerId}/credits`, token)
+  const paymentHistoryResponse = await read(`/customers/${customerId}/payments`, token)
+  const salesReportResponse = await read('/reports/sales', token)
+  const creditHistory = await creditHistoryResponse.json()
+  const paymentHistory = await paymentHistoryResponse.json()
+  const salesReport = await salesReportResponse.json()
+  const matchingCredit = creditHistory.data.find((sale) => sale.sale_id === creditBody.data.sale_id)
+  const matchingPayment = paymentHistory.data.find((payment) => payment.sale_id === creditBody.data.sale_id)
+  const matchingReportSale = salesReport.data.records.find((sale) => sale.sale_id === creditBody.data.sale_id)
+  assert(matchingCredit.sale_date === detailBody.data.sale.sale_date && matchingReportSale.sale_date === matchingCredit.sale_date, 'Matching sale timestamps differed across Reports and Customer Credits')
+  assert(matchingPayment.payment_date === detailBody.data.payments[0].payment_date, 'Matching payment timestamps differed across detail and payment history')
+  assert(matchingCredit.sale_date.endsWith('+08:00') && matchingPayment.payment_date.endsWith('+08:00'), 'Transaction APIs did not declare the Manila offset')
+  const restrictedDetail = await read(`/reports/sales/${creditBody.data.sale_id}`, employeeToken)
+  assert(restrictedDetail.status === 403, 'Sale report details were not restricted to Admin')
+  console.log('PASS read-only sale detail data and Admin authorization')
 
   const [concurrentProduct] = await admin.execute(
     "INSERT INTO products (product_name, category, unit, selling_price, stock_quantity, reorder_level, status) VALUES ('Concurrent Product', 'Test', 'kg', 100, 10, 2, 'Available')",

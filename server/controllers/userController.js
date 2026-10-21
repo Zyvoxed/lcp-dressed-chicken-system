@@ -56,7 +56,11 @@ async function uniqueEmail(executor, email, excludedId = 0) {
 }
 
 async function activity(executor, adminId, action, description) {
-  await executor.execute('INSERT INTO activity_logs (user_id, action, description) VALUES (?, ?, ?)', [adminId, action, description])
+  await executor.execute(
+    `INSERT INTO activity_logs (user_id, action, description, created_at)
+     VALUES (?, ?, ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
+    [adminId, action, description],
+  )
 }
 
 function failure(error, response, fallback) {

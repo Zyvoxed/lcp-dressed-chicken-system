@@ -3,6 +3,7 @@ import DataTable from "../Shared/DataTable.jsx";
 import EmptyState from "../Shared/EmptyState.jsx";
 import LoadingSpinner from "../Shared/LoadingSpinner.jsx";
 import StatusBadge from "../Shared/StatusBadge.jsx";
+import StatCard from "../Shared/StatCard.jsx";
 import {
   getInventoryReport,
   logReportExport,
@@ -96,10 +97,21 @@ function InventoryValuation() {
       : "var(--surface-inset) 0 100%";
 
   return (
-    <section className="report-layout">
+    <div className="report-tab-content">
+      <div className="stats-grid report-stats report-inventory-stats">
+        <StatCard label="Active Products" value={Number(report.summary.total_products).toLocaleString("en-PH")} />
+        <StatCard label="FIFO Stock Cost" value={peso.format(totalCost)} />
+        <StatCard label="Estimated Sales Value" value={peso.format(Number(report.summary.estimated_total_sales_value))} />
+        <StatCard label="Low Stock" value={Number(report.summary.low_stock_count).toLocaleString("en-PH")} />
+        <StatCard label="Out of Stock" value={Number(report.summary.out_of_stock_count).toLocaleString("en-PH")} />
+      </div>
+      <section className="report-layout">
       <article className="panel table-panel report-table-panel inventory-report-panel">
-        <div className="panel-title-row">
-          <h2>STOCK VALUE REPORT</h2>
+        <div className="report-heading-row">
+          <div className="report-heading">
+            <h2>Inventory Assets Valuation</h2>
+            <p>Review active stock quantities and their stored FIFO cost and estimated sales values.</p>
+          </div>
           <button
             className="primary-action slim"
             type="button"
@@ -183,7 +195,8 @@ function InventoryValuation() {
           {report.summary.out_of_stock_count}
         </p>
       </aside>
-    </section>
+      </section>
+    </div>
   );
 }
 

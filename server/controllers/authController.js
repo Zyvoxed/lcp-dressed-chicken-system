@@ -49,8 +49,8 @@ export async function login(request, response) {
     )
 
     pool.execute(
-      `INSERT INTO activity_logs (user_id, action, description)
-       VALUES (?, 'LOGIN', ?)`,
+      `INSERT INTO activity_logs (user_id, action, description, created_at)
+       VALUES (?, 'LOGIN', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
       [user.user_id, `${user.username} logged in`],
     ).catch((error) => {
       console.error('Unable to record login activity:', error.message)

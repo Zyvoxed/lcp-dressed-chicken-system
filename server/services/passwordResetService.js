@@ -217,8 +217,8 @@ export async function completePasswordReset(token, passwordValue, ipAddress) {
     )
     await invalidatePasswordResetTokens(connection, user.user_id)
     await connection.execute(
-      `INSERT INTO activity_logs (user_id, action, description)
-       VALUES (?, 'USER_PASSWORD_RESET', ?)`,
+      `INSERT INTO activity_logs (user_id, action, description, created_at)
+       VALUES (?, 'USER_PASSWORD_RESET', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
       [user.user_id, `Password reset completed for user ${user.user_id}`],
     )
     await connection.commit()

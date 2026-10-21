@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react'
 import StatusBadge from '../Shared/StatusBadge.jsx'
 import { peso } from '../../utils/currency.js'
 
@@ -25,6 +26,9 @@ function ProductCard({ product, onAdd }) {
       <p>Available stock: {Number(product.stock_quantity)} {product.unit}</p>
       <strong>{peso.format(Number(product.selling_price))} / {product.unit}</strong>
       <StatusBadge value={product.status} as="em" />
+      <span className="product-add-cue" aria-hidden="true">
+        {available && <Plus size={14} />} {available ? 'Add' : 'Unavailable'}
+      </span>
     </article>
   )
 }

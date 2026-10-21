@@ -16,6 +16,7 @@ function RecordSales() {
   const [products, setProducts] = useState([])
   const [cart, setCart] = useState([])
   const [customers, setCustomers] = useState([])
+  const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [customerModal, setCustomerModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -69,8 +70,11 @@ function RecordSales() {
   }
 
   function updateQuantity(productId, quantity) {
+    const parsedQuantity = Number(quantity)
+    if (!Number.isFinite(parsedQuantity)) return
+
     setCart((current) => current.map((item) => item.product_id === productId
-      ? { ...item, quantity: Math.min(Math.max(Number(quantity), 0.001), Number(item.stock_quantity)) }
+      ? { ...item, quantity: Math.min(Math.max(parsedQuantity, 0.001), Number(item.stock_quantity)) }
       : item))
   }
 
@@ -79,20 +83,27 @@ function RecordSales() {
   }
 
   async function processSale({ amountPaid, paymentType, customerId }) {
-    const result = await createSale({
-      customer_id: paymentType === 'Credit' ? Number(customerId) : null,
+    return createSale({
+      customer_id: customerId ? Number(customerId) : null,
       payment_type: paymentType,
       amount_paid: amountPaid,
       items: cart.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
     })
-    setCart([])
-    await refreshProducts()
-    return result
   }
 
-  async function customerCreated() {
+  async function completeSale() {
+    setCart([])
+    try {
+      await refreshProducts()
+      setError('')
+    } catch (requestError) {
+      setError(`Sale recorded, but product stock could not be refreshed: ${requestError.message}`)
+    }
+  }
+
+  async function customerCreated(customerId) {
     setCustomers(await getCustomers())
-    setCustomerModal(false)
+    setSelectedCustomerId(String(customerId))
   }
 
   return (
@@ -110,7 +121,17 @@ function RecordSales() {
         {!loading && !error && !visibleProducts.length && <EmptyState>No products found.</EmptyState>}
         {!loading && !error && visibleProducts.length > 0 && <ProductGrid products={visibleProducts} onAdd={addProduct} />}
       </article>
-      <SalesBasket cart={cart} customers={customers} onAddCustomer={() => setCustomerModal(true)} onQuantity={updateQuantity} onRemove={removeProduct} onProcess={processSale} />
+      <SalesBasket
+        cart={cart}
+        customers={customers}
+        onAddCustomer={() => setCustomerModal(true)}
+        onQuantity={updateQuantity}
+        onRemove={removeProduct}
+        onProcess={processSale}
+        onComplete={completeSale}
+        customerId={selectedCustomerId}
+        onCustomerChange={setSelectedCustomerId}
+      />
       {customerModal && <CustomerModal onClose={() => setCustomerModal(false)} onCreated={customerCreated} />}
       </div>
     </section>
