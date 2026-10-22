@@ -1,4 +1,5 @@
 import pool from '../config/database.js'
+import { DecimalValidationError, decimalLimits, parseDecimal } from '../utils/decimalValidation.js'
 
 class RequestError extends Error {
   constructor(status, message) {
@@ -17,15 +18,13 @@ function parsePositiveInteger(value, fieldName) {
   return parsed
 }
 
-function parseNumber(value, fieldName, minimum, inclusive = true) {
-  const parsed = Number(value)
-  const validRange = inclusive ? parsed >= minimum : parsed > minimum
-
-  if (value === '' || value === null || value === undefined || !Number.isFinite(parsed) || !validRange) {
-    throw new RequestError(400, `${fieldName} is invalid`)
+function decimalValue(value, options) {
+  try {
+    return parseDecimal(value, options)
+  } catch (error) {
+    if (error instanceof DecimalValidationError) throw new RequestError(400, error.message)
+    throw error
   }
-
-  return parsed
 }
 
 export async function createStockIn(request, response) {
@@ -34,8 +33,19 @@ export async function createStockIn(request, response) {
   try {
     const supplierId = parsePositiveInteger(request.body?.supplier_id, 'Supplier')
     const productId = parsePositiveInteger(request.body?.product_id, 'Product')
-    const quantityReceived = parseNumber(request.body?.quantity_received, 'Quantity received', 0, false)
-    const costPrice = parseNumber(request.body?.cost_price, 'Cost price', 0)
+    const quantityReceived = decimalValue(request.body?.quantity_received, {
+      fieldName: 'Quantity received',
+      maximum: decimalLimits.quantity,
+      decimalPlaces: 3,
+      minimum: 0,
+      inclusiveMinimum: false,
+    })
+    const costPrice = decimalValue(request.body?.cost_price, {
+      fieldName: 'Cost price',
+      maximum: decimalLimits.unitPrice,
+      decimalPlaces: 2,
+      minimum: 0,
+    })
     const deliveryDate = new Date(request.body?.delivery_date)
 
     if (!request.body?.delivery_date || Number.isNaN(deliveryDate.getTime())) {
@@ -44,7 +54,11 @@ export async function createStockIn(request, response) {
 
     const quantityValue = quantityReceived.toFixed(3)
     const costValue = costPrice.toFixed(2)
-    const totalCost = (quantityReceived * costPrice).toFixed(2)
+    const totalCostNumber = quantityReceived * costPrice
+    if (!Number.isFinite(totalCostNumber) || totalCostNumber > decimalLimits.money) {
+      throw new RequestError(400, `Total cost must not exceed ${decimalLimits.money}`)
+    }
+    const totalCost = totalCostNumber.toFixed(2)
 
     connection = await pool.getConnection()
     await connection.beginTransaction()
@@ -70,6 +84,13 @@ export async function createStockIn(request, response) {
     if (products.length === 0) {
       throw new RequestError(404, 'Active product not found')
     }
+
+    const newStock = Number(products[0].stock_quantity) + quantityReceived
+    if (!Number.isFinite(newStock) || newStock > decimalLimits.quantity) {
+      throw new RequestError(400, `Resulting product stock must not exceed ${decimalLimits.quantity}`)
+    }
+    const reorderLevel = Number(products[0].reorder_level)
+    const status = newStock <= 0 ? 'Out of Stock' : newStock <= reorderLevel ? 'Low Stock' : 'Available'
 
     const [result] = await connection.execute(
       `INSERT INTO stock_in (
@@ -98,10 +119,6 @@ export async function createStockIn(request, response) {
       'UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?',
       [quantityValue, productId],
     )
-
-    const newStock = Number(products[0].stock_quantity) + quantityReceived
-    const reorderLevel = Number(products[0].reorder_level)
-    const status = newStock <= 0 ? 'Out of Stock' : newStock <= reorderLevel ? 'Low Stock' : 'Available'
 
     await connection.execute(
       'UPDATE products SET status = ? WHERE product_id = ?',

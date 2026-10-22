@@ -1,4 +1,5 @@
 import pool from '../config/database.js'
+import { DecimalValidationError, decimalLimits, parseDecimal } from '../utils/decimalValidation.js'
 
 class SaleError extends Error {
   constructor(status, message) {
@@ -15,16 +16,13 @@ function positiveInteger(value, label) {
   return parsed
 }
 
-function numericValue(value, label, minimum, inclusive = true) {
-  const parsed = Number(value)
-  const validType = typeof value === 'number' || typeof value === 'string'
-  const empty = typeof value === 'string' && value.trim() === ''
-  const validRange = inclusive ? parsed >= minimum : parsed > minimum
-
-  if (!validType || empty || !Number.isFinite(parsed) || !validRange) {
-    throw new SaleError(400, `${label} is invalid`)
+function decimalValue(value, options) {
+  try {
+    return parseDecimal(value, options)
+  } catch (error) {
+    if (error instanceof DecimalValidationError) throw new SaleError(400, error.message)
+    throw error
   }
-  return parsed
 }
 
 function normalizeItems(items) {
@@ -34,8 +32,17 @@ function normalizeItems(items) {
 
   const productIds = new Set()
   const normalized = items.map((item) => {
+    if (['price', 'selling_price', 'unit_price', 'subtotal'].some((field) => Object.hasOwn(item || {}, field))) {
+      throw new SaleError(400, 'Sale item prices are determined by the registered product price')
+    }
     const productId = positiveInteger(item?.product_id, 'Product')
-    const quantity = numericValue(item?.quantity, 'Quantity', 0, false)
+    const quantity = decimalValue(item?.quantity, {
+      fieldName: 'Quantity',
+      maximum: decimalLimits.quantity,
+      decimalPlaces: 3,
+      minimum: 0,
+      inclusiveMinimum: false,
+    })
 
     if (productIds.has(productId)) {
       throw new SaleError(400, 'Duplicate products are not allowed')
@@ -57,7 +64,12 @@ export async function createSale(request, response) {
       throw new SaleError(400, 'Payment type must be Cash or Credit')
     }
 
-    const amountPaid = numericValue(request.body?.amount_paid, 'Amount paid', 0)
+    const amountPaid = decimalValue(request.body?.amount_paid, {
+      fieldName: 'Amount paid',
+      maximum: decimalLimits.money,
+      decimalPlaces: 2,
+      minimum: 0,
+    })
     const items = normalizeItems(request.body?.items)
     const hasCustomer = request.body?.customer_id !== null && request.body?.customer_id !== undefined && request.body?.customer_id !== ''
     const customerId = hasCustomer ? positiveInteger(request.body.customer_id, 'Customer') : null
@@ -116,8 +128,15 @@ export async function createSale(request, response) {
       }
 
       const priceCents = Math.round(Number(product.selling_price) * 100)
+      const subtotalAmount = item.quantity * Number(product.selling_price)
+      if (!Number.isFinite(subtotalAmount) || subtotalAmount > decimalLimits.money) {
+        throw new SaleError(400, `Sale item total must not exceed ${decimalLimits.money}`)
+      }
       const subtotalCents = Math.round(item.quantity * priceCents)
       totalCents += subtotalCents
+      if (totalCents > Math.round(decimalLimits.money * 100)) {
+        throw new SaleError(400, `Sale total must not exceed ${decimalLimits.money}`)
+      }
       preparedItems.push({ ...item, product, batches, priceCents, subtotalCents })
     }
 

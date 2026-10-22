@@ -1,4 +1,5 @@
 import pool from '../config/database.js'
+import { DecimalValidationError, decimalLimits, parseDecimal } from '../utils/decimalValidation.js'
 
 class PaymentError extends Error {
   constructor(status, message) {
@@ -12,12 +13,19 @@ export async function recordPayment(request, response) {
 
   try {
     const saleId = Number(request.body?.sale_id)
-    const paymentAmount = Number(request.body?.payment_amount)
-    const validPaymentType = typeof request.body?.payment_amount === 'number' || typeof request.body?.payment_amount === 'string'
-
     if (!Number.isInteger(saleId) || saleId <= 0) throw new PaymentError(400, 'Invalid sale ID')
-    if (!validPaymentType || !Number.isFinite(paymentAmount) || paymentAmount <= 0) {
-      throw new PaymentError(400, 'Payment amount must be greater than zero')
+    let paymentAmount
+    try {
+      paymentAmount = parseDecimal(request.body?.payment_amount, {
+        fieldName: 'Payment amount',
+        maximum: decimalLimits.money,
+        decimalPlaces: 2,
+        minimum: 0,
+        inclusiveMinimum: false,
+      })
+    } catch (error) {
+      if (error instanceof DecimalValidationError) throw new PaymentError(400, error.message)
+      throw error
     }
 
     connection = await pool.getConnection()

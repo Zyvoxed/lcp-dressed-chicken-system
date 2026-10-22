@@ -13,6 +13,7 @@
     "test:transactions": "node scripts/predeployTransactionTest.js",
     "test:email": "node --test tests/emailDeliveryService.test.js",
     "test:password-reset": "node --test tests/passwordResetSecurity.test.js",
+    "test:decimal-precision": "node --test tests/decimalPrecisionValidation.test.js",
     "dev": "node --watch server.js",
     "start": "node server.js"
   },
