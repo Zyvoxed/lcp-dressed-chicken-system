@@ -19,6 +19,7 @@ function SupplierLedger({ records, loading, error }) {
       {!loading && !error && records.length > 0 && <DataTable
         columns={columns}
         rows={records}
+        pageSize={10}
         searchPlaceholder="Search deliveries"
         getSortValue={(record, index) => [
           record.stockin_id,

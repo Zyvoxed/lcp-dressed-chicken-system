@@ -68,6 +68,8 @@
 
 .report-heading-row {
   margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
 }
 
 .report-heading {
@@ -77,11 +79,37 @@
 .report-heading h2,
 .report-table-panel .report-heading h2,
 .report-filter-panel .report-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   margin: 0;
   font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+}
+
+.report-heading h2::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  content: '';
+}
+
+.reports-page .report-stats .stat-card {
+  min-height: 116px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
 }
 
 .report-result-count {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
   color: var(--text-secondary);
   background: var(--surface-inset);
   text-transform: none;
@@ -97,6 +125,12 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-inset);
+}
+
+.report-local-filters :is(input, select) {
+  min-height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
 }
 
 .report-inline-error {
@@ -123,6 +157,111 @@
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
+}
+
+.report-table-panel .table-scroll {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+}
+
+.report-table-panel .system-data-table :is(th, td) {
+  padding: 12px 14px;
+  vertical-align: middle;
+}
+
+.report-table-panel .system-data-table thead th {
+  background: var(--surface-inset);
+  letter-spacing: 0.025em;
+}
+
+.report-table-panel .system-data-table tbody tr:hover td {
+  background: var(--surface-hover);
+}
+
+.inventory-report-panel .data-table-shell {
+  gap: 14px;
+}
+
+.inventory-report-panel .table-toolbar {
+  justify-content: flex-start;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
+.inventory-report-panel .table-search {
+  width: min(100%, 420px);
+  min-height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+}
+
+.receivables-report-panel .data-table-shell {
+  gap: 14px;
+}
+
+.receivables-report-panel .table-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
+.receivables-report-panel .table-search {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+}
+
+.receivables-toolbar-summary {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  background: var(--card-bg);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.receivables-toolbar-summary strong {
+  color: var(--text-heading);
+  font-weight: 600;
+}
+
+.receivables-toolbar-summary span {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sales-report-panel tbody tr.sales-transaction-row {
+  cursor: pointer;
+}
+
+.sales-report-panel tbody tr.sales-transaction-row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.sales-report-panel tbody tr.sales-transaction-row:focus-visible td {
+  background: var(--row-hover);
+}
+
+.report-transaction-reference {
+  color: var(--primary);
+  font-weight: 700;
 }
 
 .sales-report-panel table {
@@ -187,23 +326,6 @@
   max-width: 260px;
   white-space: normal;
   overflow-wrap: anywhere;
-}
-
-.report-transaction-link {
-  padding: 2px 0;
-  border: 0;
-  color: var(--primary);
-  background: transparent;
-  font: inherit;
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  text-underline-offset: 3px;
-}
-
-.report-transaction-link:hover {
-  color: var(--primary-strong);
-  text-decoration-color: currentColor;
 }
 
 .sales-report-panel :is(th, td):nth-child(6),
@@ -325,7 +447,7 @@
 
 .valuation-donut-segment {
   stroke-width: 28;
-  cursor: pointer;
+  cursor: help;
   outline: none;
   transition: opacity 150ms ease, stroke-width 150ms ease, filter 150ms ease;
 }
@@ -371,23 +493,37 @@
 }
 
 .valuation-tooltip {
-  min-height: 132px;
-  padding: 13px 14px;
+  position: fixed;
+  z-index: 1200;
+  width: min(280px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  padding: 12px 14px;
   display: grid;
   align-content: start;
   gap: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-left: 3px solid var(--primary);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  background: var(--surface-inset);
+  border-radius: var(--radius);
+  color: var(--tooltip-text);
+  background: var(--tooltip-bg);
+  box-shadow: var(--shadow);
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.45;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 14px));
 }
 
 .valuation-tooltip > strong {
-  color: var(--text-heading);
-  font-size: 14px;
+  min-width: 0;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--tooltip-text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 1.35;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 
@@ -398,26 +534,46 @@
 
 .valuation-tooltip dl {
   display: grid;
-  gap: 5px;
+  gap: 0;
 }
 
 .valuation-tooltip dl div {
-  display: flex;
-  align-items: flex-start;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.valuation-tooltip dl div:last-child {
+  border-bottom: 0;
 }
 
 .valuation-tooltip dt {
-  color: var(--text-muted);
+  min-width: 0;
+  color: var(--tooltip-text);
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.72;
 }
 
 .valuation-tooltip dd {
+  min-width: 0;
   margin: 0;
-  color: var(--text-heading);
+  color: var(--tooltip-text);
+  font-size: 12px;
   font-weight: 600;
   text-align: right;
   overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.valuation-tooltip dl div:first-child dd {
+  color: var(--primary);
+  font-size: 13px;
 }
 
 .valuation-legend {
@@ -429,7 +585,7 @@
   padding-right: 3px;
 }
 
-.valuation-legend button {
+.valuation-legend [role="img"] {
   width: 100%;
   min-width: 0;
   padding: 8px;
@@ -444,28 +600,34 @@
   font: inherit;
   font-size: 12px;
   text-align: left;
+  cursor: help;
   transition: border-color 150ms ease, background-color 150ms ease;
 }
 
-.valuation-legend button:is(:hover, :focus-visible, .is-active) {
+.valuation-legend [role="img"]:is(:hover, :focus-visible, .is-active) {
   border-color: var(--border);
   background: var(--surface-hover);
 }
 
-.valuation-legend button i {
+.valuation-legend [role="img"]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.valuation-legend [role="img"] i {
   width: 9px;
   height: 9px;
   border-radius: 50%;
 }
 
-.valuation-legend button span {
+.valuation-legend [role="img"] span {
   overflow: hidden;
   color: var(--text-soft);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.valuation-legend button strong {
+.valuation-legend [role="img"] strong {
   color: var(--text-heading);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
@@ -630,6 +792,26 @@
     grid-template-columns: 1fr;
   }
 
+  .inventory-report-panel .table-toolbar {
+    justify-content: stretch;
+  }
+
+  .inventory-report-panel .table-search {
+    width: 100%;
+  }
+
+  .receivables-report-panel .table-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .receivables-report-panel .table-search {
+    width: 100%;
+  }
+
+  .receivables-toolbar-summary {
+    justify-content: space-between;
+  }
+
   .reports-page > .tabs,
   .report-inventory-stats,
   .report-receivables-stats {
@@ -658,7 +840,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .valuation-donut-segment,
-  .valuation-legend button {
+  .valuation-legend [role="img"] {
     transition: none;
   }
 }

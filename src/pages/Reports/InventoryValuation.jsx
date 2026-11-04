@@ -37,7 +37,7 @@ function InventoryValuation() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [hoveredProductId, setHoveredProductId] = useState(null)
-  const [selectedProductId, setSelectedProductId] = useState(null)
+  const [tooltipPosition, setTooltipPosition] = useState(null)
 
   async function retryReport() {
     setLoading(true)
@@ -80,8 +80,22 @@ function InventoryValuation() {
     () => chartProducts.reduce((total, product) => total + product.chartValue, 0),
     [chartProducts],
   )
-  const activeProductId = hoveredProductId ?? selectedProductId
+  const activeProductId = hoveredProductId
   const activeProduct = chartProducts.find((product) => product.product_id === activeProductId) ?? null
+
+  function showProductTooltip(productId, x, y) {
+    const tooltipHalfWidth = Math.min(140, Math.max(window.innerWidth / 2 - 12, 0))
+    setHoveredProductId(productId)
+    setTooltipPosition({
+      x: Math.max(tooltipHalfWidth, Math.min(x, window.innerWidth - tooltipHalfWidth)),
+      y,
+    })
+  }
+
+  function hideProductTooltip() {
+    setHoveredProductId(null)
+    setTooltipPosition(null)
+  }
 
   async function download() {
     try {
@@ -102,11 +116,6 @@ function InventoryValuation() {
         product.status,
       ]),
     )
-  }
-
-  function toggleSelectedProduct(productId) {
-    setHoveredProductId(null)
-    setSelectedProductId((current) => current === productId ? null : productId)
   }
 
   if (loading && !report) {
@@ -194,7 +203,7 @@ function InventoryValuation() {
         <aside className="panel donut-panel inventory-valuation-chart-panel" aria-labelledby="valuation-chart-title">
           <div className="report-heading valuation-chart-heading">
             <h2 id="valuation-chart-title">FIFO Stock Value by Product</h2>
-            <p>All active products with a remaining FIFO cost value. Select a segment or legend item for details.</p>
+            <p>All active products with a remaining FIFO cost value. Hover over a segment or legend item to see product details.</p>
           </div>
 
           {!chartProducts.length ? (
@@ -217,63 +226,64 @@ function InventoryValuation() {
                         stroke={product.chartColor}
                         strokeDasharray={`${product.dashLength} ${donutCircumference - product.dashLength}`}
                         strokeDashoffset={product.dashOffset}
-                        role="button"
+                        role="img"
                         tabIndex="0"
                         aria-label={`${product.product_name}: ${peso.format(product.chartValue)}, ${(product.share * 100).toFixed(1)} percent of inventory value, ${formatQuantity(product.stock_quantity)} ${product.unit} available, category ${product.category}`}
-                        aria-pressed={selectedProductId === product.product_id}
-                        onPointerEnter={() => setHoveredProductId(product.product_id)}
-                        onPointerLeave={() => setHoveredProductId(null)}
-                        onFocus={() => setHoveredProductId(product.product_id)}
-                        onBlur={() => setHoveredProductId(null)}
-                        onClick={() => toggleSelectedProduct(product.product_id)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault()
-                            toggleSelectedProduct(product.product_id)
-                          }
+                        aria-describedby={activeProductId === product.product_id ? 'valuation-hover-details' : undefined}
+                        onPointerEnter={(event) => showProductTooltip(product.product_id, event.clientX, event.clientY)}
+                        onPointerMove={(event) => showProductTooltip(product.product_id, event.clientX, event.clientY)}
+                        onPointerLeave={hideProductTooltip}
+                        onFocus={(event) => {
+                          const bounds = event.currentTarget.getBoundingClientRect()
+                          showProductTooltip(product.product_id, bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
                         }}
-                      >
-                        <title>{product.product_name}: {peso.format(product.chartValue)}</title>
-                      </circle>
+                        onBlur={hideProductTooltip}
+                      />
                     )
                   })}
                 </svg>
                 <div className="valuation-donut-center" aria-hidden="true"><span>FIFO stock cost</span><strong>{peso.format(totalCost)}</strong></div>
               </div>
 
-              <div className="valuation-tooltip" role="status" aria-live="polite">
-                {activeProduct ? (
-                  <>
-                    <strong>{activeProduct.product_name}</strong>
-                    <dl>
-                      <div><dt>Inventory Value</dt><dd>{peso.format(activeProduct.chartValue)}</dd></div>
-                      <div><dt>Share of Inventory</dt><dd>{((activeProduct.chartValue / chartTotal) * 100).toFixed(1)}%</dd></div>
-                      <div><dt>Available Stock</dt><dd>{formatQuantity(activeProduct.stock_quantity)} {activeProduct.unit}</dd></div>
-                      <div><dt>Category</dt><dd>{activeProduct.category}</dd></div>
-                    </dl>
-                  </>
-                ) : (
-                  <><strong>Product valuation details</strong><span>Hover, focus, or tap a product to inspect its contribution.</span></>
-                )}
-              </div>
+              {activeProduct && tooltipPosition && (
+                <div
+                  id="valuation-hover-details"
+                  className="valuation-tooltip"
+                  role="tooltip"
+                  style={{ left: `${tooltipPosition.x}px`, top: `${tooltipPosition.y}px` }}
+                >
+                  <strong>{activeProduct.product_name}</strong>
+                  <dl>
+                    <div><dt>Inventory Value</dt><dd>{peso.format(activeProduct.chartValue)}</dd></div>
+                    <div><dt>Share of Inventory</dt><dd>{((activeProduct.chartValue / chartTotal) * 100).toFixed(1)}%</dd></div>
+                    <div><dt>Available Stock</dt><dd>{formatQuantity(activeProduct.stock_quantity)} {activeProduct.unit}</dd></div>
+                    <div><dt>Category</dt><dd>{activeProduct.category}</dd></div>
+                  </dl>
+                </div>
+              )}
 
               <div className="valuation-legend" aria-label="Product valuation legend">
                 {segments.map((product) => (
-                  <button
-                    type="button"
+                  <div
+                    role="img"
+                    tabIndex={0}
                     key={product.product_id}
                     className={product.product_id === activeProductId ? 'is-active' : ''}
-                    aria-pressed={selectedProductId === product.product_id}
-                    onPointerEnter={() => setHoveredProductId(product.product_id)}
-                    onPointerLeave={() => setHoveredProductId(null)}
-                    onFocus={() => setHoveredProductId(product.product_id)}
-                    onBlur={() => setHoveredProductId(null)}
-                    onClick={() => toggleSelectedProduct(product.product_id)}
+                    aria-label={`${product.product_name}: ${peso.format(product.chartValue)}, ${(product.share * 100).toFixed(1)} percent of inventory value`}
+                    aria-describedby={activeProductId === product.product_id ? 'valuation-hover-details' : undefined}
+                    onPointerEnter={(event) => showProductTooltip(product.product_id, event.clientX, event.clientY)}
+                    onPointerMove={(event) => showProductTooltip(product.product_id, event.clientX, event.clientY)}
+                    onPointerLeave={hideProductTooltip}
+                    onFocus={(event) => {
+                      const bounds = event.currentTarget.getBoundingClientRect()
+                      showProductTooltip(product.product_id, bounds.left + bounds.width / 2, bounds.top)
+                    }}
+                    onBlur={hideProductTooltip}
                   >
                     <i style={{ backgroundColor: product.chartColor }} aria-hidden="true" />
                     <span>{product.product_name}</span>
                     <strong>{peso.format(product.chartValue)}</strong>
-                  </button>
+                  </div>
                 ))}
               </div>
             </>

@@ -13,12 +13,14 @@ import "./styles/shared/Modal.css";
 import "./styles/pages/Login.css";
 import "./styles/pages/ActivityLogs.css";
 import "./styles/pages/Dashboard.css";
+import "./styles/pages/BusinessAnalytics.css";
 import "./styles/pages/RecordSales.css";
 import "./styles/pages/Inventory.css";
 import "./styles/pages/CustomerCredits.css";
 import "./styles/pages/SupplierContracts.css";
 import "./styles/pages/Reports.css";
 import "./styles/pages/UserAccounts.css";
+import "./styles/shared/SearchControls.css";
 import App from "./App.jsx";
 
 createRoot(document.getElementById("root")).render(

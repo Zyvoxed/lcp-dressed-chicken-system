@@ -18,7 +18,7 @@
   gap: 14px;
 }
 
-.inventory-stats {
+.inventory-page .stats-grid.inventory-stats {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -35,30 +35,81 @@
 }
 
 .inventory-product-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) auto;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
+  margin-bottom: 2px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
 }
 
 .inventory-product-controls .table-search {
-  width: min(100%, 300px);
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
 }
 
 .inventory-category-filter {
-  width: min(100%, 220px);
-  min-height: 40px;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
 }
 
 .inventory-result-count {
-  margin-left: auto;
+  justify-self: end;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
   color: var(--text-muted);
   font-size: 12px;
   white-space: nowrap;
+  background: var(--card-bg);
 }
 
 .inventory-product-table {
   min-width: 0;
+}
+
+.inventory-product-table .panel-title-row {
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.inventory-product-table .panel-title-row h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+}
+
+.inventory-product-table .panel-title-row h2::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  content: "";
+}
+
+.inventory-product-table .panel-title-row > .primary-action {
+  min-height: 40px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 3px 10px var(--primary-soft);
 }
 
 .inventory-product-table .table-scroll {
@@ -69,12 +120,108 @@
   min-width: 850px;
 }
 
+.inventory-product-table .system-data-table thead th {
+  background: var(--surface-inset);
+  font-size: 11px;
+  letter-spacing: 0.025em;
+}
+
+.inventory-product-table .system-data-table tbody td {
+  padding: 12px 14px;
+  vertical-align: middle;
+}
+
+.inventory-product-table .system-data-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.inventory-product-table .inventory-product-name,
+.inventory-product-table .inventory-money-value {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.inventory-product-table .table-action {
+  min-height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+}
+
 .inventory-inflow-table {
   min-width: 0;
 }
 
+.inventory-inflow-table .table-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+}
+
 .inventory-inflow-table table {
-  min-width: 1540px;
+  width: 100%;
+  min-width: 1640px;
+  table-layout: fixed;
+}
+
+.inventory-inflow-table .system-data-table :is(th, td) {
+  min-width: 0;
+  padding: 8px 8px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.inventory-inflow-table .system-data-table thead th {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  vertical-align: bottom;
+  white-space: nowrap;
+  background: var(--surface-inset);
+}
+
+.inventory-inflow-table .system-data-table th button {
+  min-width: 0;
+  align-items: flex-start;
+  gap: 3px;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  line-height: 1.25;
+}
+
+.inventory-inflow-table .system-data-table th button svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+}
+
+.inventory-inflow-table .system-data-table tbody td {
+  font-size: 13px;
+}
+
+.inventory-inflow-table .system-data-table td:has(.status),
+.inventory-inflow-table .system-data-table td:last-child {
+  white-space: normal;
+}
+
+.inventory-inflow-table :is(th, td):nth-child(1) { width: 7.5%; }
+.inventory-inflow-table :is(th, td):nth-child(2) { width: 9.5%; }
+.inventory-inflow-table :is(th, td):nth-child(3) { width: 7%; }
+.inventory-inflow-table :is(th, td):nth-child(4) { width: 9%; }
+.inventory-inflow-table :is(th, td):nth-child(5) { width: 7.5%; }
+.inventory-inflow-table :is(th, td):nth-child(6) { width: 9.5%; }
+.inventory-inflow-table :is(th, td):nth-child(7) { width: 13%; }
+.inventory-inflow-table :is(th, td):nth-child(8) { width: 9%; }
+.inventory-inflow-table :is(th, td):nth-child(9) { width: 10.5%; }
+.inventory-inflow-table :is(th, td):nth-child(10) { width: 8%; }
+.inventory-inflow-table :is(th, td):nth-child(11) { width: 9.5%; }
+
+.inventory-inflow-table tbody tr.inventory-batch-row {
+  cursor: pointer;
+}
+
+.inventory-inflow-table tbody tr.inventory-batch-row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
 }
 
 .inventory-inflow-table thead th {
@@ -101,36 +248,67 @@
 }
 
 .inventory-inflow-table tbody tr:hover td {
+  background-color: var(--surface-hover);
+}
+
+.inventory-inflow-table tbody tr.inventory-batch-row:focus-visible td {
   background-color: var(--row-hover);
 }
 
 .inventory-inflow-heading {
-  margin-bottom: 18px;
+  margin-bottom: 10px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
 }
 
-.inventory-inflow-heading h2,
-.inventory-inflow-heading p {
+.inventory-inflow-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
 }
 
-.inventory-inflow-heading p {
-  margin-top: 5px;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.5;
+.inventory-inflow-heading h2::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  content: "";
 }
 
 .inventory-inflow-heading > span {
   flex: 0 0 auto;
-  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   color: var(--text-secondary);
   background: var(--surface-inset);
   font-size: 11px;
+  font-weight: 600;
+}
+
+.inventory-inflow-table .table-toolbar {
+  justify-content: flex-start;
+}
+
+.inventory-inflow-table .table-search {
+  width: min(100%, 380px);
+}
+
+.inventory-inflow-table .status {
+  min-height: 24px;
+  padding-inline: 9px;
 }
 
 .inventory-batch-row td:first-child {
@@ -214,12 +392,42 @@
   margin-bottom: 0;
 }
 
-.inventory-form-heading {
-  display: grid;
-  gap: 5px;
+.inventory-stock-form {
+  width: min(100%, 780px);
+  max-width: 780px;
+  gap: 20px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  box-shadow: var(--card-shadow);
 }
 
-.inventory-form-heading p,
+.inventory-form-heading {
+  display: grid;
+  width: 100%;
+  gap: 0;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border);
+}
+
+.inventory-form-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-heading);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.inventory-form-heading h2::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  content: "";
+}
+
 .inventory-modal-copy {
   margin: 0;
   color: var(--text-secondary);
@@ -230,18 +438,32 @@
 .inventory-stock-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
+  width: 100%;
+}
+
+.inventory-stock-form > label,
+.inventory-stock-form-grid > label {
+  gap: 8px;
+  color: var(--text-label);
+  font-size: 12px;
+}
+
+.inventory-stock-form :is(input, select) {
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
 }
 
 .selected-stock-summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
   align-items: center;
-  gap: 16px;
-  padding: 13px 14px;
+  gap: 18px;
+  padding: 15px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--surface-hover);
+  background: var(--surface-inset);
 }
 
 .selected-stock-summary > div {
@@ -411,6 +633,11 @@
 }
 
 .inventory-stock-form > .primary-action {
+  width: auto;
+  min-width: 220px;
+  min-height: 44px;
+  align-self: flex-end;
+  border-radius: var(--radius-md);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -513,19 +740,49 @@
 }
 
 @media (max-width: 900px) {
-  .inventory-stats {
+  .inventory-page .stats-grid.inventory-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
+@media (max-width: 1180px) {
+  .inventory-inflow-table table { min-width: 800px; }
+
+  .inventory-inflow-table :is(th, td):nth-child(1) { width: 14%; }
+  .inventory-inflow-table :is(th, td):nth-child(3) { width: 27%; }
+  .inventory-inflow-table :is(th, td):nth-child(4) { width: 20%; }
+  .inventory-inflow-table :is(th, td):nth-child(5) { width: 17%; }
+  .inventory-inflow-table :is(th, td):nth-child(8) { width: 22%; }
+
+  .inventory-inflow-table :is(th, td):nth-child(2),
+  .inventory-inflow-table :is(th, td):nth-child(6),
+  .inventory-inflow-table :is(th, td):nth-child(7),
+  .inventory-inflow-table :is(th, td):nth-child(9),
+  .inventory-inflow-table :is(th, td):nth-child(10),
+  .inventory-inflow-table :is(th, td):nth-child(11) {
+    display: none;
+  }
+}
+
 @media (max-width: 640px) {
-  .inventory-stats {
+  .inventory-page .stats-grid.inventory-stats {
     grid-template-columns: 1fr;
   }
 
+  .inventory-stock-form {
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .inventory-stock-form > .primary-action {
+    width: 100%;
+    min-width: 0;
+    align-self: stretch;
+  }
+
   .inventory-product-controls {
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
-    flex-direction: column;
   }
 
   .inventory-product-controls .table-search,
@@ -534,7 +791,7 @@
   }
 
   .inventory-result-count {
-    margin-left: 0;
+    justify-self: start;
   }
 
   .inventory-stock-form-grid {

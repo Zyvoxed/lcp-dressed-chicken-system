@@ -22,7 +22,7 @@ function ProcurementChart({ records, loading, error }) {
       {!loading && !error && procurement.length > 0 && <div className="bar-chart">
         {procurement.map(({ label, value, unit }, index) => (
           <div key={label} role="img" tabIndex={0} aria-label={`${label}: ${value} ${unit} received`} data-tooltip={`${label}: ${value.toLocaleString('en-PH', { maximumFractionDigits: 3 })} ${unit} received`}>
-            <span style={{ height: `${Math.max((value / maximum) * 128, 12)}px`, animationDelay: `${index * 0.08}s` }}></span>
+            <span style={{ height: `${Math.max((value / maximum) * 176, 12)}px`, animationDelay: `${index * 0.08}s` }}></span>
             <p>{label}</p>
           </div>
         ))}

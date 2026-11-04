@@ -31,6 +31,7 @@ function DataTable({
   pageSize = 8,
   searchable = true,
   searchPlaceholder = 'Search records',
+  toolbarContent = null,
 }) {
   const [query, setQuery] = useState('')
   const [sortConfig, setSortConfig] = useState({ index: null, direction: 'asc' })
@@ -84,6 +85,7 @@ function DataTable({
               aria-label={searchPlaceholder}
             />
           </label>
+          {toolbarContent}
         </div>
       )}
       <div className="table-scroll">

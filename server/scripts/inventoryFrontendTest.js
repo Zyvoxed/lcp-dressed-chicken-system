@@ -911,7 +911,7 @@ createRoot(document.getElementById('root')).render(<Harness />)
   }
   assert(await evaluate("document.querySelector('#inflow-records-test').textContent.includes('DLV-16') && document.querySelector('#inflow-records-test').textContent.includes('DLV-17')"), 'Inflow Records did not display the verified FIFO batches')
   assert(await evaluate("document.querySelector('#inflow-records-test').textContent.includes('Used Up') && document.querySelector('#inflow-records-test').textContent.includes('Partially Used') && document.querySelector('#inflow-records-test').textContent.includes('Available')"), 'Inflow Records did not distinguish all batch usage states in plain language')
-  assert(await evaluate("document.querySelector('#inflow-records-test').textContent.includes('The system automatically uses stock from older deliveries before newer deliveries.')"), 'Inflow Records did not explain FIFO in plain language')
+  assert(!await evaluate("document.querySelector('#inflow-records-test .inventory-inflow-heading').textContent.includes('The system automatically uses stock from older deliveries before newer deliveries.')"), 'Inflow Records still shows the removed description below its heading')
   assert(await evaluate(`(() => {
     const rows = [...document.querySelectorAll('#inflow-records-test tbody tr')]
     const batch16 = rows.find((row) => row.textContent.includes('DLV-16'))?.textContent || ''
@@ -919,9 +919,10 @@ createRoot(document.getElementById('root')).render(<Harness />)
     return batch16.includes('200 kg') && batch16.includes('0 kg') && batch17.includes('300 kg') && batch17.includes('180 kg') && batch17.includes('120 kg')
   })()`), 'Received, remaining, or consumed FIFO quantities were inaccurate')
 
-  await click('button[aria-label="View FIFO details for batch DLV-16"]')
+  await click('tr[aria-label="Open delivery details for DLV-16"]')
   await waitForCondition("Boolean(document.querySelector('.fifo-allocation-list'))")
   assert(await evaluate("document.querySelector('.fifo-batch-modal').textContent.includes('Used Up') && document.querySelector('.fifo-batch-modal').textContent.includes('200 kg')"), 'Batch 16 summary did not show its used-up balance')
+  assert(await evaluate("document.querySelector('.fifo-batch-modal').textContent.includes('The system automatically uses stock from older deliveries before newer deliveries.')"), 'Batch details omitted the FIFO explanation')
   assert(await evaluate(`(() => {
     const sale = [...document.querySelectorAll('.fifo-allocation-list article')].find((article) => article.textContent.includes('Sale Reference: OR-34'))
     return Boolean(sale && sale.textContent.includes('90 kg') && sale.textContent.includes('Quantity Used') && !sale.textContent.includes('Allocation order'))
@@ -934,7 +935,7 @@ createRoot(document.getElementById('root')).render(<Harness />)
   await writeFile(join(inventoryScreenshotRoot, 'desktop-fifo-batch-16.png'), fifoScreenshot.data, 'base64')
   await click('.fifo-batch-modal > .primary-action')
 
-  await click('button[aria-label="View FIFO details for batch DLV-17"]')
+  await click('tr[aria-label="Open delivery details for DLV-17"]')
   await waitForCondition("Boolean(document.querySelector('.fifo-allocation-list'))")
   assert(await evaluate("document.querySelector('.fifo-batch-modal').textContent.includes('Partially Used') && document.querySelector('.fifo-batch-modal').textContent.includes('180 kg') && document.querySelector('.fifo-batch-modal').textContent.includes('120 kg')"), 'Batch 17 summary did not show its verified remaining balance')
   assert(await evaluate(`(() => {
@@ -945,7 +946,7 @@ createRoot(document.getElementById('root')).render(<Harness />)
   await writeFile(join(inventoryScreenshotRoot, 'desktop-fifo-batch-17.png'), fifoScreenshot.data, 'base64')
   await click('.fifo-batch-modal > .primary-action')
 
-  await click('button[aria-label="View FIFO details for batch DLV-18"]')
+  await click('tr[aria-label="Open delivery details for DLV-18"]')
   await waitForCondition("document.querySelector('.fifo-batch-modal')?.textContent.includes('No sales have used stock from this delivery.')")
   assert(await evaluate("document.querySelector('.fifo-batch-modal').textContent.includes('Available') && document.querySelector('.fifo-batch-modal').textContent.includes('100 kg')"), 'Available batch empty allocation state was inaccurate')
   await click('.fifo-batch-modal > .primary-action')

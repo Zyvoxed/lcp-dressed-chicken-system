@@ -24,10 +24,7 @@ function UserTable({ users, currentUserId, onEdit, onResetPassword, onToggleStat
   return (
     <article className="panel user-registry-panel">
       <header className="user-registry-header">
-        <div>
-          <h2>USER ACCOUNTS</h2>
-          <p>{filteredUsers.length} users found</p>
-        </div>
+        <h2>USER ACCOUNTS</h2>
         <div className="user-registry-controls">
           <div className="user-role-filter" role="group" aria-label="Filter accounts by role">
             {['All', 'Admin', 'Staff'].map((role) => (
@@ -51,8 +48,12 @@ function UserTable({ users, currentUserId, onEdit, onResetPassword, onToggleStat
               placeholder="Search name, username, email or phone"
             />
           </label>
+          <span className="user-registry-count" aria-live="polite">
+            {filteredUsers.length} {filteredUsers.length === 1 ? 'user' : 'users'}
+          </span>
         </div>
       </header>
+
       <DataTable
         columns={columns}
         rows={filteredUsers}
@@ -117,4 +118,5 @@ function UserTable({ users, currentUserId, onEdit, onResetPassword, onToggleStat
     </article>
   )
 }
+
 export default UserTable

@@ -8,7 +8,7 @@ function Login({ onLogin }) {
   const themeLabel = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
 
   return (
-    <main className="login-page">
+    <main className="login-page login-page-auth-layout">
       <div className="login-ambient" aria-hidden="true"></div>
       <div className="login-shell">
         <LoginHeader />

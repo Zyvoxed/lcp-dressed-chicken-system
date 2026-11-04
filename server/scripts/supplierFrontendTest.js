@@ -230,7 +230,7 @@ createRoot(document.getElementById('root')).render(
   assert(!await evaluate("Boolean(document.querySelector('.page-intro'))"), 'Redundant Supplier Contracts introduction banner was rendered')
   assert(await evaluate("document.querySelector('.supplier-card').textContent.includes('2') && document.querySelector('.supplier-card').textContent.includes('₱500.00')"), 'Supplier card did not use real delivery totals')
   assert(!await evaluate("document.body.textContent.includes('Volume: —') || document.body.textContent.includes('Total Spend: —')"), 'Misleading placeholder metrics remain')
-  assert(await evaluate("document.querySelector('.table-pagination').textContent.includes('Showing 1-8 of 10')"), 'Delivery pagination was not available')
+  assert(await evaluate("document.querySelector('.table-pagination').textContent.includes('Showing 1-10 of 10')"), 'Delivery table did not show up to 10 records per page')
   assert(await evaluate("document.querySelector('.supplier-ledger-panel tbody').textContent.includes('Oct 21, 2026, 4:28 PM') && !document.body.textContent.includes('PHT')"), 'Delivery timestamp was not displayed in the established Manila format')
   assert(await evaluate("document.querySelector('.supplier-ledger-panel .table-scroll').getBoundingClientRect().right <= document.querySelector('.supplier-ledger-panel').getBoundingClientRect().right"), 'Delivery table overflowed its panel')
 

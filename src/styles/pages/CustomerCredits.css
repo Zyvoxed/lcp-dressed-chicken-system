@@ -33,10 +33,33 @@
   gap: 14px;
 }
 
+.customer-list-heading {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
 .customer-list-heading h2,
 .customer-list-heading p,
 .ledger-heading h2 {
   margin: 0;
+}
+
+.customer-list-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+}
+
+.customer-list-heading h2::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  content: "";
 }
 
 .customer-list-heading p {
@@ -51,32 +74,57 @@
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  box-shadow: 0 3px 10px var(--primary-soft);
 }
 
 .customer-list-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
 }
 
 .customer-list-controls .table-search,
 .customer-list-controls select {
   width: 100%;
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
 }
 
 .customer-list-summary {
-  color: var(--text-muted);
+  justify-self: start;
+  padding: 5px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  background: var(--surface-inset);
   font-size: 12px;
+  font-weight: 600;
 }
 
-.credit-stats {
+.credits-page .stats-grid.credit-stats {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.credits-page .credit-stats .stat-card {
+  min-height: 116px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+}
+
+.credits-page .credit-stats .stat-icon {
+  border-color: transparent;
+  color: var(--primary);
+  background: var(--primary-soft);
 }
 
 .debtor-list,
 .history-grid {
   display: grid;
-  gap: 10px;
+  gap: 9px;
 }
 
 .debtor-row {
@@ -85,7 +133,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: inherit;
@@ -185,6 +233,11 @@
   min-width: 0;
 }
 
+.ledger-heading {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
 .ledger-heading-actions {
   flex: 0 0 auto;
   display: flex;
@@ -208,13 +261,16 @@
 }
 
 .ledger-heading h2 {
-  margin-top: 4px;
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
 .customer-type-badge {
   flex: 0 0 auto;
   padding: 6px 9px;
+  border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text-secondary);
   background: var(--surface-inset);
@@ -275,10 +331,11 @@
 }
 
 .balance-display {
-  padding: 16px;
+  padding: 18px;
   border-radius: var(--radius);
-  background: var(--surface-inset);
-  border: 1px solid var(--border);
+  background: var(--primary-tint);
+  border: 1px solid var(--primary-soft);
+  border-left: 3px solid var(--primary);
 }
 
 .balance-display strong {
@@ -543,13 +600,13 @@
 }
 
 @media (max-width: 900px) {
-  .credit-stats {
+  .credits-page .stats-grid.credit-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
-  .credit-stats {
+  .credits-page .stats-grid.credit-stats {
     grid-template-columns: 1fr;
   }
 

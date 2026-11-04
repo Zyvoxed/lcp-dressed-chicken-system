@@ -1,0 +1,10 @@
+/* KPI icon treatment shared with the other non-dashboard metric cards. */
+.business-analytics-page .business-kpi-grid header svg {
+  flex: 0 0 auto;
+  padding: 7px;
+  box-sizing: content-box;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--primary);
+  background: var(--primary-soft);
+}

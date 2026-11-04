@@ -147,7 +147,6 @@ function StockInForm({ onCreated }) {
     <form className="panel centered-form inventory-stock-form" onSubmit={handleReview} noValidate aria-busy={loading || submitting}>
       <div className="inventory-form-heading">
         <h2>Record Stock Delivery</h2>
-        <p>Create a FIFO inventory batch from a confirmed supplier delivery.</p>
       </div>
       <div className="inventory-stock-form-grid">
         <label>

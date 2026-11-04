@@ -94,10 +94,10 @@
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 50%;
-  color: var(--brand-dark);
-  background: var(--brand-dark-soft);
+  color: var(--primary);
+  background: var(--primary-soft);
 }
 
 .stat-sparkline {

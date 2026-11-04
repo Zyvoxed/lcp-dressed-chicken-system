@@ -3,6 +3,7 @@ import DataTable from "../Shared/DataTable.jsx";
 import EmptyState from "../Shared/EmptyState.jsx";
 import LoadingSpinner from "../Shared/LoadingSpinner.jsx";
 import StatCard from "../Shared/StatCard.jsx";
+import { UsersRound, WalletCards } from 'lucide-react'
 import {
   getReceivablesReport,
   logReportExport,
@@ -66,8 +67,8 @@ function ReceivablesLedger() {
   return (
     <div className="report-tab-content">
       <div className="stats-grid report-stats report-receivables-stats">
-        <StatCard label="Customers with Balance" value={Number(report.summary.customers_with_balance).toLocaleString("en-PH")} />
-        <StatCard label="Total Receivables" value={peso.format(Number(report.summary.total_receivables))} />
+        <StatCard icon={UsersRound} label="Customers with Balance" value={Number(report.summary.customers_with_balance).toLocaleString("en-PH")} />
+        <StatCard icon={WalletCards} label="Total Receivables" value={peso.format(Number(report.summary.total_receivables))} />
       </div>
       <article className="panel table-panel report-table-panel receivables-report-panel">
       <div className="report-heading-row">
@@ -83,10 +84,6 @@ function ReceivablesLedger() {
           Export CSV
         </button>
       </div>
-      <p className="report-summary-line">
-        {report.summary.customers_with_balance} customers ·{" "}
-        {peso.format(Number(report.summary.total_receivables))} outstanding
-      </p>
       {!report.records.length ? (
         <EmptyState>No customers have unpaid balances.</EmptyState>
       ) : (
@@ -101,6 +98,12 @@ function ReceivablesLedger() {
             "Oldest Unpaid Sale",
           ]}
           rows={report.records}
+          toolbarContent={(
+            <div className="receivables-toolbar-summary" aria-live="polite">
+              <strong>{report.summary.customers_with_balance} {Number(report.summary.customers_with_balance) === 1 ? 'customer' : 'customers'}</strong>
+              <span>{peso.format(Number(report.summary.total_receivables))} outstanding</span>
+            </div>
+          )}
           getSortValue={(customer, index) =>
             [
               customer.customer_name,

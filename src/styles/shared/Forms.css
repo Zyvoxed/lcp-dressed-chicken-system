@@ -6,7 +6,7 @@ label {
   display: grid;
   gap: 6px;
   color: var(--text-label);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0;
   line-height: 1.3;
@@ -23,7 +23,7 @@ textarea {
   color: var(--text-heading);
   background: var(--input-bg);
   outline: none;
-  font-size: 13px;
+  font-size: 14px;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -51,7 +51,7 @@ textarea::placeholder {
 /* — Search field — */
 .search-field,
 .table-search {
-  min-height: 40px;
+  min-height: 42px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -59,7 +59,7 @@ textarea::placeholder {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
-  background: var(--input-bg);
+  background: var(--card-bg);
 }
 
 .search-field:focus-within,

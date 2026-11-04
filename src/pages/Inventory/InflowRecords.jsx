@@ -20,7 +20,6 @@ const columns = [
   'Cost Per Unit',
   'Total Cost',
   'Recorded By',
-  'Details',
 ]
 
 const sortAccessors = [
@@ -35,7 +34,6 @@ const sortAccessors = [
   (record) => Number(record.cost_price),
   (record) => Number(record.total_cost),
   (record) => record.recorded_by,
-  () => '',
 ]
 
 function consumedQuantity(record) {
@@ -86,10 +84,7 @@ function InflowRecords() {
     <>
       <article className="panel table-panel inventory-inflow-table">
         <div className="inventory-inflow-heading">
-          <div>
-            <h2>STOCK DELIVERY HISTORY</h2>
-            <p>The system automatically uses stock from older deliveries before newer deliveries.</p>
-          </div>
+          <h2>STOCK DELIVERY HISTORY</h2>
           {!loading && !error && <span>{records.length} batch{records.length === 1 ? '' : 'es'}</span>}
         </div>
         {loading && <LoadingSpinner />}
@@ -98,12 +93,26 @@ function InflowRecords() {
         {!loading && !error && records.length > 0 && <DataTable
           columns={columns}
           rows={records}
+          pageSize={10}
           searchPlaceholder="Search batches, products, or suppliers"
           getSortValue={(record, columnIndex) => sortAccessors[columnIndex](record)}
           renderRow={(record) => {
             const status = batchStatus(record)
             return (
-              <tr key={record.stockin_id} className={`inventory-batch-row ${status.toLowerCase().replaceAll(' ', '-')}`}>
+              <tr
+                key={record.stockin_id}
+                className={`inventory-batch-row ${status.toLowerCase().replaceAll(' ', '-')}`}
+                tabIndex={0}
+                aria-label={`Open delivery details for DLV-${record.stockin_id}`}
+                aria-haspopup="dialog"
+                onClick={() => setSelectedBatch(record)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setSelectedBatch(record)
+                  }
+                }}
+              >
                 <td><strong className="inventory-batch-reference">DLV-{record.stockin_id}</strong></td>
                 <td>{record.supplier_name}</td>
                 <td><strong className="inventory-batch-product">{record.product_name}</strong></td>
@@ -115,7 +124,6 @@ function InflowRecords() {
                 <td>{peso.format(Number(record.cost_price))}</td>
                 <td>{peso.format(Number(record.total_cost))}</td>
                 <td>{record.recorded_by}</td>
-                <td><button className="table-action" type="button" onClick={() => setSelectedBatch(record)} aria-label={`View FIFO details for batch DLV-${record.stockin_id}`}>View Details</button></td>
               </tr>
             )
           }}

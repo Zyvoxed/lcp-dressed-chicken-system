@@ -105,10 +105,24 @@ function RevenueReport() {
           {!report.records.length ? <EmptyState>No sales transactions match the report filters.</EmptyState> : <DataTable
             columns={['Sale ID', 'Date', 'Customer', 'Recorded By', 'Payment Type', 'Total', 'Paid', 'Balance', 'Status']}
             rows={filteredRecords}
+            pageSize={10}
             searchable={false}
             getSortValue={(sale, index) => [sale.sale_id, sale.sale_date, sale.customer_name, sale.recorded_by, sale.payment_type, Number(sale.total_amount), Number(sale.amount_paid), Number(sale.remaining_balance), sale.status][index]}
-            renderRow={(sale) => <tr key={sale.sale_id}>
-              <td><button className="report-transaction-link" type="button" onClick={() => setSelectedSaleId(sale.sale_id)} aria-label={`View transaction OR-${sale.sale_id}`}>OR-{sale.sale_id}</button></td>
+            renderRow={(sale) => <tr
+              key={sale.sale_id}
+              className="sales-transaction-row"
+              tabIndex={0}
+              aria-label={`Open transaction details for OR-${sale.sale_id}`}
+              aria-haspopup="dialog"
+              onClick={() => setSelectedSaleId(sale.sale_id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  setSelectedSaleId(sale.sale_id)
+                }
+              }}
+            >
+              <td><strong className="report-transaction-reference">OR-{sale.sale_id}</strong></td>
               <td><time dateTime={sale.sale_date}>{formatActivityTimestamp(sale.sale_date).dateTime}</time></td>
               <td>{sale.customer_name}</td><td>{sale.recorded_by}</td><td>{sale.payment_type}</td>
               <td>{peso.format(Number(sale.total_amount))}</td><td>{peso.format(Number(sale.amount_paid))}</td><td>{peso.format(Number(sale.remaining_balance))}</td><td><StatusBadge value={sale.status} /></td>

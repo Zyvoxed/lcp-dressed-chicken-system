@@ -163,18 +163,10 @@
   bottom: 16px;
   padding: 7px;
   box-sizing: content-box;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  background: var(--surface-inset);
-}
-
-.user-metric-card.admin > svg {
-  color: var(--orange);
-}
-
-.user-metric-card.staff > svg {
-  color: var(--green);
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--primary);
+  background: var(--primary-soft);
 }
 
 /* — Security card — */
@@ -210,33 +202,45 @@
 }
 
 .user-registry-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: 16px;
-  padding: 18px;
+  padding: 22px;
   border-bottom: 1px solid var(--border);
 }
 
 .user-registry-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
 }
 
-.user-registry-header p {
-  margin: 4px 0 0;
-  color: var(--text-muted);
-  font-size: 11px;
+.user-registry-header h2::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  content: '';
 }
 
 .user-registry-controls {
+  width: 100%;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
 }
 
 .user-role-filter {
+  flex: 0 0 auto;
   display: flex;
   padding: 3px;
   border: 1px solid var(--border);
@@ -271,14 +275,16 @@
 }
 
 .user-registry-search {
+  flex: 1 1 260px;
   display: flex;
   align-items: center;
   gap: 7px;
-  min-width: 200px;
-  padding: 0 10px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface-inset);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
 }
 
 .user-registry-search svg {
@@ -292,7 +298,7 @@
 
 .user-registry-search input {
   min-width: 0;
-  min-height: 32px;
+  min-height: 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -303,24 +309,59 @@
   box-shadow: none;
 }
 
-.user-registry-panel .data-table-shell {
-  border: 0;
-}
-
-.user-registry-panel table {
-  min-width: 1140px;
-}
-
-.user-registry-panel th {
+.user-registry-count {
+  flex: 0 0 auto;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
   color: var(--text-muted);
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  background: var(--card-bg);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
-.user-registry-panel td {
-  padding-block: 12px;
+.user-registry-panel .data-table-shell {
+  gap: 14px;
+  padding: 0 22px 22px;
+}
+
+.user-registry-panel .table-scroll {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+}
+
+.user-registry-panel .system-data-table {
+  width: 100%;
+  min-width: 1320px;
+  table-layout: fixed;
+}
+
+.user-registry-panel .system-data-table :is(th, td) {
+  padding: 15px 16px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  vertical-align: middle;
+}
+
+.user-registry-panel .system-data-table thead th {
+  background: var(--surface-inset);
+  color: var(--text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.025em;
+}
+
+.user-registry-panel .system-data-table thead th:last-child button svg {
+  display: none;
+}
+
+.user-registry-panel .system-data-table tbody td {
   color: var(--text-secondary);
   font-size: 12px;
+  line-height: 1.45;
 }
 
 .user-registry-panel :is(th, td):not(:last-child) {
@@ -332,39 +373,54 @@
 }
 
 .user-registry-panel tbody tr:hover td {
-  background: var(--row-hover);
+  background: var(--surface-hover);
 }
 
-/* — User identity cell — */
-.user-identity {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 2px 7px;
+.user-registry-panel :is(th, td):nth-child(1) { width: 14%; }
+.user-registry-panel :is(th, td):nth-child(2) { width: 12%; }
+.user-registry-panel :is(th, td):nth-child(3) { width: 20%; }
+.user-registry-panel :is(th, td):nth-child(4) { width: 13%; }
+.user-registry-panel :is(th, td):nth-child(5) { width: 7%; }
+.user-registry-panel :is(th, td):nth-child(6) { width: 8%; }
+.user-registry-panel :is(th, td):nth-child(7) { width: 26%; }
+
+.user-registry-panel .system-data-table th button {
   min-width: 0;
-  white-space: normal;
+  white-space: nowrap;
+}
+
+.user-registry-panel :is(th, td):nth-child(n + 5) {
+  text-align: center;
+}
+
+.user-registry-panel :is(th:nth-child(n + 5)) button {
+  justify-content: center;
+}
+
+.user-identity {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 8px;
 }
 
 .user-identity strong {
   color: var(--text-heading);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 .user-identity > b {
   justify-self: start;
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: var(--radius-sm);
   color: var(--system-text);
   background: var(--system-bg);
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.02em;
-}
-
-.user-identity > b.inactive {
-  color: var(--status-danger-text);
-  background: var(--status-danger-bg);
+  white-space: nowrap;
 }
 
 .user-identity span {
@@ -373,26 +429,20 @@
   font-size: 10px;
 }
 
-.secure-username {
-  color: var(--text-heading);
-  overflow-wrap: anywhere;
-  white-space: normal;
-}
-
 .user-email {
+  min-width: 0;
   display: grid;
   justify-items: start;
-  gap: 4px;
-  min-width: 0;
+  gap: 5px;
 }
 
 .user-email > span {
-  max-width: 230px;
+  max-width: 100%;
   overflow-wrap: anywhere;
 }
 
 .user-email > b {
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: var(--radius-sm);
   font-size: 9px;
   letter-spacing: 0.03em;
@@ -408,7 +458,10 @@
   background: var(--status-warn-bg);
 }
 
-/* — Role badge — */
+.inactive-user-row {
+  background: var(--surface-inset);
+}
+
 .user-role-badge {
   display: inline-flex;
   padding: 3px 8px;
@@ -453,23 +506,24 @@
   background: var(--status-danger-bg);
 }
 
-.inactive-user-row {
-  background: var(--surface-inset);
-}
-
-/* — Table actions — */
+/* — Account actions — */
 .user-table-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .user-table-actions .table-action {
+  min-width: 0;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 5px;
   min-height: 34px;
   margin: 0;
+  padding-inline: 7px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .user-action-spinner,
@@ -703,15 +757,6 @@
    ============================================================ */
 
 @media (max-width: 1280px) {
-  .user-registry-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .user-registry-controls {
-    width: 100%;
-  }
-
   .user-registry-search {
     flex: 1;
   }
@@ -747,6 +792,14 @@
   .user-registry-controls {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .user-registry-panel .data-table-shell {
+    padding: 0 14px 14px;
+  }
+
+  .user-registry-count {
+    align-self: flex-start;
   }
 
   .user-registry-search {

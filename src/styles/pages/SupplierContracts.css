@@ -21,6 +21,8 @@
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
 }
 
 .supplier-section-heading h2,
@@ -39,11 +41,34 @@
   line-height: 1.5;
 }
 
+.supplier-section-heading h2,
+.supplier-panel-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+}
+
+.supplier-section-heading h2::before,
+.supplier-panel-heading h2::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  content: '';
+}
+
 .supplier-section-heading .primary-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
+  min-height: 40px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 3px 10px var(--primary-soft);
 }
 
 .supplier-directory-controls {
@@ -60,12 +85,23 @@
 
 .supplier-directory-controls .table-search {
   width: min(100%, 340px);
+  min-height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
 }
 
 .supplier-directory-controls > span {
   flex: 0 0 auto;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
   color: var(--text-muted);
   font-size: 12px;
+  white-space: nowrap;
+  background: var(--card-bg);
 }
 
 .supplier-grid {
@@ -174,14 +210,28 @@
 }
 
 .bar-chart {
+  position: relative;
   min-width: 0;
-  min-height: 190px;
+  min-height: 250px;
   display: flex;
   align-items: flex-end;
-  gap: 14px;
-  padding: 30px 4px 0;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 34px 8px 0;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.bar-chart::before {
+  content: '';
+  position: absolute;
+  right: 8px;
+  bottom: 48px;
+  left: 8px;
+  border-bottom: 1px solid var(--border);
+  pointer-events: none;
 }
 
 .bar-chart > div {
@@ -189,14 +239,31 @@
   width: max(84px, calc((100% - 70px) / 6));
   min-width: 84px;
   display: grid;
-  gap: 8px;
+  gap: 10px;
   align-items: end;
+  padding: 8px 6px 4px;
+  border-radius: var(--radius-md);
   cursor: pointer;
+  transition: background-color 0.18s ease;
+}
+
+.bar-chart > div:hover,
+.bar-chart > div:focus-visible {
+  background: var(--surface-inset);
+  outline: none;
+}
+
+.bar-chart > div:focus-visible {
+  box-shadow: 0 0 0 2px var(--primary-soft);
 }
 
 .bar-chart span {
   display: block;
-  border-radius: 5px 5px 0 0;
+  justify-self: center;
+  width: min(58px, 68%);
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  border-bottom: 0;
+  border-radius: 8px 8px 2px 2px;
   background: var(--bar-fill);
   transform-origin: bottom;
   animation: bar-grow 0.6s ease both;
@@ -205,17 +272,18 @@
 
 .bar-chart > div:hover span,
 .bar-chart > div:focus-visible span {
-  filter: brightness(1.1);
+  filter: brightness(1.06) saturate(1.08);
 }
 
 .bar-chart p {
-  min-height: 36px;
+  min-height: 40px;
   margin: 0;
   color: var(--text-muted);
   font-size: 11px;
-  line-height: 1.4;
+  line-height: 1.35;
   text-align: center;
   overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .bar-chart > div::after {
@@ -251,6 +319,37 @@
 
 .supplier-ledger-panel table {
   min-width: 1120px;
+}
+
+.supplier-ledger-panel .table-toolbar {
+  justify-content: flex-start;
+}
+
+.supplier-ledger-panel .table-search {
+  width: min(100%, 360px);
+}
+
+.supplier-ledger-panel .table-scroll {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+}
+
+.supplier-ledger-panel .system-data-table :is(th, td) {
+  padding: 13px 16px;
+}
+
+.supplier-ledger-panel .system-data-table thead th {
+  background: var(--surface-inset);
+  letter-spacing: 0.025em;
+}
+
+.supplier-ledger-panel .system-data-table tbody td {
+  vertical-align: middle;
+}
+
+.supplier-ledger-panel .system-data-table tbody tr:hover td {
+  background: var(--surface-hover);
 }
 
 .supplier-ledger-panel :is(th, td):nth-child(4),
