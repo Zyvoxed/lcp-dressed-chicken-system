@@ -4,8 +4,13 @@ import { spawn } from 'node:child_process'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import mysql from 'mysql2/promise'
+import {
+  assertEmptyTestDatabase,
+  assertRestrictedTestDatabaseGrants,
+  getIsolatedTestDatabaseConfig,
+  removeSchemaSelection,
+} from './testDatabaseSafety.js'
 
-const testDatabase = 'lcp_supplier_integration_test'
 const testPort = 5052
 const baseUrl = `http://127.0.0.1:${testPort}/api`
 
@@ -33,21 +38,26 @@ function request(path, token, options = {}) {
   return fetch(`${baseUrl}${path}`, { ...options, headers })
 }
 
+const testDatabaseConfig = getIsolatedTestDatabaseConfig()
+console.info(`Using isolated test MySQL host=${testDatabaseConfig.host}, database=${testDatabaseConfig.database}`)
 const admin = await mysql.createConnection({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD || '',
+  host: testDatabaseConfig.host,
+  port: testDatabaseConfig.port,
+  user: testDatabaseConfig.user,
+  password: testDatabaseConfig.password,
+  database: testDatabaseConfig.database,
   multipleStatements: true,
 })
 let api
 
 try {
-  assert(/^[a-z0-9_]+$/.test(testDatabase), 'Unsafe supplier test database name')
-  await admin.query(`DROP DATABASE IF EXISTS \`${testDatabase}\``)
-  const schema = (await readFile(new URL('../../database/schema.sql', import.meta.url), 'utf8')).replaceAll('lcp_business_system', testDatabase)
+  const [grants] = await admin.query('SHOW GRANTS')
+  assertRestrictedTestDatabaseGrants(grants, testDatabaseConfig.database)
+  await assertEmptyTestDatabase(admin, testDatabaseConfig.database)
+  const schema = removeSchemaSelection(
+    await readFile(new URL('../../database/schema.sql', import.meta.url), 'utf8'),
+  )
   await admin.query(schema)
-  await admin.changeUser({ database: testDatabase })
 
   const passwordHash = await bcrypt.hash('supplier-test-only', 4)
   const [adminResult] = await admin.execute("INSERT INTO users (fullname, username, password, role) VALUES ('Supplier Admin', 'supplier_admin', ?, 'Admin')", [passwordHash])
@@ -56,7 +66,17 @@ try {
 
   api = spawn(process.execPath, ['server.js'], {
     cwd: new URL('..', import.meta.url),
-    env: { ...process.env, DB_NAME: testDatabase, PORT: String(testPort), NODE_ENV: 'test' },
+    env: {
+      ...process.env,
+      DB_HOST: testDatabaseConfig.host,
+      DB_PORT: String(testDatabaseConfig.port),
+      DB_USER: testDatabaseConfig.user,
+      DB_PASSWORD: testDatabaseConfig.password,
+      DB_NAME: testDatabaseConfig.database,
+      DB_SSL: 'false',
+      PORT: String(testPort),
+      NODE_ENV: 'test',
+    },
     stdio: 'ignore',
     windowsHide: true,
   })
@@ -108,7 +128,5 @@ try {
     api.kill()
     await Promise.race([new Promise((resolveExit) => api.once('exit', resolveExit)), new Promise((resolveDelay) => setTimeout(resolveDelay, 3000))])
   }
-  await admin.changeUser({ database: undefined }).catch(() => {})
-  await admin.query(`DROP DATABASE IF EXISTS \`${testDatabase}\``).catch(() => {})
   await admin.end()
 }

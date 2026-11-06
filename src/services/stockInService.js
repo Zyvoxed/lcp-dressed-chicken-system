@@ -1,4 +1,5 @@
 import { authenticatedApiFetch } from './api.js'
+import { TransactionApiError, parseTransactionResponse } from './transactionApiError.js'
 
 async function parseResponse(response, fallbackMessage) {
   let result
@@ -38,18 +39,28 @@ export async function getStockInBatchAllocations(stockInId, options = {}) {
   return result.data
 }
 
-export async function createStockIn(data) {
-  const response = await authenticatedApiFetch('/stock-in', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  })
-  const result = await parseResponse(response, 'Unable to record stock-in')
+export async function createStockIn(data, idempotencyKey) {
+  let response
+  try {
+    response = await authenticatedApiFetch('/stock-in', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify(data),
+    })
+  } catch (error) {
+    throw new TransactionApiError('Unable to confirm stock delivery status. Check transaction status before retrying.', {
+      originalError: error,
+    })
+  }
+  const result = await parseTransactionResponse(response, 'Unable to record stock-in')
 
   if (!result.data?.stockin_id) {
-    throw new Error('The stock delivery result could not be read. Check the delivery history before trying again.')
+    throw new TransactionApiError('The stock delivery result could not be read. Check the delivery history before trying again.', {
+      status: response.status,
+    })
   }
 
   return result.data

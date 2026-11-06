@@ -5,7 +5,7 @@ import { peso } from '../../utils/currency.js'
 import { formatActivityTimestamp } from '../../utils/activityDateTime.js'
 import EmptyState from '../Shared/EmptyState.jsx'
 
-function CustomerLedger({ customer, credits, payments, onPayment, onEdit, loading, error }) {
+function CustomerLedger({ customer, credits, payments, onPayment, onSelectCustomer, onEdit, loading, error }) {
   if (!customer) return <article className="panel ledger-panel"><h2>Customer Details</h2><EmptyState>No customers found.</EmptyState></article>
   const hasCreditHistory = credits.length > 0
 
@@ -41,7 +41,7 @@ function CustomerLedger({ customer, credits, payments, onPayment, onEdit, loadin
       </div>
       {loading && <PageSkeleton variant="customer-ledger" label="customer ledger details" />}
       {!loading && error && <EmptyState>{error}</EmptyState>}
-      {!loading && !error && <PaymentForm key={customer.customer_id} customer={customer} credits={credits} onRecorded={onPayment} />}
+      {!loading && !error && <PaymentForm key={customer.customer_id} customer={customer} credits={credits} onRecorded={onPayment} onSelectCustomer={onSelectCustomer} />}
       {!loading && !error && <PaymentHistory credits={credits} payments={payments} />}
     </article>
   )

@@ -6,6 +6,20 @@ import { recordPayment } from '../controllers/paymentController.js'
 import { createSale } from '../controllers/salesController.js'
 import { createStockIn } from '../controllers/stockInController.js'
 import { decimalLimits, parseDecimal } from '../utils/decimalValidation.js'
+import { centsToAmount, lineTotalCents, toCents } from '../utils/money.js'
+
+let requestKey = 0
+
+function controllerRequest(body, userId = 2) {
+  const key = `decimal-test-${++requestKey}`
+  return {
+    body,
+    user: { user_id: userId },
+    get(header) {
+      return header.toLowerCase() === 'idempotency-key' ? key : undefined
+    },
+  }
+}
 
 function responseRecorder() {
   return {
@@ -24,6 +38,15 @@ function validSaleBody(overrides = {}) {
     ...overrides,
   }
 }
+
+test('money helpers round each line half-up to cents and sum using integer cents', () => {
+  assert.equal(centsToAmount(lineTotalCents('0.300', '0.05')), '0.02')
+  assert.equal(centsToAmount(lineTotalCents('1.125', '185.50')), '208.69')
+  assert.equal(centsToAmount(lineTotalCents('1.125', '0.10')), '0.11')
+  assert.equal(centsToAmount(lineTotalCents('1.25', '0.10')), '0.13')
+  assert.equal(centsToAmount(lineTotalCents('0.300', '0.05') * 2n), '0.04')
+  assert.equal(centsToAmount(toCents('9999999999.99')), '9999999999.99')
+})
 
 test('decimal parser accepts supported quantity and money values', () => {
   for (const value of [1, 1.5, 1.25, 1.125, '1.1250', decimalLimits.quantity]) {
@@ -69,7 +92,7 @@ test('invalid sale values are rejected before any database transaction or write'
     ]
     for (const [body, message] of cases) {
       const response = responseRecorder()
-      await createSale({ body, user: { user_id: 2 } }, response)
+      await createSale(controllerRequest(body), response)
       assert.equal(response.statusCode, 400)
       assert.equal(response.payload.message, message)
     }
@@ -95,7 +118,7 @@ test('invalid Stock In values are rejected before any database transaction or wr
     ]
     for (const [body, message] of cases) {
       const response = responseRecorder()
-      await createStockIn({ body, user: { user_id: 2 } }, response)
+      await createStockIn(controllerRequest(body), response)
       assert.equal(response.statusCode, 400)
       assert.equal(response.payload.message, message)
     }
@@ -112,7 +135,7 @@ test('invalid standalone payment precision is rejected before database access', 
   try {
     for (const paymentAmount of ['10.001', 0, -1, 'NaN', decimalLimits.money + 1]) {
       const response = responseRecorder()
-      await recordPayment({ body: { sale_id: 1, payment_amount: paymentAmount }, user: { user_id: 2 } }, response)
+      await recordPayment(controllerRequest({ sale_id: 1, payment_amount: paymentAmount }), response)
       assert.equal(response.statusCode, 400)
     }
     assert.equal(databaseCalls, 0)
@@ -164,10 +187,9 @@ test('valid three-decimal sale quantities preserve registered pricing and FIFO w
   pool.getConnection = async () => connection
   try {
     const response = responseRecorder()
-    await createSale({
-      body: { payment_type: 'Cash', amount_paid: '208.69', items: [{ product_id: 1, quantity: '1.125' }] },
-      user: { user_id: 2 },
-    }, response)
+    await createSale(controllerRequest({
+      payment_type: 'Cash', amount_paid: '208.69', items: [{ product_id: 1, quantity: '1.125' }],
+    }), response)
     assert.equal(response.statusCode, 201)
     assert.equal(response.payload.data.total_amount, '208.69')
     assert.equal(state.committed, true)
@@ -202,13 +224,10 @@ test('valid Stock In quantity and cost preserve existing batch calculations', as
   pool.getConnection = async () => connection
   try {
     const response = responseRecorder()
-    await createStockIn({
-      body: {
-        supplier_id: 1, product_id: 1, quantity_received: '1.125',
-        cost_price: '185.50', delivery_date: '2026-10-22T10:00',
-      },
-      user: { user_id: 2 },
-    }, response)
+    await createStockIn(controllerRequest({
+      supplier_id: 1, product_id: 1, quantity_received: '1.125',
+      cost_price: '185.50', delivery_date: '2026-10-22T10:00',
+    }), response)
     assert.equal(response.statusCode, 201)
     assert.equal(response.payload.data.quantity_received, '1.125')
     assert.equal(response.payload.data.cost_price, '185.50')
@@ -244,7 +263,7 @@ test('valid two-decimal standalone payments retain existing balance updates', as
   pool.getConnection = async () => connection
   try {
     const response = responseRecorder()
-    await recordPayment({ body: { sale_id: 9, payment_amount: '185.50' }, user: { user_id: 2 } }, response)
+    await recordPayment(controllerRequest({ sale_id: 9, payment_amount: '185.50' }), response)
     assert.equal(response.statusCode, 201)
     assert.equal(response.payload.data.payment_amount, '185.50')
     assert.equal(response.payload.data.remaining_balance, '14.50')
@@ -269,6 +288,7 @@ test('derived DECIMAL overflow is rejected without business-record writes', asyn
       if (normalized.startsWith('SELECT stockin_id')) {
         return [[{ stockin_id: 1, remaining_quantity: '9999999.999', cost_price: '1.00', delivery_date: '2026-01-01' }]]
       }
+      if (normalized.startsWith('INSERT INTO idempotency_records')) return [{ affectedRows: 1 }]
       saleState.writes += 1
       return [{ affectedRows: 1 }]
     },
@@ -276,10 +296,9 @@ test('derived DECIMAL overflow is rejected without business-record writes', asyn
   pool.getConnection = async () => saleConnection
   try {
     const saleResponse = responseRecorder()
-    await createSale({
-      body: { payment_type: 'Cash', amount_paid: 0, items: [{ product_id: 1, quantity: decimalLimits.quantity }] },
-      user: { user_id: 2 },
-    }, saleResponse)
+    await createSale(controllerRequest({
+      payment_type: 'Cash', amount_paid: 0, items: [{ product_id: 1, quantity: decimalLimits.quantity }],
+    }), saleResponse)
     assert.equal(saleResponse.statusCode, 400)
     assert.match(saleResponse.payload.message, /Sale item total/)
     assert.equal(saleState.writes, 0)
@@ -295,16 +314,17 @@ test('derived DECIMAL overflow is rejected without business-record writes', asyn
         if (normalized.startsWith('SELECT product_id, stock_quantity')) {
           return [[{ product_id: 1, stock_quantity: '9999999.999', reorder_level: '1.000' }]]
         }
+        if (normalized.startsWith('INSERT INTO idempotency_records')) return [{ affectedRows: 1 }]
         stockState.writes += 1
         return [{ affectedRows: 1 }]
       },
     }
     pool.getConnection = async () => stockConnection
     const stockResponse = responseRecorder()
-    await createStockIn({
-      body: { supplier_id: 1, product_id: 1, quantity_received: '0.001', cost_price: '1.00', delivery_date: '2026-10-22T10:00' },
-      user: { user_id: 2 },
-    }, stockResponse)
+    await createStockIn(controllerRequest({
+      supplier_id: 1, product_id: 1, quantity_received: '0.001',
+      cost_price: '1.00', delivery_date: '2026-10-22T10:00',
+    }), stockResponse)
     assert.equal(stockResponse.statusCode, 400)
     assert.match(stockResponse.payload.message, /Resulting product stock/)
     assert.equal(stockState.writes, 0)

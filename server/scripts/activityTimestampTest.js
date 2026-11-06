@@ -1,11 +1,18 @@
-import pool from '../config/database.js'
+import 'dotenv/config'
+import mysql from 'mysql2/promise'
 import { activityDateRange, formatActivityTimestamp } from '../../src/utils/activityDateTime.js'
+import {
+  assertRestrictedTestDatabaseGrants,
+  assertSelectedTestDatabase,
+  getIsolatedTestDatabaseConfig,
+} from './testDatabaseSafety.js'
 
 function assert(condition, message) {
   if (!condition) throw new Error(message)
 }
 
 let connection
+let transactionStarted = false
 
 try {
   const utcTimestamp = formatActivityTimestamp('2026-10-20T16:01:00Z')
@@ -19,8 +26,13 @@ try {
   assert(todayRange.start_date === '2026-10-21' && todayRange.end_date === '2026-10-21', 'Today filter did not use the Manila calendar date')
   assert(weekRange.start_date === '2026-10-19' && weekRange.end_date === '2026-10-21', 'Week filter did not begin on Manila Monday')
 
-  connection = await pool.getConnection()
+  const testDatabase = getIsolatedTestDatabaseConfig()
+  connection = await mysql.createConnection(testDatabase)
+  const [grants] = await connection.query('SHOW GRANTS')
+  assertRestrictedTestDatabaseGrants(grants, testDatabase.database)
+  await assertSelectedTestDatabase(connection, testDatabase.database)
   await connection.beginTransaction()
+  transactionStarted = true
   const [users] = await connection.execute('SELECT user_id FROM users ORDER BY user_id LIMIT 1')
   assert(users.length === 1, 'A user fixture is required for the activity timestamp test')
   const userId = users[0].user_id
@@ -80,8 +92,7 @@ try {
   console.log('PASS explicit future activity timestamp convention and rollback isolation')
 } finally {
   if (connection) {
-    await connection.rollback()
-    connection.release()
+    if (transactionStarted) await connection.rollback()
+    await connection.end()
   }
-  await pool.end()
 }

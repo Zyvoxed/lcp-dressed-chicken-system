@@ -1,4 +1,10 @@
-import pool from '../config/database.js'
+import 'dotenv/config'
+import mysql from 'mysql2/promise'
+import {
+  assertRestrictedTestDatabaseGrants,
+  assertSelectedTestDatabase,
+  getIsolatedTestDatabaseConfig,
+} from './testDatabaseSafety.js'
 
 const manilaCurrentDate = "DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))"
 
@@ -7,10 +13,16 @@ function assert(condition, message) {
 }
 
 let connection
+let transactionStarted = false
 
 try {
-  connection = await pool.getConnection()
+  const testDatabase = getIsolatedTestDatabaseConfig()
+  connection = await mysql.createConnection(testDatabase)
+  const [grants] = await connection.query('SHOW GRANTS')
+  assertRestrictedTestDatabaseGrants(grants, testDatabase.database)
+  await assertSelectedTestDatabase(connection, testDatabase.database)
   await connection.beginTransaction()
+  transactionStarted = true
 
   const [users] = await connection.execute('SELECT user_id FROM users ORDER BY user_id LIMIT 1')
   assert(users.length === 1, 'A user fixture is required for the dashboard trend test')
@@ -62,8 +74,7 @@ try {
   console.log('PASS same-hour aggregation, values above PHP 1,000, and zero-hour filling')
 } finally {
   if (connection) {
-    await connection.rollback()
-    connection.release()
+    if (transactionStarted) await connection.rollback()
+    await connection.end()
   }
-  await pool.end()
 }

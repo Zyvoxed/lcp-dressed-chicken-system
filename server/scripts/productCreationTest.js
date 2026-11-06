@@ -1,10 +1,16 @@
 import 'dotenv/config'
 import { readFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import jwt from 'jsonwebtoken'
 import mysql from 'mysql2/promise'
+import {
+  assertEmptyTestDatabase,
+  assertRestrictedTestDatabaseGrants,
+  getIsolatedTestDatabaseConfig,
+  removeSchemaSelection,
+} from './testDatabaseSafety.js'
 
-const testDatabase = 'lcp_product_creation_test'
 const testPort = 5052
 const baseUrl = `http://127.0.0.1:${testPort}/api`
 
@@ -34,6 +40,9 @@ async function apiRequest(path, { token, method = 'GET', body } = {}) {
 
   if (token) headers.Authorization = `Bearer ${token}`
   if (body !== undefined) headers['Content-Type'] = 'application/json'
+  if (method === 'POST' && ['/sales', '/stock-in', '/payments'].includes(path)) {
+    headers['Idempotency-Key'] = randomUUID()
+  }
 
   return fetch(`${baseUrl}${path}`, {
     method,
@@ -42,22 +51,25 @@ async function apiRequest(path, { token, method = 'GET', body } = {}) {
   })
 }
 
+const testDatabaseConfig = getIsolatedTestDatabaseConfig()
+console.info(`Using isolated test MySQL host=${testDatabaseConfig.host}, database=${testDatabaseConfig.database}`)
 const admin = await mysql.createConnection({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD || '',
+  host: testDatabaseConfig.host,
+  port: testDatabaseConfig.port,
+  user: testDatabaseConfig.user,
+  password: testDatabaseConfig.password,
+  database: testDatabaseConfig.database,
   multipleStatements: true,
 })
 let api
 
 try {
-  assert(/^[a-z0-9_]+$/.test(testDatabase), 'Unsafe test database name')
-  await admin.query(`DROP DATABASE IF EXISTS \`${testDatabase}\``)
+  const [grants] = await admin.query('SHOW GRANTS')
+  assertRestrictedTestDatabaseGrants(grants, testDatabaseConfig.database)
+  await assertEmptyTestDatabase(admin, testDatabaseConfig.database)
   const schemaUrl = new URL('../../database/schema.sql', import.meta.url)
-  const schema = (await readFile(schemaUrl, 'utf8')).replaceAll('lcp_business_system', testDatabase)
+  const schema = removeSchemaSelection(await readFile(schemaUrl, 'utf8'))
   await admin.query(schema)
-  await admin.changeUser({ database: testDatabase })
 
   const [adminResult] = await admin.execute(
     "INSERT INTO users (fullname, username, password, role) VALUES ('Product Admin', 'product_admin', 'test-only', 'Admin')",
@@ -76,7 +88,17 @@ try {
 
   api = spawn(process.execPath, ['server.js'], {
     cwd: new URL('..', import.meta.url),
-    env: { ...process.env, DB_NAME: testDatabase, PORT: String(testPort), NODE_ENV: 'test' },
+    env: {
+      ...process.env,
+      DB_HOST: testDatabaseConfig.host,
+      DB_PORT: String(testDatabaseConfig.port),
+      DB_USER: testDatabaseConfig.user,
+      DB_PASSWORD: testDatabaseConfig.password,
+      DB_NAME: testDatabaseConfig.database,
+      DB_SSL: 'false',
+      PORT: String(testPort),
+      NODE_ENV: 'test',
+    },
     stdio: 'ignore',
     windowsHide: true,
   })
@@ -374,7 +396,5 @@ try {
   console.log('PASS product identity, stock, FIFO, and sales relationship preservation')
 } finally {
   if (api && api.exitCode === null) api.kill()
-  await admin.changeUser({ database: undefined }).catch(() => {})
-  await admin.query(`DROP DATABASE IF EXISTS \`${testDatabase}\``).catch(() => {})
   await admin.end()
 }

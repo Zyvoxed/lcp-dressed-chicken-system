@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import EmptyState from '../Shared/EmptyState.jsx'
 import CreditStats from './CreditStats.jsx'
 import CustomerLedger from './CustomerLedger.jsx'
@@ -17,6 +17,7 @@ function CustomerCredits() {
   const [detailsError, setDetailsError] = useState('')
   const [customerModalOpen, setCustomerModalOpen] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState(null)
+  const selectedCustomerIdRef = useRef(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -26,6 +27,7 @@ function CustomerCredits() {
         setCustomers(data)
         setDetailsLoading(Boolean(data[0]))
         setSelectedCustomer(data[0] || null)
+        selectedCustomerIdRef.current = data[0]?.customer_id || null
       } catch (requestError) {
         if (requestError.name !== 'AbortError') setError(requestError.message)
       } finally {
@@ -65,18 +67,27 @@ function CustomerCredits() {
     setCredits([])
     setPayments([])
     setSelectedCustomer(customer)
+    selectedCustomerIdRef.current = customer.customer_id
   }
 
-  async function refreshCustomer(paymentId) {
+  async function refreshCustomer(customerId, paymentId) {
     const [customer, customerList, creditData, paymentData] = await Promise.all([
-      getCustomer(selectedCustomer.customer_id), getCustomers(),
-      getCustomerCredits(selectedCustomer.customer_id), getCustomerPayments(selectedCustomer.customer_id),
+      getCustomer(customerId), getCustomers(),
+      getCustomerCredits(customerId), getCustomerPayments(customerId),
     ])
-    setSelectedCustomer(customer)
     setCustomers(customerList)
-    setCredits(creditData)
-    setPayments(paymentData)
+    if (Number(selectedCustomerIdRef.current) === Number(customerId)) {
+      setSelectedCustomer(customer)
+      setCredits(creditData)
+      setPayments(paymentData)
+    }
     return paymentData.find((payment) => payment.payment_id === paymentId)
+  }
+
+  async function selectCustomerById(customerId) {
+    const listedCustomer = customers.find((customer) => Number(customer.customer_id) === Number(customerId))
+    const customer = listedCustomer || await getCustomer(customerId)
+    selectCustomer(customer)
   }
 
   async function customerCreated(customerId) {
@@ -93,6 +104,7 @@ function CustomerCredits() {
     ])
     setCustomers(customerList)
     setSelectedCustomer(customer)
+    selectedCustomerIdRef.current = customer.customer_id
   }
 
   function closeCustomerModal() {
@@ -116,7 +128,7 @@ function CustomerCredits() {
           onAddCustomer={() => { setEditingCustomer(null); setCustomerModalOpen(true) }}
         />
       )}
-      {!loading && !error && <CustomerLedger customer={selectedCustomer} credits={credits} payments={payments} onPayment={refreshCustomer} onEdit={(customer) => { setEditingCustomer(customer); setCustomerModalOpen(true) }} loading={detailsLoading} error={detailsError} />}
+      {!loading && !error && <CustomerLedger customer={selectedCustomer} credits={credits} payments={payments} onPayment={refreshCustomer} onSelectCustomer={selectCustomerById} onEdit={(customer) => { setEditingCustomer(customer); setCustomerModalOpen(true) }} loading={detailsLoading} error={detailsError} />}
       {customerModalOpen && (
         <CustomerModal
           key={editingCustomer ? `edit-${editingCustomer.customer_id}` : 'add-customer'}

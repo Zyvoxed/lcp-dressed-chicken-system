@@ -1,4 +1,5 @@
 import { authenticatedApiFetch } from './api.js'
+import { TransactionApiError, parseTransactionResponse } from './transactionApiError.js'
 
 async function parseResponse(response, fallbackMessage) {
   let result
@@ -14,16 +15,25 @@ async function parseResponse(response, fallbackMessage) {
   return result
 }
 
-export async function createSale(data) {
-  const response = await authenticatedApiFetch('/sales', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  const result = await parseResponse(response, 'Unable to record sale')
+export async function createSale(data, idempotencyKey) {
+  let response
+  try {
+    response = await authenticatedApiFetch('/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(data),
+    })
+  } catch (error) {
+    throw new TransactionApiError('Unable to confirm sale status. Check transaction status before retrying.', {
+      originalError: error,
+    })
+  }
+  const result = await parseTransactionResponse(response, 'Unable to record sale')
 
   if (!result.data?.sale_id) {
-    throw new Error('The sale result could not be read. Check the sales records before trying again.')
+    throw new TransactionApiError('The sale result could not be read. Check the sales records before trying again.', {
+      status: response.status,
+    })
   }
   return result.data
 }

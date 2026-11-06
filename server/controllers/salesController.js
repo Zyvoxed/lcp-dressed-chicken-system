@@ -1,5 +1,16 @@
 import pool from '../config/database.js'
 import { DecimalValidationError, decimalLimits, parseDecimal } from '../utils/decimalValidation.js'
+import {
+  findIdempotentResponse,
+  getIdempotencyKey,
+  hashRequestPayload,
+  IdempotencyError,
+  readIdempotentResponse,
+  reserveIdempotencyKey,
+  saveIdempotentResponse,
+} from '../utils/idempotency.js'
+import { centsToAmount, lineTotalCents, toCents, toThousandths } from '../utils/money.js'
+import { resolveTransactionFailure } from '../utils/transactionFailure.js'
 
 class SaleError extends Error {
   constructor(status, message) {
@@ -57,8 +68,15 @@ function normalizeItems(items) {
 
 export async function createSale(request, response) {
   let connection
+  let idempotency
+  let transactionBeginAttempted = false
+  let transactionStarted = false
+  let commitAttempted = false
+  let commitCompleted = false
+  let connectionReusable = true
 
   try {
+    const idempotencyKey = getIdempotencyKey(request)
     const paymentType = request.body?.payment_type
     if (paymentType !== 'Cash' && paymentType !== 'Credit') {
       throw new SaleError(400, 'Payment type must be Cash or Credit')
@@ -78,8 +96,27 @@ export async function createSale(request, response) {
       throw new SaleError(400, 'A customer is required for credit sales')
     }
 
+    const amountPaidCents = toCents(amountPaid)
+    idempotency = {
+      userId: request.user.user_id,
+      operation: 'sale',
+      key: idempotencyKey,
+      payloadHash: hashRequestPayload({
+        payment_type: paymentType,
+        customer_id: customerId,
+        amount_paid_cents: amountPaidCents.toString(),
+        items: items.map((item) => ({
+          product_id: item.productId,
+          quantity_thousandths: toThousandths(item.quantity).toString(),
+        })),
+      }),
+    }
+
     connection = await pool.getConnection()
+    transactionBeginAttempted = true
     await connection.beginTransaction()
+    transactionStarted = true
+    await reserveIdempotencyKey(connection, idempotency)
 
     if (customerId) {
       const [customers] = await connection.execute(
@@ -92,7 +129,7 @@ export async function createSale(request, response) {
     }
 
     const preparedItems = []
-    let totalCents = 0
+    let totalCents = 0n
 
     for (const item of items) {
       const [products] = await connection.execute(
@@ -127,20 +164,19 @@ export async function createSale(request, response) {
         throw new SaleError(409, `Available stock records do not cover product ${item.productId}. Please contact the owner.`)
       }
 
-      const priceCents = Math.round(Number(product.selling_price) * 100)
-      const subtotalAmount = item.quantity * Number(product.selling_price)
-      if (!Number.isFinite(subtotalAmount) || subtotalAmount > decimalLimits.money) {
+      const priceCents = toCents(product.selling_price)
+      const subtotalCents = lineTotalCents(item.quantity, product.selling_price)
+      const maximumMoneyCents = BigInt(Math.round(decimalLimits.money * 100))
+      if (subtotalCents > maximumMoneyCents) {
         throw new SaleError(400, `Sale item total must not exceed ${decimalLimits.money}`)
       }
-      const subtotalCents = Math.round(item.quantity * priceCents)
       totalCents += subtotalCents
-      if (totalCents > Math.round(decimalLimits.money * 100)) {
+      if (totalCents > maximumMoneyCents) {
         throw new SaleError(400, `Sale total must not exceed ${decimalLimits.money}`)
       }
       preparedItems.push({ ...item, product, batches, priceCents, subtotalCents })
     }
 
-    const amountPaidCents = Math.round(amountPaid * 100)
     if (amountPaidCents > totalCents) {
       throw new SaleError(400, 'Amount paid cannot exceed the sale total')
     }
@@ -149,10 +185,10 @@ export async function createSale(request, response) {
     }
 
     const remainingCents = totalCents - amountPaidCents
-    const status = remainingCents === 0 ? 'Paid' : amountPaidCents > 0 ? 'Partially Paid' : 'Unpaid'
-    const totalAmount = (totalCents / 100).toFixed(2)
-    const paidAmount = (amountPaidCents / 100).toFixed(2)
-    const remainingBalance = (remainingCents / 100).toFixed(2)
+    const status = remainingCents === 0n ? 'Paid' : amountPaidCents > 0n ? 'Partially Paid' : 'Unpaid'
+    const totalAmount = centsToAmount(totalCents)
+    const paidAmount = centsToAmount(amountPaidCents)
+    const remainingBalance = centsToAmount(remainingCents)
 
     const [saleResult] = await connection.execute(
       `INSERT INTO sales (
@@ -164,8 +200,8 @@ export async function createSale(request, response) {
 
     for (const item of preparedItems) {
       const quantity = item.quantity.toFixed(3)
-      const price = (item.priceCents / 100).toFixed(2)
-      const subtotal = (item.subtotalCents / 100).toFixed(2)
+      const price = centsToAmount(item.priceCents)
+      const subtotal = centsToAmount(item.subtotalCents)
       const [itemResult] = await connection.execute(
         `INSERT INTO sales_items (sale_id, product_id, quantity, price, subtotal)
          VALUES (?, ?, ?, ?, ?)`,
@@ -215,9 +251,7 @@ export async function createSale(request, response) {
       [request.user.user_id, `Sale ${saleResult.insertId} created (${paymentType}, ${totalAmount})`],
     )
 
-    await connection.commit()
-
-    return response.status(201).json({
+    const resultBody = {
       success: true,
       message: 'Sale recorded successfully',
       data: {
@@ -227,18 +261,73 @@ export async function createSale(request, response) {
         remaining_balance: remainingBalance,
         status,
       },
-    })
-  } catch (error) {
-    if (connection) await connection.rollback()
+    }
+    await saveIdempotentResponse(connection, { ...idempotency, status: 201, body: resultBody })
+    commitAttempted = true
+    await connection.commit()
+    commitCompleted = true
 
-    if (error instanceof SaleError) {
-      return response.status(error.status).json({ success: false, message: error.message })
+    return response.status(201).json(resultBody)
+  } catch (error) {
+    const rejectionConfirmed = (error instanceof SaleError || error instanceof IdempotencyError)
+      && error.status < 500
+    const failure = await resolveTransactionFailure({
+      connection,
+      transactionBeginAttempted,
+      transactionStarted,
+      commitAttempted,
+      commitCompleted,
+      error,
+      operation: 'sale',
+      rejectionConfirmed,
+    })
+    connectionReusable = failure.reusable
+
+    if (error.code === 'ER_DUP_ENTRY' && idempotency) {
+      if (failure.outcome === 'unknown') {
+        return response.status(500).json({
+          success: false,
+          code: 'TRANSACTION_OUTCOME_UNKNOWN',
+          transaction_outcome: 'unknown',
+          message: 'Unable to confirm sale status. Check transaction status before retrying.',
+        })
+      }
+      try {
+        const record = await findIdempotentResponse(pool, idempotency)
+        const replay = readIdempotentResponse(record, idempotency.payloadHash)
+        if (replay.kind === 'payload-mismatch') {
+          return response.status(409).json({
+            success: false,
+            code: 'IDEMPOTENCY_KEY_PAYLOAD_MISMATCH',
+            transaction_outcome: 'not_committed',
+            message: 'Idempotency key was already used for a different request',
+          })
+        }
+        if (replay.kind === 'replay') return response.status(replay.status).json(replay.body)
+      } catch (replayError) {
+        console.error('Unable to retrieve idempotent sale result:', replayError.message)
+        return response.status(500).json({ success: false, message: 'Unable to record sale' })
+      }
     }
 
-    console.error('Unable to record sale:', error.message)
-    return response.status(500).json({ success: false, message: 'Unable to record sale' })
+    if ((error instanceof SaleError || error instanceof IdempotencyError) && failure.outcome === 'not_committed') {
+      return response.status(error.status).json({
+        success: false,
+        code: rejectionConfirmed ? 'TRANSACTION_REJECTED' : 'TRANSACTION_OUTCOME_UNKNOWN',
+        transaction_outcome: failure.outcome,
+        message: error.message,
+      })
+    }
+
+    console.error('Unable to record sale:', error.code || 'UNKNOWN')
+    return response.status(500).json({
+      success: false,
+      code: 'TRANSACTION_OUTCOME_UNKNOWN',
+      transaction_outcome: 'unknown',
+      message: 'Unable to record sale',
+    })
   } finally {
-    connection?.release()
+    if (connectionReusable) connection?.release()
   }
 }
 

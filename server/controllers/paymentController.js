@@ -1,5 +1,16 @@
 import pool from '../config/database.js'
 import { DecimalValidationError, decimalLimits, parseDecimal } from '../utils/decimalValidation.js'
+import {
+  findIdempotentResponse,
+  getIdempotencyKey,
+  hashRequestPayload,
+  IdempotencyError,
+  readIdempotentResponse,
+  reserveIdempotencyKey,
+  saveIdempotentResponse,
+} from '../utils/idempotency.js'
+import { centsToAmount, toCents } from '../utils/money.js'
+import { resolveTransactionFailure } from '../utils/transactionFailure.js'
 
 class PaymentError extends Error {
   constructor(status, message) {
@@ -10,8 +21,15 @@ class PaymentError extends Error {
 
 export async function recordPayment(request, response) {
   let connection
+  let idempotency
+  let transactionBeginAttempted = false
+  let transactionStarted = false
+  let commitAttempted = false
+  let commitCompleted = false
+  let connectionReusable = true
 
   try {
+    const idempotencyKey = getIdempotencyKey(request)
     const saleId = Number(request.body?.sale_id)
     if (!Number.isInteger(saleId) || saleId <= 0) throw new PaymentError(400, 'Invalid sale ID')
     let paymentAmount
@@ -28,8 +46,22 @@ export async function recordPayment(request, response) {
       throw error
     }
 
+    const paymentCents = toCents(paymentAmount)
+    idempotency = {
+      userId: request.user.user_id,
+      operation: 'payment',
+      key: idempotencyKey,
+      payloadHash: hashRequestPayload({
+        sale_id: saleId,
+        payment_amount_cents: paymentCents.toString(),
+      }),
+    }
+
     connection = await pool.getConnection()
+    transactionBeginAttempted = true
     await connection.beginTransaction()
+    transactionStarted = true
+    await reserveIdempotencyKey(connection, idempotency)
 
     const [sales] = await connection.execute(
       `SELECT customer_id, payment_type, total_amount, amount_paid, remaining_balance, status
@@ -41,25 +73,24 @@ export async function recordPayment(request, response) {
     if (!sale) throw new PaymentError(404, 'Sale not found')
     if (sale.payment_type !== 'Credit' || !sale.customer_id) throw new PaymentError(400, 'Payments can only be recorded for customer credit sales')
 
-    const outstandingCents = Math.round(Number(sale.remaining_balance) * 100)
-    const paymentCents = Math.round(paymentAmount * 100)
-    if (outstandingCents <= 0) throw new PaymentError(400, 'This sale is already fully paid')
-    if (paymentCents > outstandingCents) throw new PaymentError(400, 'Payment exceeds the outstanding balance')
+    const saleOutstandingCents = toCents(sale.remaining_balance)
+    if (saleOutstandingCents <= 0n) throw new PaymentError(400, 'This sale is already fully paid')
+    if (paymentCents > saleOutstandingCents) throw new PaymentError(400, 'Payment exceeds the outstanding balance')
 
     const [customers] = await connection.execute(
       'SELECT current_balance FROM customers WHERE customer_id = ? AND is_active = TRUE LIMIT 1 FOR UPDATE',
       [sale.customer_id],
     )
     if (!customers[0]) throw new PaymentError(404, 'Active customer not found')
-    if (Math.round(Number(customers[0].current_balance) * 100) < paymentCents) {
+    if (toCents(customers[0].current_balance) < paymentCents) {
       throw new PaymentError(409, 'The customer balance does not match this payment. Please contact the owner.')
     }
 
-    const newPaid = (Number(sale.amount_paid) + paymentCents / 100).toFixed(2)
-    const newRemainingCents = outstandingCents - paymentCents
-    const newRemaining = (newRemainingCents / 100).toFixed(2)
-    const paymentValue = (paymentCents / 100).toFixed(2)
-    const status = newRemainingCents === 0 ? 'Paid' : 'Partially Paid'
+    const newPaid = centsToAmount(toCents(sale.amount_paid) + paymentCents)
+    const newRemainingCents = saleOutstandingCents - paymentCents
+    const newRemaining = centsToAmount(newRemainingCents)
+    const paymentValue = centsToAmount(paymentCents)
+    const status = newRemainingCents === 0n ? 'Paid' : 'Partially Paid'
 
     await connection.execute(
       'UPDATE sales SET amount_paid = ?, remaining_balance = ?, status = ? WHERE sale_id = ?',
@@ -80,8 +111,7 @@ export async function recordPayment(request, response) {
       [request.user.user_id, `Payment ${result.insertId} recorded for sale ${saleId} (${paymentValue})`],
     )
 
-    await connection.commit()
-    return response.status(201).json({
+    const resultBody = {
       success: true,
       message: 'Payment recorded successfully',
       data: {
@@ -91,15 +121,68 @@ export async function recordPayment(request, response) {
         remaining_balance: newRemaining,
         status,
       },
-    })
-  } catch (error) {
-    if (connection) await connection.rollback()
-    if (error instanceof PaymentError) {
-      return response.status(error.status).json({ success: false, message: error.message })
     }
-    console.error('Unable to record payment:', error.message)
-    return response.status(500).json({ success: false, message: 'Unable to record payment' })
+    await saveIdempotentResponse(connection, { ...idempotency, status: 201, body: resultBody })
+    commitAttempted = true
+    await connection.commit()
+    commitCompleted = true
+    return response.status(201).json(resultBody)
+  } catch (error) {
+    const rejectionConfirmed = (error instanceof PaymentError || error instanceof IdempotencyError)
+      && error.status < 500
+    const failure = await resolveTransactionFailure({
+      connection,
+      transactionBeginAttempted,
+      transactionStarted,
+      commitAttempted,
+      commitCompleted,
+      error,
+      operation: 'payment',
+      rejectionConfirmed,
+    })
+    connectionReusable = failure.reusable
+    if (error.code === 'ER_DUP_ENTRY' && idempotency) {
+      if (failure.outcome === 'unknown') {
+        return response.status(500).json({
+          success: false,
+          code: 'TRANSACTION_OUTCOME_UNKNOWN',
+          transaction_outcome: 'unknown',
+          message: 'Unable to confirm payment status. Check transaction status before retrying.',
+        })
+      }
+      try {
+        const record = await findIdempotentResponse(pool, idempotency)
+        const replay = readIdempotentResponse(record, idempotency.payloadHash)
+        if (replay.kind === 'payload-mismatch') {
+          return response.status(409).json({
+            success: false,
+            code: 'IDEMPOTENCY_KEY_PAYLOAD_MISMATCH',
+            transaction_outcome: 'not_committed',
+            message: 'Idempotency key was already used for a different request',
+          })
+        }
+        if (replay.kind === 'replay') return response.status(replay.status).json(replay.body)
+      } catch (replayError) {
+        console.error('Unable to retrieve idempotent payment result:', replayError.message)
+        return response.status(500).json({ success: false, message: 'Unable to record payment' })
+      }
+    }
+    if ((error instanceof PaymentError || error instanceof IdempotencyError) && failure.outcome === 'not_committed') {
+      return response.status(error.status).json({
+        success: false,
+        code: rejectionConfirmed ? 'TRANSACTION_REJECTED' : 'TRANSACTION_OUTCOME_UNKNOWN',
+        transaction_outcome: failure.outcome,
+        message: error.message,
+      })
+    }
+    console.error('Unable to record payment:', error.code || 'UNKNOWN')
+    return response.status(500).json({
+      success: false,
+      code: 'TRANSACTION_OUTCOME_UNKNOWN',
+      transaction_outcome: 'unknown',
+      message: 'Unable to record payment',
+    })
   } finally {
-    connection?.release()
+    if (connectionReusable) connection?.release()
   }
 }

@@ -106,6 +106,7 @@ try {
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { ThemeProvider } from '/@fs/${sourceRoot}/src/context/ThemeContext.jsx'
+import { AuthContext } from '/@fs/${sourceRoot}/src/context/AuthContext.jsx'
 import MainLayout from '/@fs/${sourceRoot}/src/layouts/MainLayout.jsx'
 import RecordSales from '/@fs/${sourceRoot}/src/pages/RecordSales/RecordSales.jsx'
 import CustomerCredits from '/@fs/${sourceRoot}/src/pages/CustomerCredits/CustomerCredits.jsx'
@@ -133,15 +134,24 @@ const customers = [
 ]
 const credits = [{ sale_id: 700, sale_date: '2026-10-20T09:30:00+08:00', total_amount: '500.00', amount_paid: '200.00', remaining_balance: '300.00', status: 'Partially Paid', recorded_by: 'Transaction Test Admin' }]
 const payments = [{ payment_id: 900, sale_id: 700, payment_amount: '200.00', remaining_balance: '300.00', payment_date: '2026-10-20T10:15:00+08:00', recorded_by: 'Transaction Test Admin' }]
+globalThis.testCredits = credits
+globalThis.testCustomers = customers
 globalThis.salesRequests = []
+globalThis.saleIdempotencyKeys = []
 globalThis.paymentRequests = []
+globalThis.paymentIdempotencyKeys = []
 globalThis.customerRequests = []
 globalThis.customerUpdateRequests = []
 globalThis.productLoads = 0
 globalThis.ledgerRefreshes = 0
 globalThis.saleShouldFail = false
+globalThis.saleShouldReject = false
+globalThis.saleNetworkFail = false
 globalThis.paymentShouldFail = false
+globalThis.paymentShouldReject = false
+globalThis.ledgerRefreshCustomerIds = []
 globalThis.customerUpdateShouldFail = false
+globalThis.idempotencyStatus = JSON.parse(sessionStorage.getItem('test-idempotency-status') || '{"state":"not_found"}')
 globalThis.nextCustomerId = 9
 localStorage.setItem('authToken', 'transaction-ui-test-token')
 
@@ -153,6 +163,9 @@ globalThis.fetch = async (url, options = {}) => {
     return new Response(JSON.stringify({ success: true, data: products }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   const pathParts = new URL(path).pathname.split('/').filter(Boolean)
+  if (pathParts.length === 4 && pathParts[1] === 'idempotency' && method === 'GET') {
+    return new Response(JSON.stringify({ success: true, data: globalThis.idempotencyStatus }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
   const customerId = Number(pathParts[2])
   if (pathParts.length === 3 && pathParts[1] === 'customers' && Number.isInteger(customerId) && method === 'GET') {
     const customer = customers.find((item) => item.customer_id === customerId)
@@ -171,9 +184,11 @@ globalThis.fetch = async (url, options = {}) => {
     return new Response(JSON.stringify({ success: true, data: customer }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   if (pathParts.length === 4 && pathParts[1] === 'customers' && pathParts[3] === 'credits' && method === 'GET') {
+    globalThis.ledgerRefreshCustomerIds.push(customerId)
     return new Response(JSON.stringify({ success: true, data: customerId === 7 ? credits : [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   if (pathParts.length === 4 && pathParts[1] === 'customers' && pathParts[3] === 'payments' && method === 'GET') {
+    globalThis.ledgerRefreshCustomerIds.push(customerId)
     return new Response(JSON.stringify({ success: true, data: customerId === 7 ? payments : [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   if (path.endsWith('/customers') && method === 'GET') {
@@ -190,9 +205,18 @@ globalThis.fetch = async (url, options = {}) => {
   if (path.endsWith('/sales') && method === 'POST') {
     const body = JSON.parse(options.body)
     globalThis.salesRequests.push(body)
+    globalThis.saleIdempotencyKeys.push(options.headers.get('Idempotency-Key'))
     await new Promise((resolveRequest) => setTimeout(resolveRequest, 100))
+    if (globalThis.saleNetworkFail) {
+      globalThis.saleNetworkFail = false
+      throw new TypeError('Network response was interrupted')
+    }
     if (globalThis.saleShouldFail) {
       return new Response(JSON.stringify({ success: false, message: 'Not enough stock for product 1' }), { status: 409, headers: { 'Content-Type': 'application/json' } })
+    }
+    if (globalThis.saleShouldReject) {
+      globalThis.saleShouldReject = false
+      return new Response(JSON.stringify({ success: false, code: 'TRANSACTION_REJECTED', transaction_outcome: 'not_committed', message: 'Confirmed sale rejection' }), { status: 409, headers: { 'Content-Type': 'application/json' } })
     }
     const total = body.items.reduce((sum, item) => sum + Number(products.find((product) => product.product_id === item.product_id).selling_price) * item.quantity, 0)
     return new Response(JSON.stringify({
@@ -209,9 +233,14 @@ globalThis.fetch = async (url, options = {}) => {
   if (path.endsWith('/payments') && method === 'POST') {
     const body = JSON.parse(options.body)
     globalThis.paymentRequests.push(body)
+    globalThis.paymentIdempotencyKeys.push(options.headers.get('Idempotency-Key'))
     await new Promise((resolveRequest) => setTimeout(resolveRequest, 100))
     if (globalThis.paymentShouldFail) {
       return new Response(JSON.stringify({ success: false, message: 'Payment exceeds the outstanding balance' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+    }
+    if (globalThis.paymentShouldReject) {
+      globalThis.paymentShouldReject = false
+      return new Response(JSON.stringify({ success: false, code: 'TRANSACTION_REJECTED', transaction_outcome: 'not_committed', message: 'Confirmed payment rejection' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
     }
     const remainingBalance = (Number(credits[0].remaining_balance) - Number(body.payment_amount)).toFixed(2)
     credits[0].amount_paid = (Number(credits[0].amount_paid) + Number(body.payment_amount)).toFixed(2)
@@ -226,12 +255,14 @@ globalThis.fetch = async (url, options = {}) => {
 }
 
 function Harness() {
-  return <ThemeProvider>
-    <MainLayout activeModule="Record Sales" role="admin" user={{ fullname: 'Transaction Test Admin' }} onSelect={() => {}} onLogout={() => {}}>
-      <section id="record-sales-test"><RecordSales /></section>
-      <section id="customer-credits-test"><CustomerCredits /></section>
-    </MainLayout>
-  </ThemeProvider>
+  return <AuthContext.Provider value={{ user: { user_id: 1, fullname: 'Transaction Test Admin', role: 'admin' } }}>
+    <ThemeProvider>
+      <MainLayout activeModule="Record Sales" role="admin" user={{ fullname: 'Transaction Test Admin' }} onSelect={() => {}} onLogout={() => {}}>
+        <section id="record-sales-test"><RecordSales /></section>
+        <section id="customer-credits-test"><CustomerCredits /></section>
+      </MainLayout>
+    </ThemeProvider>
+  </AuthContext.Provider>
 }
 
 createRoot(document.getElementById('root')).render(<Harness />)
@@ -277,7 +308,8 @@ createRoot(document.getElementById('root')).render(<Harness />)
       if (await evaluate(expression)) return
       await delay(50)
     }
-    throw new Error(message)
+    const pageText = await evaluate("({ sales: document.querySelector('#record-sales-test')?.innerText, requests: salesRequests.length, keys: saleIdempotencyKeys.length, rejectFlag: saleShouldReject })")
+    throw new Error(`${message}; page: ${JSON.stringify(pageText)}`)
   }
 
   async function click(expression) {
@@ -362,6 +394,9 @@ createRoot(document.getElementById('root')).render(<Harness />)
   assert(await evaluate("document.querySelectorAll('#record-sales-test .basket-item').length") === 2, 'Multiple products were not added')
   await click("document.querySelector('#record-sales-test .basket-item .quantity-stepper button:last-child')")
   assert(await evaluate("document.querySelector('#record-sales-test .basket-item input').value") === '2', 'Quantity increase did not update immediately')
+  await setInput("document.querySelector('#record-sales-test .basket-item input')", '1.3')
+  await click("document.querySelector('#record-sales-test .basket-item .quantity-stepper button:first-child')")
+  assert(await evaluate("document.querySelector('#record-sales-test .basket-item input').value") === '0.3', 'Fractional quantity adjustment introduced unsupported floating-point precision')
   await setInput("document.querySelector('#record-sales-test .basket-item input')", '-2')
   assert(await evaluate("Number(document.querySelector('#record-sales-test .basket-item input').value)") === 0.001, 'Negative quantity was not prevented')
   await click("document.querySelectorAll('#record-sales-test .basket-remove-button')[1]")
@@ -426,7 +461,50 @@ createRoot(document.getElementById('root')).render(<Harness />)
   assert(await evaluate('salesRequests.at(-1).customer_id') === 8, 'Selected walk-in customer was not associated with the submitted request')
   await evaluate('saleShouldFail = false')
   await click("document.querySelector('[role=dialog] .secondary-action')")
+  await click("document.querySelector('#record-sales-test .basket-panel > .primary-action')")
+  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Confirm Sales Transaction'", 'Failed sale did not remain available for retry')
+  assert(await evaluate("document.querySelector('#record-sales-test .basket-section input').disabled && document.querySelector('#record-sales-test .basket-section select').disabled"), 'Pending sale inputs were not locked for safe retry')
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Sale Recorded Successfully!'", 'Sale retry did not record the original request')
+  const retriedSaleRequests = await evaluate('salesRequests.slice(-2)')
+  const retriedSaleKeys = await evaluate('saleIdempotencyKeys.slice(-2)')
+  assert(retriedSaleRequests.length === 2 && retriedSaleRequests[0].customer_id === retriedSaleRequests[1].customer_id && retriedSaleRequests[0].items[0].product_id === retriedSaleRequests[1].items[0].product_id, 'Sale retry changed the original submitted payload')
+  assert(retriedSaleKeys.length === 2 && retriedSaleKeys[0] === retriedSaleKeys[1], 'Sale retry did not retain the original idempotency key')
+  await click("document.querySelector('[role=dialog] .transaction-done-button')")
 
+  await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken'))")
+  await setInput("document.querySelector('#record-sales-test .basket-section input')", '120')
+  await evaluate('saleShouldReject = true')
+  await click("document.querySelector('#record-sales-test .basket-panel > .primary-action')")
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  await waitFor("document.querySelector('#record-sales-test .sales-feedback.error')?.textContent.includes('confirmed not committed')", 'Confirmed sale rejection did not expose the correction action')
+  await click("[...document.querySelectorAll('#record-sales-test .sales-feedback button')].find((button) => button.textContent.includes('Edit Rejected Sale'))")
+  assert(await evaluate("document.querySelector('#record-sales-test .basket-section input').disabled"), 'Rejected sale unlocked before confirmation')
+  await click("[...document.querySelectorAll('#record-sales-test .sales-feedback button')].find((button) => button.textContent.includes('Confirm Edit'))")
+  assert(!await evaluate("document.querySelector('#record-sales-test .basket-section input').disabled"), 'Confirmed rejected sale did not unlock for editing')
+  await click("document.querySelector('#record-sales-test .basket-panel > .primary-action')")
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Sale Recorded Successfully!'", 'Edited rejected sale did not submit')
+  const rejectedSaleKeys = await evaluate('saleIdempotencyKeys.slice(-2)')
+  assert(rejectedSaleKeys.length === 2 && rejectedSaleKeys[0] !== rejectedSaleKeys[1], 'Edited rejected sale did not receive a new idempotency key')
+  await click("document.querySelector('[role=dialog] .transaction-done-button')")
+
+  await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken'))")
+  await setInput("document.querySelector('#record-sales-test .basket-section input')", '120')
+  await evaluate('saleNetworkFail = true')
+  await click("document.querySelector('#record-sales-test .basket-panel > .primary-action')")
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  await waitFor("document.querySelector('#record-sales-test .sales-feedback')?.textContent.includes('A sale submission is unresolved')", 'Network failure did not preserve an unresolved sale')
+  const uncertainSaleBeforeRetry = await evaluate('({ payload: salesRequests.at(-1), key: saleIdempotencyKeys.at(-1) })')
+  await click("document.querySelector('#record-sales-test .basket-panel > .primary-action')")
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Sale Recorded Successfully!'", 'Network-failed sale did not retry safely')
+  const uncertainSaleAfterRetry = await evaluate('({ payload: salesRequests.at(-1), key: saleIdempotencyKeys.at(-1) })')
+  assert(JSON.stringify(uncertainSaleAfterRetry.payload) === JSON.stringify(uncertainSaleBeforeRetry.payload), 'Network retry changed the original sale payload')
+  assert(uncertainSaleAfterRetry.key === uncertainSaleBeforeRetry.key, 'Network retry changed the original idempotency key')
+  await click("document.querySelector('[role=dialog] .transaction-done-button')")
+
+  await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken'))")
   await click("[...document.querySelectorAll('#record-sales-test .payment-methods button')].find((button) => button.textContent.includes('Credit'))")
   await setSelect("document.querySelector('#record-sales-test .basket-section select')", '7')
   await setInput("document.querySelector('#record-sales-test .basket-section input')", '20')
@@ -538,13 +616,37 @@ createRoot(document.getElementById('root')).render(<Harness />)
   assert(await evaluate("document.querySelector('#customer-credits-test .payment-form input').value") === '60', 'Failed payment did not preserve the entered amount')
   await evaluate('paymentShouldFail = false')
   await click("document.querySelector('.payment-confirmation-modal .secondary-action')")
+  await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Payment Recorded Successfully!'", 'Failed payment did not retry with its saved request')
+  assert(await evaluate('paymentRequests.at(-1).payment_amount') === '60', 'Payment retry changed the original amount')
+  assert(await evaluate('paymentIdempotencyKeys[1] === paymentIdempotencyKeys[2]'), 'Payment retry did not retain the original idempotency key')
+  await click("document.querySelector('[role=dialog] .transaction-done-button')")
 
   await setSelect("document.querySelector('#customer-credits-test .payment-form select')", '700')
-  await setInput("document.querySelector('#customer-credits-test .payment-form input')", '250')
+  await setInput("document.querySelector('#customer-credits-test .payment-form input')", '10')
+  await evaluate('paymentShouldReject = true')
+  await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  await waitFor("document.querySelector('#customer-credits-test .payment-feedback.error')?.textContent.includes('confirmed not committed')", 'Confirmed payment rejection did not expose the correction action')
+  await click("[...document.querySelectorAll('#customer-credits-test .payment-feedback button')].find((button) => button.textContent.includes('Edit Rejected Payment'))")
+  assert(await evaluate("document.querySelector('#customer-credits-test .payment-form input').disabled"), 'Rejected payment unlocked before confirmation')
+  await click("[...document.querySelectorAll('#customer-credits-test .payment-feedback button')].find((button) => button.textContent.includes('Confirm Edit'))")
+  assert(!await evaluate("document.querySelector('#customer-credits-test .payment-form input').disabled"), 'Confirmed rejected payment did not unlock for editing')
+  await setInput("document.querySelector('#customer-credits-test .payment-form input')", '20')
+  await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Payment Recorded Successfully!'", 'Edited rejected payment did not submit')
+  const rejectedPaymentKeys = await evaluate('paymentIdempotencyKeys.slice(-2)')
+  assert(rejectedPaymentKeys.length === 2 && rejectedPaymentKeys[0] !== rejectedPaymentKeys[1], 'Edited rejected payment did not receive a new idempotency key')
+  await click("document.querySelector('[role=dialog] .transaction-done-button')")
+
+  await setSelect("document.querySelector('#customer-credits-test .payment-form select')", '700')
+  await setInput("document.querySelector('#customer-credits-test .payment-form input')", '170')
   await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
   await click("document.querySelector('[role=dialog] .primary-action')")
   await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Payment Recorded Successfully!'", 'Full payment success modal did not open')
-  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('PAY-903') && document.querySelector('[role=dialog]').textContent.includes('\\u20b10.00')"), 'Full payment success details were inaccurate')
+  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('PAY-906') && document.querySelector('[role=dialog]').textContent.includes('\\u20b10.00')"), 'Full payment success details were inaccurate')
   await click("document.querySelector('[role=dialog] .transaction-done-button')")
   assert(await evaluate("document.querySelector('#customer-credits-test .payment-settled-note').textContent.includes('no unpaid credit sales')"), 'Full payment did not settle the selected credit sale')
   assert(await evaluate("document.querySelector('#customer-credits-test').textContent.includes('Paid') && document.querySelector('#customer-credits-test .balance-display').textContent.includes('\\u20b10.00')"), 'Full payment did not refresh paid status and zero customer balance')
@@ -560,6 +662,68 @@ createRoot(document.getElementById('root')).render(<Harness />)
   await click("document.querySelector('[role=dialog] .transaction-done-button')")
   await waitFor("document.querySelector('#customer-credits-test .ledger-heading h2')?.textContent === 'Ledger Customer'", 'New customer did not appear without a page reload')
 
+  await evaluate(`(() => {
+    const attempt = {
+      key: 'customer-switch-payment-recovery',
+      state: 'pending',
+      payload: { sale_id: 700, payment_amount: '15.00' },
+      display: {
+        customer_id: 7,
+        customer_name: 'Maria Santos',
+        credit: { sale_id: 700, sale_date: '2026-10-20T09:30:00+08:00', total_amount: '500.00', amount_paid: '200.00', remaining_balance: '300.00', status: 'Partially Paid' },
+      },
+    }
+    sessionStorage.setItem('lcp.pending-transaction.v2.1.payment', JSON.stringify({ userId: 1, attempt }))
+    sessionStorage.setItem('test-idempotency-status', JSON.stringify({ state: 'not_found' }))
+  })()`)
+  await browserConnection.command('Page.navigate', { url: pageUrl })
+  await waitFor("document.querySelector('#customer-credits-test .payment-feedback')?.textContent.includes('No completed result was found')", 'Pending payment recovery did not remain unresolved on reload')
+  await waitFor("[...document.querySelectorAll('#customer-credits-test .debtor-row')].some((row) => row.textContent.includes('Maria Santos'))", 'Original customer was not listed after reload')
+  await evaluate('ledgerRefreshCustomerIds = []')
+  await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Juan Cash Customer')
+  await click("[...document.querySelectorAll('#customer-credits-test .debtor-row')].find((row) => row.textContent.includes('Juan Cash Customer'))")
+  await waitFor("document.querySelector('#customer-credits-test .ledger-heading h2')?.textContent === 'Juan Cash Customer'", 'Customer switch did not open the selected ledger')
+  assert(await evaluate("document.querySelector('#customer-credits-test .payment-feedback.error')?.textContent.includes('Maria Santos')"), 'Pending payment for Maria was not identified in Juan ledger')
+  assert(!await evaluate("document.querySelector('[role=dialog] h2')?.textContent.includes('Payment Recorded Successfully')"), 'Payment for Maria was shown as successful under Juan')
+  await evaluate(`idempotencyStatus = {
+    state: 'completed',
+    status: 201,
+    response: { success: true, data: { payment_id: 999, sale_id: 700, payment_amount: '15.00', remaining_balance: '285.00', status: 'Partially Paid' } },
+  }`)
+  await click("[...document.querySelectorAll('#customer-credits-test .payment-feedback button')].find((button) => button.textContent.includes(\"Open Maria Santos's ledger\"))")
+  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Payment Recorded Successfully!'", 'Payment did not recover under its original customer')
+  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('Maria Santos')"), 'Recovered payment success used the wrong customer name')
+  assert(await evaluate("ledgerRefreshCustomerIds.slice(-2).every((customerId) => customerId === 7)"), 'Payment recovery refreshed a different customer ledger')
+  await click("document.querySelector('[role=dialog] .transaction-done-button')")
+
+  await evaluate(`(() => {
+    testCredits[0].remaining_balance = '20.00'
+    testCredits[0].amount_paid = '480.00'
+    testCredits[0].status = 'Partially Paid'
+    testCustomers.find((item) => item.customer_id === 7).current_balance = '20.00'
+  })()`)
+  await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Juan Cash Customer')
+  await click("[...document.querySelectorAll('#customer-credits-test .debtor-row')].find((row) => row.textContent.includes('Juan Cash Customer'))")
+  await waitFor("document.querySelector('#customer-credits-test .ledger-heading h2')?.textContent === 'Juan Cash Customer'", 'Customer ledger did not switch before in-flight payment')
+  await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Maria Santos')
+  await click("[...document.querySelectorAll('#customer-credits-test .debtor-row')].find((row) => row.textContent.includes('Maria Santos'))")
+  await waitFor("Boolean(document.querySelector('#customer-credits-test .payment-form select')?.querySelector('option[value=\"700\"]'))", 'Maria ledger did not reload an open credit for the in-flight switch test')
+  await setSelect("document.querySelector('#customer-credits-test .payment-form select')", '700')
+  await setInput("document.querySelector('#customer-credits-test .payment-form input')", '5')
+  await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  await evaluate(`(() => {
+    const search = document.querySelector('#customer-credits-test .customer-list-controls input')
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    setter.call(search, 'Juan Cash Customer')
+    search.dispatchEvent(new Event('input', { bubbles: true }))
+    const row = [...document.querySelectorAll('#customer-credits-test .debtor-row')].find((item) => item.textContent.includes('Juan Cash Customer'))
+    row?.click()
+  })()`)
+  await waitFor("document.querySelector('#customer-credits-test .ledger-heading h2')?.textContent === 'Juan Cash Customer'", 'Customer switching during payment did not select the new customer')
+  await waitFor("ledgerRefreshCustomerIds.slice(-2).every((customerId) => customerId === 7)", 'In-flight payment did not refresh its original customer ledger')
+  assert(!await evaluate("document.querySelector('[role=dialog] h2')?.textContent.includes('Payment Recorded Successfully')"), 'In-flight payment result was displayed under the newly selected customer')
+
   await capture('mobile-customer-credits.png', 390, "document.querySelector('#customer-credits-test')")
   assert(await evaluate("document.querySelector('#customer-credits-test').scrollWidth <= document.querySelector('#customer-credits-test').clientWidth"), 'Customer Credits overflowed horizontally on mobile')
 
@@ -572,12 +736,60 @@ createRoot(document.getElementById('root')).render(<Harness />)
   await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Sale Recorded Successfully!'", 'Mobile sale success modal did not open')
   assert(await evaluate("document.querySelector('[role=dialog]').scrollWidth <= document.querySelector('[role=dialog]').clientWidth"), 'Success modal overflowed horizontally on mobile')
   await capture('mobile-sale-success.png', 390, "document.querySelector('[role=dialog]')")
+  await click("document.querySelector('[role=dialog] .transaction-done-button')")
+
+  await evaluate(`(() => {
+    const attempt = {
+      key: 'reload-sale-recovery',
+      state: 'pending',
+      payload: {
+        customer_id: null,
+        payment_type: 'Cash',
+        amount_paid: '120.00',
+        items: [{ product_id: 1, quantity: 1 }],
+      },
+      display: {
+        customer_id: null,
+        cart: [{
+          product_id: 1,
+          product_name: 'Premium Whole Chicken With A Long Product Name',
+          category: 'Whole Chicken',
+          unit: 'kg',
+          selling_price: '120.00',
+          stock_quantity: '10.000',
+          quantity: 1,
+        }],
+      },
+    }
+    sessionStorage.setItem('lcp.pending-transaction.v2.1.sale', JSON.stringify({ userId: 1, attempt }))
+    sessionStorage.setItem('test-idempotency-status', JSON.stringify({
+      state: 'completed',
+      status: 201,
+      response: {
+        success: true,
+        data: {
+          sale_id: 777,
+          total_amount: '120.00',
+          amount_paid: '120.00',
+          remaining_balance: '0.00',
+          status: 'Paid',
+        },
+      },
+    }))
+  })()`)
+  await browserConnection.command('Page.navigate', { url: pageUrl })
+  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Sale Recorded Successfully!'", 'Reload did not recover a completed sale')
+  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('OR-777') && document.querySelectorAll('#record-sales-test .basket-item').length === 1"), 'Reloaded sale recovery omitted the saved transaction')
+  assert(await evaluate('salesRequests.length') === 0, 'Recovered sale was submitted as a new transaction')
+  await click("document.querySelector('[role=dialog] .transaction-done-button')")
+  assert(await evaluate("sessionStorage.getItem('lcp.pending-transaction.v2.1.sale') === null"), 'Acknowledging a recovered sale did not clear its saved attempt')
 
   console.log('PASS product search, availability, cart quantity, removal, summaries, and responsive layout')
-  console.log('PASS cash/credit confirmation, confirmed success, failure preservation, request locking, and stock refresh')
+  console.log('PASS cash/credit confirmation, failure retry, request locking, and stock refresh')
   console.log('PASS customer search, balance filtering, pagination, details, credit and payment history')
   console.log('PASS customer editing, validation, failure preservation, duplicate prevention, refresh, and mobile layout')
-  console.log('PASS payment review, confirmed success, Manila timestamp, failure preservation, request locking, and ledger refresh')
+  console.log('PASS payment review, failure retry, Manila timestamp, request locking, and ledger refresh')
+  console.log('PASS sale completion recovery after browser reload without duplicate submission')
   console.log(`SCREENSHOTS ${screenshotRoot}`)
 } finally {
   browserConnection?.socket.close()

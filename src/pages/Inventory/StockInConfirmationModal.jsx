@@ -1,9 +1,11 @@
 import Modal from '../Shared/Modal.jsx'
 import { peso } from '../../utils/currency.js'
+import { formatTransactionCents, transactionLineCents } from '../../utils/transactionMoney.js'
 
 function StockInConfirmationModal({ product, supplier, form, submitting, error, onCancel, onConfirm }) {
   const quantity = Number(form.quantity_received)
   const costPrice = Number(form.cost_price)
+  const totalCost = transactionLineCents(form.quantity_received, form.cost_price)
 
   return (
     <Modal title="Review Stock Delivery" onClose={onCancel} className="inventory-confirmation-modal">
@@ -22,7 +24,7 @@ function StockInConfirmationModal({ product, supplier, form, submitting, error, 
         <dl className="transaction-detail-list">
           <div><dt>Quantity received</dt><dd>{quantity} {product.unit}</dd></div>
           <div><dt>Cost per {product.unit}</dt><dd>{peso.format(costPrice)}</dd></div>
-          <div><dt>Total cost</dt><dd>{peso.format(quantity * costPrice)}</dd></div>
+          <div><dt>Total cost</dt><dd>{formatTransactionCents(totalCost, peso)}</dd></div>
           <div><dt>Delivery date</dt><dd>{new Date(form.delivery_date).toLocaleString()}</dd></div>
         </dl>
       </section>

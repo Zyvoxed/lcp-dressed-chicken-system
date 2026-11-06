@@ -265,8 +265,10 @@ globalThis.inventoryDashboardFixtures = dashboardFixtures
 globalThis.savedProductEvents = []
 globalThis.productRequests = []
 globalThis.stockInRequests = []
+globalThis.stockInIdempotencyKeys = []
 globalThis.stockInCreatedCount = 0
 globalThis.failNextStockIn = false
+globalThis.rejectNextStockIn = false
 globalThis.userRequests = []
 globalThis.activityRequests = []
 globalThis.failNextUserRequest = false
@@ -318,7 +320,12 @@ globalThis.fetch = async (url, options = {}) => {
   const body = JSON.parse(options.body || '{}')
   if (requestUrl.endsWith('/api/stock-in') && options.method === 'POST') {
     globalThis.stockInRequests.push(body)
+    globalThis.stockInIdempotencyKeys.push(options.headers.get('Idempotency-Key'))
     await new Promise((resolveRequest) => setTimeout(resolveRequest, 150))
+    if (globalThis.rejectNextStockIn) {
+      globalThis.rejectNextStockIn = false
+      return new Response(JSON.stringify({ success: false, code: 'TRANSACTION_REJECTED', transaction_outcome: 'not_committed', message: 'Confirmed stock-in rejection' }), { status: 422, headers: { 'Content-Type': 'application/json' } })
+    }
     if (globalThis.failNextStockIn) {
       globalThis.failNextStockIn = false
       return new Response(JSON.stringify({ success: false, message: 'Safe fixture failure.' }), { status: 422, headers: { 'Content-Type': 'application/json' } })
@@ -378,7 +385,9 @@ function Harness() {
     <AuthContext.Provider value={{ user: { user_id: 1, fullname: 'Zena Owner', username: 'user1', role: 'admin' } }}>
       <section id="user-accounts-test"><UserAccounts /></section>
     </AuthContext.Provider>
-    {showStockIn && <section id="stock-in-test"><StockInForm onCreated={() => { globalThis.stockInCreatedCount += 1 }} /></section>}
+    <AuthContext.Provider value={{ user: { user_id: 1, fullname: 'Zena Owner', username: 'user1', role: 'admin' } }}>
+      {showStockIn && <section id="stock-in-test"><StockInForm onCreated={() => { globalThis.stockInCreatedCount += 1 }} /></section>}
+    </AuthContext.Provider>
     {modalMode && <ProductModal
       product={modalMode === 'edit' ? fixtures[0] : null}
       onClose={() => setModalMode(null)}
@@ -447,7 +456,8 @@ createRoot(document.getElementById('root')).render(<Harness />)
       if (await evaluate(expression)) return
       await delay(100)
     }
-    throw new Error(`Timed out waiting for browser condition: ${expression}`)
+    const pageText = await evaluate("document.querySelector('#stock-in-test')?.innerText")
+    throw new Error(`Timed out waiting for browser condition: ${expression}; page: ${pageText}`)
   }
 
   async function waitForProducts() {
@@ -1082,6 +1092,31 @@ createRoot(document.getElementById('root')).render(<Harness />)
   assert(await evaluate("document.querySelector('#stock-in-test input[name=quantity_received]').value") === '2', 'Failed Stock In did not preserve the quantity')
   assert(!await evaluate("document.querySelector('[role=dialog] h2').textContent.includes('Successfully')"), 'Failed Stock In incorrectly showed success')
   await click('.inventory-confirmation-modal .secondary-action')
+  await click('#stock-in-test .inventory-stock-form > .primary-action')
+  await click('.inventory-confirmation-modal .primary-action')
+  await waitForCondition("document.querySelector('[role=dialog] h2')?.textContent.includes('Stock In Recorded Successfully')")
+  assert(await evaluate('stockInIdempotencyKeys[1] === stockInIdempotencyKeys[2]'), 'Ambiguous stock-in retry did not retain the original idempotency key')
+  await click('.transaction-done-button')
+  await setInput('#stock-in-test input[name=quantity_received]', '3')
+  await setInput('#stock-in-test input[name=cost_price]', '55')
+  await evaluate('rejectNextStockIn = true')
+  await click('#stock-in-test .inventory-stock-form > .primary-action')
+  await click('.inventory-confirmation-modal .primary-action')
+  await waitForCondition("document.querySelector('#stock-in-test .inventory-feedback[role=status]')?.textContent.includes('confirmed not committed')")
+  const rejectedStockFeedback = await evaluate("document.querySelector('#stock-in-test .inventory-feedback[role=status]')?.innerText")
+  const editRejectedStockButton = await evaluate("[...document.querySelectorAll('#stock-in-test .inventory-feedback[role=status] button')].some((button) => button.textContent.includes('Edit Rejected Delivery'))")
+  assert(editRejectedStockButton, `Rejected stock-in correction button is missing: ${rejectedStockFeedback}`)
+  await click('#stock-in-test .inventory-feedback[role=status] button')
+  assert(await evaluate("document.querySelector('#stock-in-test input[name=quantity_received]').disabled"), 'Rejected stock-in unlocked before confirmation')
+  await click('#stock-in-test .inventory-feedback[role=status] button')
+  assert(!await evaluate("document.querySelector('#stock-in-test input[name=quantity_received]').disabled"), 'Confirmed rejected stock-in did not unlock for editing')
+  await setInput('#stock-in-test input[name=quantity_received]', '4')
+  await click('#stock-in-test .inventory-stock-form > .primary-action')
+  await click('.inventory-confirmation-modal .primary-action')
+  await waitForCondition("document.querySelector('[role=dialog] h2')?.textContent.includes('Stock In Recorded Successfully')")
+  const rejectedStockKeys = await evaluate('stockInIdempotencyKeys.slice(-2)')
+  assert(rejectedStockKeys.length === 2 && rejectedStockKeys[0] !== rejectedStockKeys[1], `Edited rejected stock-in did not receive a new idempotency key: ${JSON.stringify(rejectedStockKeys)}`)
+  await click('.transaction-done-button')
 
   await evaluate('setInventoryProducts(inventoryFixtures)')
   await browserConnection.command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })

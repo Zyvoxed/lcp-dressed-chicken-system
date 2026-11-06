@@ -1,5 +1,16 @@
 import pool from '../config/database.js'
 import { DecimalValidationError, decimalLimits, parseDecimal } from '../utils/decimalValidation.js'
+import {
+  findIdempotentResponse,
+  getIdempotencyKey,
+  hashRequestPayload,
+  IdempotencyError,
+  readIdempotentResponse,
+  reserveIdempotencyKey,
+  saveIdempotentResponse,
+} from '../utils/idempotency.js'
+import { centsToAmount, lineTotalCents, toCents, toThousandths } from '../utils/money.js'
+import { resolveTransactionFailure } from '../utils/transactionFailure.js'
 
 class RequestError extends Error {
   constructor(status, message) {
@@ -29,8 +40,15 @@ function decimalValue(value, options) {
 
 export async function createStockIn(request, response) {
   let connection
+  let idempotency
+  let transactionBeginAttempted = false
+  let transactionStarted = false
+  let commitAttempted = false
+  let commitCompleted = false
+  let connectionReusable = true
 
   try {
+    const idempotencyKey = getIdempotencyKey(request)
     const supplierId = parsePositiveInteger(request.body?.supplier_id, 'Supplier')
     const productId = parsePositiveInteger(request.body?.product_id, 'Product')
     const quantityReceived = decimalValue(request.body?.quantity_received, {
@@ -52,16 +70,33 @@ export async function createStockIn(request, response) {
       throw new RequestError(400, 'Delivery date is invalid')
     }
 
+    const costPriceCents = toCents(costPrice)
+    idempotency = {
+      userId: request.user.user_id,
+      operation: 'stock_in',
+      key: idempotencyKey,
+      payloadHash: hashRequestPayload({
+        supplier_id: supplierId,
+        product_id: productId,
+        quantity_thousandths: toThousandths(quantityReceived).toString(),
+        cost_price_cents: costPriceCents.toString(),
+        delivery_date: String(request.body.delivery_date),
+      }),
+    }
+
     const quantityValue = quantityReceived.toFixed(3)
-    const costValue = costPrice.toFixed(2)
-    const totalCostNumber = quantityReceived * costPrice
-    if (!Number.isFinite(totalCostNumber) || totalCostNumber > decimalLimits.money) {
+    const costValue = centsToAmount(costPriceCents)
+    const totalCostCents = lineTotalCents(quantityReceived, costPrice)
+    if (totalCostCents > BigInt(Math.round(decimalLimits.money * 100))) {
       throw new RequestError(400, `Total cost must not exceed ${decimalLimits.money}`)
     }
-    const totalCost = totalCostNumber.toFixed(2)
+    const totalCost = centsToAmount(totalCostCents)
 
     connection = await pool.getConnection()
+    transactionBeginAttempted = true
     await connection.beginTransaction()
+    transactionStarted = true
+    await reserveIdempotencyKey(connection, idempotency)
 
     const [suppliers] = await connection.execute(
       'SELECT supplier_id FROM suppliers WHERE supplier_id = ? AND is_active = TRUE LIMIT 1',
@@ -131,9 +166,7 @@ export async function createStockIn(request, response) {
       [request.user.user_id, `Stock-In ${result.insertId} created for product ${productId}`],
     )
 
-    await connection.commit()
-
-    return response.status(201).json({
+    const resultBody = {
       success: true,
       message: 'Stock-in recorded successfully',
       data: {
@@ -145,26 +178,73 @@ export async function createStockIn(request, response) {
         cost_price: costValue,
         total_cost: totalCost,
       },
-    })
+    }
+    await saveIdempotentResponse(connection, { ...idempotency, status: 201, body: resultBody })
+    commitAttempted = true
+    await connection.commit()
+    commitCompleted = true
+
+    return response.status(201).json(resultBody)
   } catch (error) {
-    if (connection) {
-      await connection.rollback()
+    const rejectionConfirmed = (error instanceof RequestError || error instanceof IdempotencyError)
+      && error.status < 500
+    const failure = await resolveTransactionFailure({
+      connection,
+      transactionBeginAttempted,
+      transactionStarted,
+      commitAttempted,
+      commitCompleted,
+      error,
+      operation: 'stock-in',
+      rejectionConfirmed,
+    })
+    connectionReusable = failure.reusable
+
+    if (error.code === 'ER_DUP_ENTRY' && idempotency) {
+      if (failure.outcome === 'unknown') {
+        return response.status(500).json({
+          success: false,
+          code: 'TRANSACTION_OUTCOME_UNKNOWN',
+          transaction_outcome: 'unknown',
+          message: 'Unable to confirm stock delivery status. Check transaction status before retrying.',
+        })
+      }
+      try {
+        const record = await findIdempotentResponse(pool, idempotency)
+        const replay = readIdempotentResponse(record, idempotency.payloadHash)
+        if (replay.kind === 'payload-mismatch') {
+          return response.status(409).json({
+            success: false,
+            code: 'IDEMPOTENCY_KEY_PAYLOAD_MISMATCH',
+            transaction_outcome: 'not_committed',
+            message: 'Idempotency key was already used for a different request',
+          })
+        }
+        if (replay.kind === 'replay') return response.status(replay.status).json(replay.body)
+      } catch (replayError) {
+        console.error('Unable to retrieve idempotent stock-in result:', replayError.message)
+        return response.status(500).json({ success: false, message: 'Unable to record stock-in' })
+      }
     }
 
-    if (error instanceof RequestError) {
+    if ((error instanceof RequestError || error instanceof IdempotencyError) && failure.outcome === 'not_committed') {
       return response.status(error.status).json({
         success: false,
+        code: rejectionConfirmed ? 'TRANSACTION_REJECTED' : 'TRANSACTION_OUTCOME_UNKNOWN',
+        transaction_outcome: failure.outcome,
         message: error.message,
       })
     }
 
-    console.error('Unable to record stock-in:', error.message)
+    console.error('Unable to record stock-in:', error.code || 'UNKNOWN')
     return response.status(500).json({
       success: false,
+      code: 'TRANSACTION_OUTCOME_UNKNOWN',
+      transaction_outcome: 'unknown',
       message: 'Unable to record stock-in',
     })
   } finally {
-    connection?.release()
+    if (connectionReusable) connection?.release()
   }
 }
 

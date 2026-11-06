@@ -5,6 +5,7 @@ import activityLogRoutes from './routes/activityLogRoutes.js'
 import authRoutes from './routes/authRoutes.js'
 import customerRoutes from './routes/customerRoutes.js'
 import dashboardRoutes from './routes/dashboardRoutes.js'
+import idempotencyRoutes from './routes/idempotencyRoutes.js'
 import paymentRoutes from './routes/paymentRoutes.js'
 import productRoutes from './routes/productRoutes.js'
 import reportRoutes from './routes/reportRoutes.js'
@@ -33,6 +34,7 @@ app.use('/api/activity-logs', activityLogRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/customers', customerRoutes)
 app.use('/api/analytics/dashboard', dashboardRoutes)
+app.use('/api/idempotency', idempotencyRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/products', productRoutes)
 app.use('/api/reports', reportRoutes)
