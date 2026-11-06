@@ -97,15 +97,6 @@
   letter-spacing: 0.035em;
 }
 
-.inventory-product-table .panel-title-row h2::before {
-  width: 8px;
-  height: 8px;
-  flex: 0 0 8px;
-  border-radius: 50%;
-  background: var(--primary);
-  content: "";
-}
-
 .inventory-product-table .panel-title-row > .primary-action {
   min-height: 40px;
   border-radius: var(--radius-md);
@@ -275,15 +266,6 @@
   letter-spacing: 0.035em;
 }
 
-.inventory-inflow-heading h2::before {
-  width: 8px;
-  height: 8px;
-  flex: 0 0 8px;
-  border-radius: 50%;
-  background: var(--primary);
-  content: "";
-}
-
 .inventory-inflow-heading > span {
   flex: 0 0 auto;
   display: inline-flex;
@@ -417,15 +399,6 @@
   font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.01em;
-}
-
-.inventory-form-heading h2::before {
-  width: 8px;
-  height: 8px;
-  flex: 0 0 8px;
-  border-radius: 50%;
-  background: var(--primary);
-  content: "";
 }
 
 .inventory-modal-copy {

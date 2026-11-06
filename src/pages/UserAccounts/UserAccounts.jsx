@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth.js'
 import { createUser, getUsers, resendEmailVerification, resetUserPassword, updateUser, updateUserStatus } from '../../services/userService.js'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import Modal from '../Shared/Modal.jsx'
 import UserForm from './UserForm.jsx'
 import UserStats from './UserStats.jsx'
@@ -61,7 +60,7 @@ function UserAccounts() {
     finally { verificationLock.current = false; setVerificationBusyId(null) }
   }
 
-  if (loading) return <LoadingSpinner />
+  if (loading) return <PageSkeleton variant="users" label="user accounts" />;
   return (
     <section className="users-layout">
       <div className="full-span user-feedback-stack">
@@ -93,3 +92,4 @@ function UserAccounts() {
   )
 }
 export default UserAccounts
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth.js'
 import Login from '../pages/Login/Login.jsx'
-import LoadingSpinner from '../pages/Shared/LoadingSpinner.jsx'
-import { defaultRoute, loginRoute, modules } from '../utils/constants.js'
+import PageSkeleton from '../pages/Shared/PageSkeleton.jsx'
+import PageTransition from '../pages/Shared/PageTransition.jsx'
+import { defaultRoute, employeeRoute, loginRoute, modules } from '../utils/constants.js'
 import { hasRouteAccess } from '../utils/rolePermissions.js'
 import MainLayout from './MainLayout.jsx'
 
@@ -18,10 +19,13 @@ function ProtectedLayout({ activeModule, onSelect, children }) {
     if (isAuthenticated && window.location.pathname === loginRoute) {
       const returnTo = sessionStorage.getItem('returnTo') || defaultRoute
       sessionStorage.removeItem('returnTo')
-      const destination = modules.find((module) => module.path === returnTo) || modules[0]
+      const destination = role === 'employee'
+        ? modules.find((module) => module.path === employeeRoute)
+        : modules.find((module) => module.path === returnTo && hasRouteAccess(module, role))
+          || modules.find((module) => module.path === defaultRoute)
       onSelect(destination.label)
     }
-  }, [authLoading, isAuthenticated, onSelect])
+  }, [authLoading, isAuthenticated, onSelect, role])
 
   useEffect(() => {
     if (authLoading || !isAuthenticated || !role) {
@@ -31,16 +35,37 @@ function ProtectedLayout({ activeModule, onSelect, children }) {
     const selectedModule = modules.find((module) => module.label === activeModule)
 
     if (selectedModule && !hasRouteAccess(selectedModule, role)) {
-      onSelect(modules[0].label)
+      const destination = modules.find((module) => (
+        module.path === (role === 'employee' ? employeeRoute : defaultRoute)
+      ))
+      onSelect(destination.label)
     }
   }, [activeModule, authLoading, isAuthenticated, onSelect, role])
 
   if (authLoading) {
-    return <LoadingSpinner />
+    return <PageSkeleton variant="authentication" label="your account" />
   }
 
   if (!isAuthenticated) {
-    return <Login onLogin={login} />
+    return (
+      <PageTransition>
+        <Login onLogin={login} />
+      </PageTransition>
+    )
+  }
+
+  if (role === 'employee' && activeModule !== 'Record Sales') {
+    return (
+      <MainLayout
+        activeModule="Record Sales"
+        onSelect={onSelect}
+        onLogout={logout}
+        role={role}
+        user={user}
+      >
+        {null}
+      </MainLayout>
+    )
   }
 
   return (

@@ -43,7 +43,16 @@
   align-content: space-between;
   gap: 7px;
   overflow: hidden;
-  transition: transform 150ms ease, box-shadow 150ms ease;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    border-color 150ms ease;
+}
+
+.stat-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
 }
 
 .stat-card-top,
@@ -126,7 +135,7 @@
 .supplier-card h2 {
   margin: 0 0 16px;
   color: var(--text-heading);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.3;
   font-weight: 600;
   letter-spacing: 0;
@@ -135,7 +144,7 @@
 
 .panel h3 {
   color: var(--text-heading);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -161,5 +170,15 @@
 
   .stat-card {
     min-height: 110px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-card {
+    transition: none;
+  }
+
+  .stat-card:hover {
+    transform: none;
   }
 }

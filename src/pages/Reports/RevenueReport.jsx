@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import DataTable from '../Shared/DataTable.jsx'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import ReportMetrics from './ReportMetrics.jsx'
 import StatusBadge from '../Shared/StatusBadge.jsx'
 import TransactionDetailsModal from './TransactionDetailsModal.jsx'
@@ -79,7 +78,7 @@ function RevenueReport() {
     loadReport(emptyFilters)
   }
 
-  if (loading && !report) return <div className="panel report-state-panel"><LoadingSpinner /></div>
+  if (loading && !report) return <PageSkeleton variant="report-sales" label="sales and revenue report" />;
   if (error && !report) return <div className="panel report-state-panel"><EmptyState>{error}</EmptyState><button className="secondary-action slim" type="button" onClick={() => loadReport(emptyFilters)}>Try Again</button></div>
   if (!report) return <div className="panel report-state-panel"><EmptyState>No sales report data found.</EmptyState></div>
 
@@ -134,7 +133,6 @@ function RevenueReport() {
           <label>Start Date<input type="date" value={filters.start_date} onChange={(event) => setFilters((current) => ({ ...current, start_date: event.target.value }))} /></label>
           <label>End Date<input type="date" value={filters.end_date} onChange={(event) => setFilters((current) => ({ ...current, end_date: event.target.value }))} /></label>
           <label>Payment Type<select value={filters.payment_type} onChange={(event) => setFilters((current) => ({ ...current, payment_type: event.target.value }))}><option value="">All payment types</option><option value="Cash">Cash</option><option value="Credit">Credit</option></select></label>
-          <strong>{report.summary.total_transactions} transactions in report</strong>
           <button className="secondary-action" type="button" disabled={loading} onClick={() => loadReport()}>{loading ? 'Generating…' : 'Generate Report'}</button>
           <button className="secondary-action" type="button" disabled={loading} onClick={resetFilters}>Clear Filters</button>
           <button className="primary-action" type="button" disabled={!filteredRecords.length} onClick={download}>Export Filtered CSV</button>
@@ -146,3 +144,4 @@ function RevenueReport() {
 }
 
 export default RevenueReport
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

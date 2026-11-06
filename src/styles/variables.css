@@ -19,7 +19,7 @@
   --receipt-bg: #f8f7f5; --receipt-text: #352c2a; --receipt-divider: #d5ceca; --login-grid-line: rgba(255, 255, 255, 0.08); --login-ambient: rgba(255, 255, 255, 0.16);
   --card-shadow: 0 2px 8px rgba(10, 4, 3, 0.18); --card-shadow-hover: 0 6px 16px rgba(10, 4, 3, 0.25); --shadow: 0 16px 38px rgba(10, 4, 3, 0.34);
   --radius-sm: 7px; --radius-md: 9px; --radius-lg: 14px; --radius-pill: 999px; --radius: var(--radius-md);
-  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 20px; --space-5: 28px; --space-6: 40px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
   --sidebar-expanded: 264px; --sidebar-collapsed: 84px; --header-height: 68px;
 }
 
@@ -30,8 +30,8 @@
   --gold: #c98227; --green: #42845a; --red: #b94a42; --blue: #9b6048; --violet: #826b65; --orange: var(--primary); --orange-strong: var(--primary-strong);
   --app-bg: #f4f3f1; --bg-primary: #f4f3f1; --bg-secondary: #f4f3f1; --sidebar-bg: #7a302b; --topbar-bg: rgba(255, 255, 255, 0.97);
   --card-bg: #ffffff; --card-bg-soft: #f8f7f5; --card-gradient: linear-gradient(180deg, #ffffff, #fbfaf9); --surface-raised: #ffffff; --surface-inset: #f4f3f1; --surface-hover: #f2f0ed; --input-bg: #ffffff;
-  --text-primary: #352c2a; --text-heading: #352c2a; --text-secondary: #716663; --text-soft: #4c4340; --text-label: #716663; --text-muted: #958a86; --money-text: #9c5918;
-  --border: #e3deda; --border-subtle: #e3deda; --border-strong: #d5ceca; --input-placeholder: #9d9490; --table-heading-text: #625855; --secondary-action-text: #7a302b;
+  --text-primary: #352c2a; --text-heading: #352c2a; --text-secondary: #625754; --text-soft: #4c4340; --text-label: #625754; --text-muted: #756b67; --money-text: #9c5918;
+  --border: #e3deda; --border-subtle: #e3deda; --border-strong: #d5ceca; --input-placeholder: #786f6b; --table-heading-text: #514845; --secondary-action-text: #7a302b;
   --status-warn-text: #8a5b18; --status-warn-bg: #fbf0de; --status-success-text: #356d49; --status-success-bg: #eaf4ed; --status-danger-text: #9f3f39; --status-danger-bg: #f8e8e6;
   --info-text: #8f482b; --info-bg: #f8e9de; --system-text: #7d493d; --system-bg: #f4e5e2; --danger-bg: #fbe7e4; --danger-text: #a53f37;
   --success-border: rgba(63, 122, 71, 0.35); --warning-border: rgba(201, 134, 44, 0.38); --danger-border: rgba(201, 68, 68, 0.4); --system-border: rgba(124, 95, 175, 0.38);

@@ -2,6 +2,10 @@ import { PackageCheck, PackageX, TriangleAlert } from 'lucide-react'
 import StatCard from '../Shared/StatCard.jsx'
 
 function InventoryStats({ products, loading, error }) {
+  if (loading) {
+    return <PageSkeleton variant="inventory-stats" label="inventory summary" />
+  }
+
   const unavailable = loading || Boolean(error)
   const activeProducts = products.length
   const lowStockProducts = products.filter((product) => product.status === 'Low Stock').length
@@ -33,3 +37,4 @@ function InventoryStats({ products, loading, error }) {
 }
 
 export default InventoryStats
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

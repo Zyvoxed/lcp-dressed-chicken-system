@@ -1,5 +1,4 @@
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 
 function ProcurementChart({ records, loading, error }) {
   const totals = records.reduce((result, record) => {
@@ -16,7 +15,7 @@ function ProcurementChart({ records, loading, error }) {
         <h2>Stock Received by Product</h2>
         <p>Confirmed Stock In quantities grouped by product using existing delivery records.</p>
       </div>
-      {loading && <LoadingSpinner />}
+      {loading && <PageSkeleton variant="supplier-chart" label="procurement chart" />}
       {!loading && error && <EmptyState>{error}</EmptyState>}
       {!loading && !error && !procurement.length && <EmptyState>No stock deliveries recorded.</EmptyState>}
       {!loading && !error && procurement.length > 0 && <div className="bar-chart">
@@ -32,3 +31,4 @@ function ProcurementChart({ records, loading, error }) {
 }
 
 export default ProcurementChart
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

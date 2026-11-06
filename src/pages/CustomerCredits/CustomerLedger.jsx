@@ -4,7 +4,6 @@ import PaymentForm from './PaymentForm.jsx'
 import { peso } from '../../utils/currency.js'
 import { formatActivityTimestamp } from '../../utils/activityDateTime.js'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 
 function CustomerLedger({ customer, credits, payments, onPayment, onEdit, loading, error }) {
   if (!customer) return <article className="panel ledger-panel"><h2>Customer Details</h2><EmptyState>No customers found.</EmptyState></article>
@@ -40,7 +39,7 @@ function CustomerLedger({ customer, credits, payments, onPayment, onEdit, loadin
         <strong>{peso.format(Number(customer.current_balance))}</strong>
         <small>Calculated by the existing customer credit ledger.</small>
       </div>
-      {loading && <LoadingSpinner />}
+      {loading && <PageSkeleton variant="customer-ledger" label="customer ledger details" />}
       {!loading && error && <EmptyState>{error}</EmptyState>}
       {!loading && !error && <PaymentForm key={customer.customer_id} customer={customer} credits={credits} onRecorded={onPayment} />}
       {!loading && !error && <PaymentHistory credits={credits} payments={payments} />}
@@ -49,3 +48,4 @@ function CustomerLedger({ customer, credits, payments, onPayment, onEdit, loadin
 }
 
 export default CustomerLedger
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

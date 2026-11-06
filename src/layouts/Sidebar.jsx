@@ -27,6 +27,7 @@ const moduleIcons = {
 };
 
 const navigationLabels = {
+  "Record Sales": "Point of Sale",
   "Main Dashboard": "Dashboard",
   "Customer Credits Book": "Customer Credits",
   "Supplier Contracts": "Suppliers & Deliveries",
@@ -58,13 +59,16 @@ function Sidebar({ activeModule, onSelect, onLogout, role, collapsed, mobileOpen
       </div>
 
       <nav aria-label="Primary modules">
-        {navGroups.map((group) => {
+        {(role === "employee"
+          ? [{ label: "", items: ["Record Sales"] }]
+          : navGroups
+        ).map((group) => {
           const groupItems = group.items.filter((label) => accessibleLabels.has(label));
           if (!groupItems.length) return null;
 
           return (
-            <div className="nav-group" key={group.label}>
-              <p className="nav-label">{group.label}</p>
+            <div className={`nav-group ${group.label ? "" : "nav-group-minimal"}`} key={group.label || "staff"}>
+              {group.label && <p className="nav-label">{group.label}</p>}
               {groupItems.map((label) => {
                 const module = accessibleModules.find((m) => m.label === label);
                 const Icon = moduleIcons[label] || LayoutDashboard;

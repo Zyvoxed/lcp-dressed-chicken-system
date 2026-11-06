@@ -268,6 +268,7 @@ globalThis.stockInRequests = []
 globalThis.stockInCreatedCount = 0
 globalThis.failNextStockIn = false
 globalThis.userRequests = []
+globalThis.activityRequests = []
 globalThis.failNextUserRequest = false
 localStorage.setItem('authToken', 'inventory-ui-test-token')
 globalThis.fetch = async (url, options = {}) => {
@@ -293,6 +294,7 @@ globalThis.fetch = async (url, options = {}) => {
     return new Response(JSON.stringify({ success: true, message: action === '/password' ? 'Password reset successfully' : action === '/status' ? 'User ' + (body.is_active ? 'activated' : 'deactivated') + ' successfully' : 'User updated successfully', data: user }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   if (String(url).includes('/activity-logs')) {
+    globalThis.activityRequests.push(requestUrl)
     return new Response(JSON.stringify({
       success: true,
       data: dashboardFixtures.activities,
@@ -469,6 +471,17 @@ createRoot(document.getElementById('root')).render(<Harness />)
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
       setter.call(input, ${JSON.stringify(value)})
       input.dispatchEvent(new Event('input', { bubbles: true }))
+    })()`)
+    await delay(100)
+  }
+
+  async function setDateInput(selector, value) {
+    await evaluate(`(() => {
+      const input = document.querySelector(${JSON.stringify(selector)})
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+      setter.call(input, ${JSON.stringify(value)})
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      input.dispatchEvent(new Event('change', { bubbles: true }))
     })()`)
     await delay(100)
   }
@@ -692,8 +705,15 @@ createRoot(document.getElementById('root')).render(<Harness />)
   assert(await evaluate("document.querySelector('#dashboard-test-harness .top-products-test .dashboard-product-row span').textContent.includes('1,234.5 kg sold')"), 'Product quantity formatting was incorrect')
   const stockStatuses = await evaluate("[...document.querySelectorAll('#dashboard-test-harness .dashboard-stock-row .status')].map((node) => node.textContent.trim())")
   assert(JSON.stringify(stockStatuses) === JSON.stringify(['Low Stock', 'Out of Stock']), 'Low-stock rows did not use the existing status conventions')
+  const operationsPanelHeights = await evaluate(`(() => {
+    const panels = document.querySelectorAll('#dashboard-test-harness .dashboard-operations-grid > .dashboard-list-panel')
+    return [...panels].map((panel) => Math.round(panel.getBoundingClientRect().height))
+  })()`)
+  assert(operationsPanelHeights.length === 2 && operationsPanelHeights[0] === operationsPanelHeights[1], 'Low Stock Alerts and Recent Activity panels did not match heights')
   assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-activity-row time').textContent.trim()") === 'Oct 21, 2026, 12:05 AM', 'Recent Activity did not display the Philippine timestamp')
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-activity-row footer span').textContent.includes('Inventory Administrator')"), 'Activity operator label was not readable')
+  assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-activity-row .dashboard-activity-operator').textContent === 'Inventory Administrator'"), 'Activity operator label was not readable')
+  assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-activity-row .dashboard-activity-action').textContent === 'PRODUCT UPDATED'"), 'Activity action was not readable in the compact list')
+  assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-activity-row .dashboard-activity-description').textContent.includes('A long but valid activity description') && document.querySelector('#dashboard-test-harness .dashboard-activity-row .dashboard-activity-role').textContent === 'Admin'"), 'Activity description or role was not retained in the compact list')
   for (let attempt = 0; attempt < 20; attempt += 1) {
     if (await evaluate("document.querySelectorAll('#activity-logs-test tbody tr').length === 2")) break
     await delay(50)
@@ -705,6 +725,23 @@ createRoot(document.getElementById('root')).render(<Harness />)
   assert(activityTableTimestamps[1].date === 'Oct 20, 2026' && activityTableTimestamps[1].time === '11:55 PM', 'Activity Logs mishandled the pre-midnight timestamp')
   assert(await evaluate("document.querySelector('#activity-logs-test tbody tr').textContent.includes('Updated a Product')"), 'Activity Logs did not translate a known action into plain language')
   assert(await evaluate("document.querySelector('#activity-logs-test .activity-user').textContent.includes('Inventory Administrator') && document.querySelector('#activity-logs-test .activity-user').textContent.includes('@admin')"), 'Activity Logs did not identify the person and username clearly')
+  const activityRequestCount = await evaluate('activityRequests.length')
+  await click('#activity-logs-test .activity-filter-row button:last-child')
+  assert(await evaluate("document.querySelector('#activity-logs-test .activity-date-popover') !== null"), 'Activity Logs custom date popover did not open')
+  await setDateInput('#activity-logs-test .activity-date-popover label:first-child input', '2026-10-22')
+  await setDateInput('#activity-logs-test .activity-date-popover label:nth-child(2) input', '2026-10-21')
+  assert(await evaluate('activityRequests.length') === activityRequestCount, 'Editing custom dates triggered an unnecessary activity request')
+  await click('#activity-logs-test .activity-date-actions button.active')
+  assert(await evaluate("document.querySelector('#activity-logs-test .activity-date-error')?.textContent === 'Start Date cannot be later than End Date.'"), 'Invalid Activity Logs date range was not rejected')
+  assert(await evaluate('activityRequests.length') === activityRequestCount, 'Invalid custom dates triggered an activity request')
+  await setDateInput('#activity-logs-test .activity-date-popover label:first-child input', '2026-10-19')
+  await click('#activity-logs-test .activity-date-actions button.active')
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (await evaluate("activityRequests.some((url) => new URL(url).searchParams.get('start_date') === '2026-10-19' && new URL(url).searchParams.get('end_date') === '2026-10-21')")) break
+    await delay(50)
+  }
+  assert(await evaluate("activityRequests.some((url) => new URL(url).searchParams.get('start_date') === '2026-10-19' && new URL(url).searchParams.get('end_date') === '2026-10-21')"), 'Activity Logs custom date range was not sent to the API')
+  assert(await evaluate("document.querySelector('#activity-logs-test .activity-date-popover') === null"), 'Applying the Activity Logs custom range did not close the popover')
   const activityBorders = await evaluate(`(() => {
     const row = document.querySelector('#activity-logs-test tbody tr')
     return [...row.cells].slice(0, -1).every((cell) => getComputedStyle(cell).borderRightWidth === '1px')

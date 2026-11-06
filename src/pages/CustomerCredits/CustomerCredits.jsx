@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import CreditStats from './CreditStats.jsx'
 import CustomerLedger from './CustomerLedger.jsx'
 import CustomerList from './CustomerList.jsx'
@@ -104,8 +103,10 @@ function CustomerCredits() {
   return (
     <section className="credits-page page-stack">
       <div className="credits-layout">
-      <CreditStats customers={customers} />
-      {loading && <LoadingSpinner />}
+      {loading
+        ? <PageSkeleton variant="customer-credit-stats" label="customer credit summary" />
+        : <CreditStats customers={customers} />}
+      {loading && <PageSkeleton variant="customer-credits" label="customer credit records" />}
       {!loading && error && <EmptyState>{error}</EmptyState>}
       {!loading && !error && (
         <CustomerList
@@ -131,3 +132,4 @@ function CustomerCredits() {
 }
 
 export default CustomerCredits
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

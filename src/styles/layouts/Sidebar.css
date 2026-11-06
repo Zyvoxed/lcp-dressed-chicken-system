@@ -224,6 +224,55 @@
   border-top: 1px solid rgba(255,255,255,0.12);
 }
 
+.sidebar-account {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 3px 6px 8px;
+}
+
+.sidebar-account-avatar {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 50%;
+  color: var(--primary);
+  background: rgba(255,255,255,0.92);
+}
+
+.sidebar-account-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.sidebar-account-copy strong {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-account-copy small {
+  color: rgba(255,255,255,0.68);
+  font-size: 11px;
+}
+
+.sidebar.collapsed .sidebar-account {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.sidebar.collapsed .sidebar-account-copy {
+  display: none;
+}
+
 .sidebar-utility {
   display: flex;
   flex-direction: column;

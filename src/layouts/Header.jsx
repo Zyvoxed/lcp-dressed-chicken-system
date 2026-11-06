@@ -6,7 +6,7 @@ import { useTheme } from "../hooks/useTheme.js";
 
 const modulePresentation = {
   "Main Dashboard": { title: "Dashboard", Icon: LayoutDashboard },
-  "Record Sales": { title: "Record Sales", Icon: ShoppingCart },
+  "Record Sales": { title: "Point of Sale", Icon: ShoppingCart },
   "Inventory & Stock In": { title: "Inventory & Stock In", Icon: Boxes },
   "Customer Credits Book": { title: "Customer Credits", Icon: WalletCards },
   "Supplier Contracts": { title: "Suppliers", Icon: Truck },

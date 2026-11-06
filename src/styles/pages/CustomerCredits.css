@@ -53,15 +53,6 @@
   letter-spacing: 0.035em;
 }
 
-.customer-list-heading h2::before {
-  width: 8px;
-  height: 8px;
-  flex: 0 0 8px;
-  border-radius: 50%;
-  background: var(--primary);
-  content: "";
-}
-
 .customer-list-heading p {
   margin-top: 4px;
   color: var(--text-muted);

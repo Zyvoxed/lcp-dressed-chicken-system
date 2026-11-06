@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { BadgeDollarSign, Layers3, PackageCheck, PackageX, TriangleAlert } from 'lucide-react'
 import DataTable from '../Shared/DataTable.jsx'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import StatusBadge from '../Shared/StatusBadge.jsx'
 import StatCard from '../Shared/StatCard.jsx'
 import { getInventoryReport, logReportExport } from '../../services/reportService.js'
@@ -119,7 +118,7 @@ function InventoryValuation() {
   }
 
   if (loading && !report) {
-    return <div className="panel report-state-panel inventory-valuation-state"><LoadingSpinner /></div>
+    return <PageSkeleton variant="report-inventory" label="inventory valuation report" />;
   }
   if (error && !report) {
     return (
@@ -301,3 +300,4 @@ function InventoryValuation() {
 }
 
 export default InventoryValuation
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

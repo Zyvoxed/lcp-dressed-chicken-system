@@ -94,10 +94,9 @@ function SalesBasket({ cart, customers, customerId, onAddCustomer, onCustomerCha
         <span>{cart.length} product{cart.length === 1 ? '' : 's'}</span>
       </div>
 
-      {!cart.length && <EmptyState>Select an available product to start a sale.</EmptyState>}
-      {cart.length > 0 && (
-        <div className="basket-items" aria-label="Selected products">
-          {cart.map((item) => {
+      <div className="basket-items" aria-label="Selected products">
+        {!cart.length && <EmptyState>Select an available product to start a sale.</EmptyState>}
+        {cart.map((item) => {
             const atStockLimit = item.quantity >= Number(item.stock_quantity)
             return (
               <div className="basket-item" key={item.product_id}>
@@ -139,39 +138,40 @@ function SalesBasket({ cart, customers, customerId, onAddCustomer, onCustomerCha
               </div>
             )
           })}
-        </div>
-      )}
+      </div>
 
-      <div className="basket-section">
-        <h3>Customer and payment</h3>
-        <div className="terms-row payment-methods" aria-label="Payment method">
-          <button className={paymentType === 'Cash' ? 'selected' : ''} type="button" aria-pressed={paymentType === 'Cash'} disabled={submitting} onClick={() => { setPaymentType('Cash'); setError('') }}>
-            Cash Sale
+      <div className="basket-checkout">
+        <div className="basket-section">
+          <h3>Customer and payment</h3>
+          <div className="terms-row payment-methods" aria-label="Payment method">
+            <button className={paymentType === 'Cash' ? 'selected' : ''} type="button" aria-pressed={paymentType === 'Cash'} disabled={submitting} onClick={() => { setPaymentType('Cash'); setError('') }}>
+              Cash Sale
+            </button>
+            <button className={paymentType === 'Credit' ? 'selected' : ''} type="button" aria-pressed={paymentType === 'Credit'} disabled={submitting} onClick={() => { setPaymentType('Credit'); setError('') }}>Credit Sale</button>
+          </div>
+          <label>
+            Customer
+            <CustomerSelector customers={customers} paymentType={paymentType} value={customerId} onChange={(event) => { onCustomerChange(event.target.value); setError('') }} disabled={submitting} />
+          </label>
+          <button className="secondary-action add-customer-button" type="button" onClick={onAddCustomer} disabled={submitting}>
+            Add Customer
           </button>
-          <button className={paymentType === 'Credit' ? 'selected' : ''} type="button" aria-pressed={paymentType === 'Credit'} disabled={submitting} onClick={() => { setPaymentType('Credit'); setError('') }}>Credit Sale</button>
+          <label>
+            {paymentType === 'Cash' ? 'Cash received (exact amount)' : 'Amount paid'}
+            <input type="number" inputMode="decimal" min="0" max={total || undefined} step="0.01" placeholder="0.00" value={amountPaid} disabled={submitting} onChange={(event) => { setAmountPaid(event.target.value); setError('') }} />
+          </label>
         </div>
-        <label>
-          Customer
-          <CustomerSelector customers={customers} paymentType={paymentType} value={customerId} onChange={(event) => { onCustomerChange(event.target.value); setError('') }} disabled={submitting} />
-        </label>
-        <button className="secondary-action add-customer-button" type="button" onClick={onAddCustomer} disabled={submitting}>
-          Add Customer
-        </button>
-        <label>
-          {paymentType === 'Cash' ? 'Cash received (exact amount)' : 'Amount paid'}
-          <input type="number" inputMode="decimal" min="0" max={total || undefined} step="0.01" placeholder="0.00" value={amountPaid} disabled={submitting} onChange={(event) => { setAmountPaid(event.target.value); setError('') }} />
-        </label>
-      </div>
 
-      <div className="sale-summary" aria-label="Sales summary">
-        <h3>Sales summary</h3>
-        <div><span>Total selected items</span><strong>{totalQuantity}</strong></div>
-        <div><span>Subtotal</span><strong>{peso.format(total)}</strong></div>
-        <div><span>Amount paid</span><strong>{peso.format(Number.isFinite(numericAmountPaid) ? numericAmountPaid : 0)}</strong></div>
-        {paymentType === 'Credit' && <div><span>Remaining balance</span><strong>{peso.format(previewRemaining)}</strong></div>}
-        <div className="sale-summary-total"><span>Final transaction total</span><strong>{peso.format(total)}</strong></div>
+        <div className="sale-summary" aria-label="Sales summary">
+          <h3>Sales summary</h3>
+          <div><span>Total selected items</span><strong>{totalQuantity}</strong></div>
+          <div><span>Subtotal</span><strong>{peso.format(total)}</strong></div>
+          <div><span>Amount paid</span><strong>{peso.format(Number.isFinite(numericAmountPaid) ? numericAmountPaid : 0)}</strong></div>
+          {paymentType === 'Credit' && <div className="sale-summary-balance"><span>Remaining balance</span><strong>{peso.format(previewRemaining)}</strong></div>}
+          <div className="sale-summary-total"><span>Final transaction total</span><strong>{peso.format(total)}</strong></div>
+        </div>
+        {error && !confirmationOpen && <p className="sales-feedback error" role="alert">{error}</p>}
       </div>
-      {error && !confirmationOpen && <p className="sales-feedback error" role="alert">{error}</p>}
       <button className="primary-action" type="button" onClick={reviewSale} disabled={!cart.length || submitting || amountPaid === '' || (paymentType === 'Credit' && !customerId)}>
         Review Sale
       </button>

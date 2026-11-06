@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getBusinessAnalytics } from '../../services/analyticsService.js'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import BusinessAnalyticsStats from './BusinessAnalyticsStats.jsx'
 import ExecutiveOperationsInsights from './ExecutiveOperationsInsights.jsx'
 import ProductSalesPerformanceChart from './ProductSalesPerformanceChart.jsx'
@@ -26,7 +25,7 @@ function BusinessAnalytics() {
     return () => controller.abort()
   }, [])
 
-  if (loading) return <div className="panel analytics-page-state" aria-label="Loading business analytics"><LoadingSpinner /></div>
+  if (loading) return <PageSkeleton variant="analytics" label="business analytics" />;
   if (error) return <div className="panel analytics-page-state" role="alert"><EmptyState>{error}</EmptyState></div>
   if (!analytics) return <div className="panel analytics-page-state"><EmptyState>No business analytics available.</EmptyState></div>
 
@@ -47,3 +46,4 @@ function BusinessAnalytics() {
 }
 
 export default BusinessAnalytics
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

@@ -2,7 +2,6 @@ import { Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import DataTable from '../Shared/DataTable.jsx'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import StatusBadge from '../Shared/StatusBadge.jsx'
 import { productCategories } from '../../utils/constants.js'
 import { peso } from '../../utils/currency.js'
@@ -50,7 +49,7 @@ function ProductList({ products, loading, error, onEdit }) {
   }, [category, products, query])
 
   if (loading) {
-    return <LoadingSpinner />
+    return <PageSkeleton variant="inventory-products" label="inventory products" />
   }
 
   if (error) {
@@ -131,3 +130,4 @@ function ProductList({ products, loading, error, onEdit }) {
 }
 
 export default ProductList
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

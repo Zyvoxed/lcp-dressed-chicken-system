@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import DashboardStats from './DashboardStats.jsx'
 import LowSellingProducts from './LowSellingProducts.jsx'
 import RecentActivity from './RecentActivity.jsx'
@@ -23,7 +22,7 @@ function Dashboard() {
     return () => controller.abort()
   }, [])
 
-  if (loading) return <LoadingSpinner />
+  if (loading) return <PageSkeleton variant="dashboard" label="dashboard" />;
   if (error) return <EmptyState>{error}</EmptyState>
   if (!dashboard) return <EmptyState>No dashboard data available.</EmptyState>
 
@@ -47,3 +46,4 @@ function Dashboard() {
 }
 
 export default Dashboard
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

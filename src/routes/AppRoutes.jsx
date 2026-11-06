@@ -20,15 +20,20 @@ import { forgotPasswordRoute, modules, resetPasswordRoute, verifyEmailRoute } fr
 function AppRoutes() {
   const moduleForPath = () => modules.find((module) => module.path === window.location.pathname) || modules[0]
   const [activeModule, setActiveModule] = useState(() => moduleForPath().label)
+  const [routePath, setRoutePath] = useState(() => window.location.pathname)
 
   function selectModule(label) {
     const selected = modules.find((module) => module.label === label) || modules[0]
     window.history.pushState({}, '', selected.path)
     setActiveModule(selected.label)
+    setRoutePath(selected.path)
   }
 
   useEffect(() => {
-    const handleNavigation = () => setActiveModule(moduleForPath().label)
+    const handleNavigation = () => {
+      setActiveModule(moduleForPath().label)
+      setRoutePath(window.location.pathname)
+    }
     window.addEventListener('popstate', handleNavigation)
     return () => window.removeEventListener('popstate', handleNavigation)
   }, [])
@@ -45,16 +50,28 @@ function AppRoutes() {
     'User Accounts': <UserAccounts />,
   }[activeModule]
 
-  if (window.location.pathname === verifyEmailRoute) {
-    return <VerifyEmail />
+  if (routePath === verifyEmailRoute) {
+    return (
+      <AnimatePresence mode="wait">
+        <PageTransition key={routePath}><VerifyEmail /></PageTransition>
+      </AnimatePresence>
+    )
   }
 
-  if (window.location.pathname === forgotPasswordRoute) {
-    return <ForgotPassword />
+  if (routePath === forgotPasswordRoute) {
+    return (
+      <AnimatePresence mode="wait">
+        <PageTransition key={routePath}><ForgotPassword /></PageTransition>
+      </AnimatePresence>
+    )
   }
 
-  if (window.location.pathname === resetPasswordRoute) {
-    return <ResetPassword />
+  if (routePath === resetPasswordRoute) {
+    return (
+      <AnimatePresence mode="wait">
+        <PageTransition key={routePath}><ResetPassword /></PageTransition>
+      </AnimatePresence>
+    )
   }
 
   return (

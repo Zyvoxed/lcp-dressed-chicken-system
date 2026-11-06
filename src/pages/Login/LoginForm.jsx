@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
-import { defaultRoute, forgotPasswordRoute } from "../../utils/constants.js";
+import { defaultRoute, employeeRoute, forgotPasswordRoute } from "../../utils/constants.js";
 import LoginErrorNotification from "./LoginErrorNotification.jsx";
 
 function LoginForm({ onLogin }) {
@@ -37,8 +37,10 @@ function LoginForm({ onLogin }) {
     setValidation({});
 
     try {
-      await onLogin(username, password);
-      window.history.pushState({}, "", defaultRoute);
+      const authenticatedUser = await onLogin(username, password);
+      const destination = authenticatedUser.role === "employee" ? employeeRoute : defaultRoute;
+      window.history.pushState({}, "", destination);
+      window.dispatchEvent(new PopStateEvent("popstate"));
     } catch (requestError) {
       setFormState((current) => ({ ...current, password: "" }));
       const authenticationFailure = requestError.status === 401;

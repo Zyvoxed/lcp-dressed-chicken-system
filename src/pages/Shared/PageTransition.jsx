@@ -1,13 +1,15 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 
 function PageTransition({ children }) {
+  const reduceMotion = useReducedMotion()
+
   return (
     <motion.div
       className="page-transition"
-      initial={{ opacity: 0, y: 10 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 8 }}
-      transition={{ duration: 0.24, ease: 'easeOut' }}
+      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+      transition={{ duration: reduceMotion ? 0.01 : 0.22, ease: 'easeOut' }}
     >
       {children}
     </motion.div>

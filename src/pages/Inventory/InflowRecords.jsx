@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import DataTable from '../Shared/DataTable.jsx'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import StatusBadge from '../Shared/StatusBadge.jsx'
 import BatchDetailsModal from './BatchDetailsModal.jsx'
 import { getStockInRecords } from '../../services/stockInService.js'
@@ -87,7 +86,7 @@ function InflowRecords() {
           <h2>STOCK DELIVERY HISTORY</h2>
           {!loading && !error && <span>{records.length} batch{records.length === 1 ? '' : 'es'}</span>}
         </div>
-        {loading && <LoadingSpinner />}
+        {loading && <PageSkeleton variant="inventory-inflow" label="inflow records" />}
         {!loading && error && <EmptyState>{error}</EmptyState>}
         {!loading && !error && !records.length && <EmptyState>No stock delivery records found.</EmptyState>}
         {!loading && !error && records.length > 0 && <DataTable
@@ -135,3 +134,4 @@ function InflowRecords() {
 }
 
 export default InflowRecords
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

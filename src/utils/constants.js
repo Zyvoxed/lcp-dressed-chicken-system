@@ -1,8 +1,8 @@
 export const modules = [
-  { label: 'Main Dashboard', path: '/dashboard', roles: ['admin', 'employee'] },
+  { label: 'Main Dashboard', path: '/dashboard', roles: ['admin'] },
   { label: 'Record Sales', path: '/record-sales', roles: ['admin', 'employee'] },
-  { label: 'Inventory & Stock In', path: '/inventory', roles: ['admin', 'employee'] },
-  { label: 'Customer Credits Book', path: '/customer-credits', roles: ['admin', 'employee'] },
+  { label: 'Inventory & Stock In', path: '/inventory', roles: ['admin'] },
+  { label: 'Customer Credits Book', path: '/customer-credits', roles: ['admin'] },
   { label: 'Supplier Contracts', path: '/supplier-contracts', roles: ['admin'] },
   { label: 'Business Analytics', path: '/business-analytics', roles: ['admin'] },
   { label: 'Reports & Audits', path: '/reports', roles: ['admin'] },
@@ -11,6 +11,7 @@ export const modules = [
 ]
 
 export const defaultRoute = '/dashboard'
+export const employeeRoute = '/record-sales'
 export const loginRoute = '/login'
 export const verifyEmailRoute = '/verify-email'
 export const forgotPasswordRoute = '/forgot-password'

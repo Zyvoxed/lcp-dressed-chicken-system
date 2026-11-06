@@ -38,9 +38,13 @@
   height: 100%;
 }
 
+.dashboard-operations-grid {
+  align-items: stretch;
+}
+
 .dashboard-operations-grid > .dashboard-list-panel {
   width: 100%;
-  align-self: start;
+  align-self: stretch;
 }
 
 /* — KPI cards — */
@@ -336,7 +340,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .dashboard-chart-header h2 svg {
@@ -403,7 +407,7 @@
 .dashboard-summary-panel h2,
 .dashboard-list-panel h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .dashboard-summary-list {
@@ -495,7 +499,13 @@
 .dashboard-ranked-list,
 .dashboard-activity-list {
   display: grid;
-  gap: 10px;
+  gap: 0;
+}
+
+.dashboard-activity-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .dashboard-product-row,
@@ -617,45 +627,63 @@
 
 .dashboard-activity-row {
   display: grid;
-  gap: 8px;
+  padding: 9px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.dashboard-activity-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.dashboard-activity-row:first-child {
+  padding-top: 0;
 }
 
 .activity-heading {
+  min-width: 0;
   align-items: flex-start;
+  gap: 12px;
+}
+
+.dashboard-activity-copy {
+  min-width: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  line-height: 1.45;
 }
 
 .dashboard-activity-row strong {
+  color: var(--text-heading);
+  font-size: 13px;
+  font-weight: 500;
   text-transform: capitalize;
+}
+
+.dashboard-activity-action,
+.dashboard-activity-description {
+  color: var(--text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-activity-role {
+  color: var(--text-muted);
+  font-size: 10px;
 }
 
 .dashboard-activity-row time {
   flex: 0 0 auto;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.4;
   text-align: right;
-  white-space: nowrap;
-}
-
-.dashboard-activity-row p {
-  margin: 0;
-  line-height: 1.55;
-  overflow-wrap: anywhere;
-}
-
-.dashboard-activity-row footer {
-  align-items: center;
-  padding-top: 2px;
-}
-
-.dashboard-activity-row footer span {
-  overflow-wrap: anywhere;
-}
-
-.dashboard-activity-row footer b {
-  flex: 0 0 auto;
-  color: var(--primary);
-  font-size: 10px;
   white-space: nowrap;
 }
 
@@ -1459,21 +1487,10 @@
 }
 
 .executive-insights h3 {
-  display: flex;
-  align-items: center;
-  gap: 7px;
   margin: 0 0 8px;
   color: var(--primary);
   font-size: 12px;
   font-weight: 600;
-}
-
-.executive-insights h3 > span {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: currentColor;
 }
 
 .executive-insights section.danger h3 {

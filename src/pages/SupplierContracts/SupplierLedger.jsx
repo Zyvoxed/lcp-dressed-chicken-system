@@ -1,6 +1,5 @@
 import DataTable from '../Shared/DataTable.jsx'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import { peso } from '../../utils/currency.js'
 import { formatActivityTimestamp } from '../../utils/activityDateTime.js'
 
@@ -13,7 +12,7 @@ function SupplierLedger({ records, loading, error }) {
         <h2>Delivery History</h2>
         <p>Search, sort, and review confirmed supplier deliveries recorded through Stock In.</p>
       </div>
-      {loading && <LoadingSpinner />}
+      {loading && <PageSkeleton variant="supplier-ledger" label="supplier ledger" />}
       {!loading && error && <EmptyState>{error}</EmptyState>}
       {!loading && !error && !records.length && <EmptyState>No stock deliveries recorded.</EmptyState>}
       {!loading && !error && records.length > 0 && <DataTable
@@ -47,3 +46,4 @@ function SupplierLedger({ records, loading, error }) {
 }
 
 export default SupplierLedger
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

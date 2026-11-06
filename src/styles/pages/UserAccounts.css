@@ -114,6 +114,19 @@
   background: var(--card-bg);
 }
 
+.user-metric-card {
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    border-color 150ms ease;
+}
+
+.user-metric-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
 .user-metric-card > span,
 .user-security-card > strong {
   color: var(--text-muted);
@@ -218,15 +231,6 @@
   letter-spacing: 0.035em;
 }
 
-.user-registry-header h2::before {
-  width: 8px;
-  height: 8px;
-  flex: 0 0 8px;
-  border-radius: 50%;
-  background: var(--primary);
-  content: '';
-}
-
 .user-registry-controls {
   width: 100%;
   min-width: 0;
@@ -302,7 +306,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .user-registry-search input:focus {
@@ -360,7 +364,7 @@
 
 .user-registry-panel .system-data-table tbody td {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.45;
 }
 
@@ -477,6 +481,16 @@
   border-color: var(--warning-border);
   color: var(--orange);
   background: var(--accent-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-metric-card {
+    transition: none;
+  }
+
+  .user-metric-card:hover {
+    transform: none;
+  }
 }
 
 .user-role-badge.staff {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
+import { ClipboardList, PackageSearch } from 'lucide-react'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import SearchBar from '../Shared/SearchBar.jsx'
 import CategoryFilter from './CategoryFilter.jsx'
 import ProductGrid from './ProductGrid.jsx'
@@ -18,6 +18,7 @@ function RecordSales() {
   const [customers, setCustomers] = useState([])
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [customerModal, setCustomerModal] = useState(false)
+  const [mobileView, setMobileView] = useState('products')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -108,34 +109,58 @@ function RecordSales() {
 
   return (
     <section className="sales-page page-stack">
-      <div className="sales-layout">
-      <article className="panel catalog-panel">
-        <div className="section-heading">
-          <p>PRODUCTS</p>
-          <span>{visibleProducts.length} products</span>
-        </div>
-        <SearchBar placeholder="Search product catalog" value={query} onChange={(event) => setQuery(event.target.value)} />
-        <CategoryFilter category={category} onCategory={setCategory} />
-        {loading && <LoadingSpinner />}
-        {!loading && error && <EmptyState>{error}</EmptyState>}
-        {!loading && !error && !visibleProducts.length && <EmptyState>No products found.</EmptyState>}
-        {!loading && !error && visibleProducts.length > 0 && <ProductGrid products={visibleProducts} onAdd={addProduct} />}
-      </article>
-      <SalesBasket
-        cart={cart}
-        customers={customers}
-        onAddCustomer={() => setCustomerModal(true)}
-        onQuantity={updateQuantity}
-        onRemove={removeProduct}
-        onProcess={processSale}
-        onComplete={completeSale}
-        customerId={selectedCustomerId}
-        onCustomerChange={setSelectedCustomerId}
-      />
-      {customerModal && <CustomerModal onClose={() => setCustomerModal(false)} onCreated={customerCreated} />}
+      <div className="pos-mobile-switch" role="tablist" aria-label="Point of Sale panels">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobileView === 'products'}
+          className={mobileView === 'products' ? 'selected' : ''}
+          onClick={() => setMobileView('products')}
+        >
+          <PackageSearch size={16} aria-hidden="true" />
+          Products
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobileView === 'order'}
+          className={mobileView === 'order' ? 'selected' : ''}
+          onClick={() => setMobileView('order')}
+        >
+          <ClipboardList size={16} aria-hidden="true" />
+          Current Order
+          {cart.length > 0 && <span>{cart.length}</span>}
+        </button>
       </div>
+      <div className={`sales-layout pos-mobile-${mobileView}`}>
+        <article className="panel catalog-panel">
+          <div className="section-heading">
+            <p>PRODUCTS</p>
+            <span>{visibleProducts.length} products</span>
+          </div>
+          <SearchBar placeholder="Search product catalog" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <CategoryFilter category={category} onCategory={setCategory} />
+          {loading && <PageSkeleton variant="record-sales-catalog" label="product catalog" />}
+          {!loading && error && <EmptyState>{error}</EmptyState>}
+          {!loading && !error && !visibleProducts.length && <EmptyState>No products found.</EmptyState>}
+          {!loading && !error && visibleProducts.length > 0 && <ProductGrid products={visibleProducts} onAdd={addProduct} />}
+        </article>
+        <SalesBasket
+          cart={cart}
+          customers={customers}
+          onAddCustomer={() => setCustomerModal(true)}
+          onQuantity={updateQuantity}
+          onRemove={removeProduct}
+          onProcess={processSale}
+          onComplete={completeSale}
+          customerId={selectedCustomerId}
+          onCustomerChange={setSelectedCustomerId}
+        />
+      </div>
+      {customerModal && <CustomerModal onClose={() => setCustomerModal(false)} onCreated={customerCreated} />}
     </section>
   )
 }
 
 export default RecordSales
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

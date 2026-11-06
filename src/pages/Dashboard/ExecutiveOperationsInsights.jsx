@@ -13,7 +13,7 @@ function ExecutiveOperationsInsights({ insights }) {
   return (
     <article className="panel executive-insights">
       <h2><Lightbulb size={17} aria-hidden="true" />BUSINESS SUMMARY</h2>
-      {!cards.length ? <EmptyState>No operational insights available.</EmptyState> : <div>{cards.map((card) => <section className={card.tone} key={card.title}><h3><span aria-hidden="true" />{card.title}</h3><p>{card.text}</p></section>)}</div>}
+      {!cards.length ? <EmptyState>No operational insights available.</EmptyState> : <div>{cards.map((card) => <section className={card.tone} key={card.title}><h3>{card.title}</h3><p>{card.text}</p></section>)}</div>}
     </article>
   )
 }

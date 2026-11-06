@@ -80,6 +80,8 @@
   font-size: 14px;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  vertical-align: middle;
 }
 
 .system-data-table td:has(.status),

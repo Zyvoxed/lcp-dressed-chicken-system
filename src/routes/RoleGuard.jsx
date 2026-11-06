@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth.js'
-import LoadingSpinner from '../pages/Shared/LoadingSpinner.jsx'
-import { defaultRoute, loginRoute } from '../utils/constants.js'
+import PageSkeleton from '../pages/Shared/PageSkeleton.jsx'
+import { defaultRoute, employeeRoute, loginRoute } from '../utils/constants.js'
 
 function RoleGuard({ children, roles = [], allowedRoles }) {
   const { authLoading, user } = useAuth()
@@ -21,12 +21,12 @@ function RoleGuard({ children, roles = [], allowedRoles }) {
     }
 
     if (!hasAccess) {
-      window.history.replaceState({}, '', defaultRoute)
+      window.history.replaceState({}, '', user?.role === 'employee' ? employeeRoute : defaultRoute)
     }
   }, [authLoading, hasAccess, user])
 
   if (authLoading) {
-    return <LoadingSpinner />
+    return <PageSkeleton variant="authentication" label="your account" />
   }
 
   if (!hasAccess) {

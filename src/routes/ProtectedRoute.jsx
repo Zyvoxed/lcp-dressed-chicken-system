@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth.js'
-import LoadingSpinner from '../pages/Shared/LoadingSpinner.jsx'
+import PageSkeleton from '../pages/Shared/PageSkeleton.jsx'
 import { loginRoute } from '../utils/constants.js'
 
 function ProtectedRoute({ children }) {
@@ -13,7 +13,7 @@ function ProtectedRoute({ children }) {
   }, [authLoading, user])
 
   if (authLoading) {
-    return <LoadingSpinner />
+    return <PageSkeleton variant="authentication" label="your account" />
   }
 
   if (!user) {

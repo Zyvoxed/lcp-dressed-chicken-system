@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import StatusBadge from '../Shared/StatusBadge.jsx'
 import TransactionSuccessModal from '../Shared/TransactionSuccessModal.jsx'
 import { getProducts } from '../../services/productService.js'
@@ -148,22 +147,26 @@ function StockInForm({ onCreated }) {
       <div className="inventory-form-heading">
         <h2>Record Stock Delivery</h2>
       </div>
-      <div className="inventory-stock-form-grid">
-        <label>
-          <span>Supplier <b className="required-marker" aria-hidden="true">*</b></span>
-          <select name="supplier_id" value={form.supplier_id} onChange={handleChange} required disabled={loading || submitting}>
-            <option value="">Select supplier</option>
-            {suppliers.map((supplier) => <option key={supplier.supplier_id} value={supplier.supplier_id}>{supplier.supplier_name}</option>)}
-          </select>
-        </label>
-        <label>
-          <span>Product <b className="required-marker" aria-hidden="true">*</b></span>
-          <select name="product_id" value={form.product_id} onChange={handleChange} required disabled={loading || submitting}>
-            <option value="">Select product</option>
-            {products.map((product) => <option key={product.product_id} value={product.product_id}>{product.product_name}</option>)}
-          </select>
-        </label>
-      </div>
+      {loading ? (
+        <PageSkeleton variant="inventory-form" label="supplier and product options" />
+      ) : (
+        <div className="inventory-stock-form-grid">
+          <label>
+            <span>Supplier <b className="required-marker" aria-hidden="true">*</b></span>
+            <select name="supplier_id" value={form.supplier_id} onChange={handleChange} required disabled={submitting}>
+              <option value="">Select supplier</option>
+              {suppliers.map((supplier) => <option key={supplier.supplier_id} value={supplier.supplier_id}>{supplier.supplier_name}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Product <b className="required-marker" aria-hidden="true">*</b></span>
+            <select name="product_id" value={form.product_id} onChange={handleChange} required disabled={submitting}>
+              <option value="">Select product</option>
+              {products.map((product) => <option key={product.product_id} value={product.product_id}>{product.product_name}</option>)}
+            </select>
+          </label>
+        </div>
+      )}
       {selectedProduct && (
         <div className="selected-stock-summary">
           <div>
@@ -191,7 +194,6 @@ function StockInForm({ onCreated }) {
         <span>Delivery Date and Time <b className="required-marker" aria-hidden="true">*</b></span>
         <input name="delivery_date" type="datetime-local" value={form.delivery_date} onChange={handleChange} required disabled={loading || submitting} />
       </label>
-      {loading && <LoadingSpinner />}
       {error && !confirmationOpen && <p className="inventory-feedback error" role="alert">{error}</p>}
       <button className="primary-action" type="submit" disabled={loading || submitting}>
         Review Stock Delivery
@@ -221,3 +223,4 @@ function StockInForm({ onCreated }) {
 }
 
 export default StockInForm
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

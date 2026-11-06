@@ -1,11 +1,10 @@
 import { Plus } from 'lucide-react'
-import StatusBadge from '../Shared/StatusBadge.jsx'
 import { peso } from '../../utils/currency.js'
 
 function ProductCard({ product, onAdd }) {
   const available = Number(product.stock_quantity) > 0
 
-  function handleKeyDown(event) {
+  function addOnKeyboard(event) {
     if (available && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault()
       onAdd(product)
@@ -13,23 +12,37 @@ function ProductCard({ product, onAdd }) {
   }
 
   return (
-    <article
+    <tr
       className="product-card"
-      role="button"
       tabIndex={available ? 0 : -1}
       aria-disabled={!available}
       onClick={() => available && onAdd(product)}
-      onKeyDown={handleKeyDown}
+      onKeyDown={addOnKeyboard}
     >
-      <span>{product.category}</span>
-      <h3>{product.product_name}</h3>
-      <p>Available stock: {Number(product.stock_quantity)} {product.unit}</p>
-      <strong>{peso.format(Number(product.selling_price))} / {product.unit}</strong>
-      <StatusBadge value={product.status} as="em" />
-      <span className="product-add-cue" aria-hidden="true">
-        {available && <Plus size={14} />} {available ? 'Add' : 'Unavailable'}
-      </span>
-    </article>
+      <td className="pos-product-name">{product.product_name}</td>
+      <td className="pos-product-price">{peso.format(Number(product.selling_price))}</td>
+      <td>{product.unit}</td>
+      <td>
+        <span className={`pos-stock-status ${available ? 'available' : 'unavailable'}`}>
+          {available ? `${Number(product.stock_quantity)} ${product.unit}` : 'Out of stock'}
+        </span>
+      </td>
+      <td>
+        <button
+          className="pos-add-product"
+          type="button"
+          disabled={!available}
+          onClick={(event) => {
+            event.stopPropagation()
+            onAdd(product)
+          }}
+          aria-label={`Add ${product.product_name} to current sale`}
+        >
+          <Plus size={15} aria-hidden="true" />
+          <span className="pos-add-label">Add</span>
+        </button>
+      </td>
+    </tr>
   )
 }
 

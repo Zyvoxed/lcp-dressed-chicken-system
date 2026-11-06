@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Plus, Search } from 'lucide-react'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 import ProcurementChart from './ProcurementChart.jsx'
 import SupplierCard from './SupplierCard.jsx'
 import SupplierLedger from './SupplierLedger.jsx'
@@ -88,7 +87,7 @@ function SupplierContracts() {
           <span aria-live="polite">{filteredSuppliers.length} {filteredSuppliers.length === 1 ? 'supplier' : 'suppliers'}</span>
         </div>}
 
-        {suppliersLoading && <LoadingSpinner />}
+        {suppliersLoading && <PageSkeleton variant="supplier-directory" label="supplier directory" />}
         {!suppliersLoading && supplierError && <EmptyState>{supplierError}</EmptyState>}
         {!suppliersLoading && !supplierError && !suppliers.length && <EmptyState>No active suppliers found.</EmptyState>}
         {!suppliersLoading && !supplierError && suppliers.length > 0 && <div className="supplier-grid">
@@ -116,3 +115,4 @@ function SupplierContracts() {
 }
 
 export default SupplierContracts
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

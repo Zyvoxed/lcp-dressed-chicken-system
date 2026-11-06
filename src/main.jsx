@@ -10,6 +10,7 @@ import "./styles/shared/Tables.css";
 import "./styles/shared/Forms.css";
 import "./styles/shared/Shared.css";
 import "./styles/shared/Modal.css";
+import "./styles/shared/PageSkeleton.css";
 import "./styles/pages/Login.css";
 import "./styles/pages/ActivityLogs.css";
 import "./styles/pages/Dashboard.css";

@@ -31,12 +31,13 @@ function MainLayout({
   }
 
   return (
-    <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+    <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${activeModule === "Record Sales" ? "pos-app-shell" : ""}`}>
       <Sidebar
         activeModule={activeModule}
         onSelect={handleSelect}
         onLogout={onLogout}
         role={role}
+        user={user}
         collapsed={sidebarCollapsed}
         mobileOpen={mobileOpen}
         onCloseMobile={closeMobile}

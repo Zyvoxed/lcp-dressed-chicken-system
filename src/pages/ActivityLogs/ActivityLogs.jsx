@@ -1,9 +1,8 @@
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { CalendarRange, ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { getActivityLogs } from '../../services/activityLogService.js'
 import { activityDateRange, formatActivityTimestamp } from '../../utils/activityDateTime.js'
 import EmptyState from '../Shared/EmptyState.jsx'
-import LoadingSpinner from '../Shared/LoadingSpinner.jsx'
 
 const periods = ['All Logs', 'Today', 'This Week', 'This Month']
 const actionLabels = {
@@ -27,11 +26,42 @@ function actionTone(action) {
   return 'neutral'
 }
 
+function manilaDateString(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+function validDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number)
+  if (year < 1000) return false
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day
+}
+
 function ActivityLogs() {
+  const customButtonRef = useRef(null)
+  const popoverRef = useRef(null)
   const [logs, setLogs] = useState([])
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, total_pages: 0 })
   const [page, setPage] = useState(1)
   const [period, setPeriod] = useState('All Logs')
+  const [customDates, setCustomDates] = useState(() => {
+    const today = manilaDateString()
+    return { start_date: today, end_date: today }
+  })
+  const [customRange, setCustomRange] = useState(null)
+  const [customError, setCustomError] = useState('')
+  const [popoverOpen, setPopoverOpen] = useState(false)
+  const [popoverPosition, setPopoverPosition] = useState(null)
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -45,14 +75,88 @@ function ActivityLogs() {
 
   useEffect(() => {
     const controller = new AbortController()
-    getActivityLogs({ page, limit: 20, search, ...activityDateRange(period) }, { signal: controller.signal })
+    const dateFilter = period === 'Custom' ? customRange || {} : activityDateRange(period)
+    getActivityLogs({ page, limit: 20, search, ...dateFilter }, { signal: controller.signal })
       .then((result) => { setLogs(result.data); setPagination(result.pagination); setError('') })
       .catch((requestError) => { if (requestError.name !== 'AbortError') setError(requestError.message) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [page, period, refreshKey, search])
+  }, [customRange, page, period, refreshKey, search])
 
-  if (loading) return <LoadingSpinner />
+  useLayoutEffect(() => {
+    if (!popoverOpen || !customButtonRef.current || !popoverRef.current) return undefined
+
+    function positionPopover() {
+      const button = customButtonRef.current?.getBoundingClientRect()
+      const panel = popoverRef.current?.getBoundingClientRect()
+      if (!button || !panel) return
+
+      const margin = 12
+      const gap = 8
+      const left = Math.min(
+        Math.max(button.right - panel.width, margin),
+        window.innerWidth - panel.width - margin,
+      )
+      const below = button.bottom + panel.height + gap <= window.innerHeight - margin
+      const top = below
+        ? button.bottom + gap
+        : Math.max(margin, button.top - panel.height - gap)
+      setPopoverPosition({ left, top })
+    }
+
+    positionPopover()
+    window.addEventListener('resize', positionPopover)
+    window.addEventListener('scroll', positionPopover, true)
+    return () => {
+      window.removeEventListener('resize', positionPopover)
+      window.removeEventListener('scroll', positionPopover, true)
+    }
+  }, [popoverOpen, customError])
+
+  useEffect(() => {
+    if (!popoverOpen) return undefined
+
+    function dismiss(event) {
+      if (event.key === 'Escape') setPopoverOpen(false)
+    }
+
+    function dismissOutside(event) {
+      if (
+        !popoverRef.current?.contains(event.target)
+        && !customButtonRef.current?.contains(event.target)
+      ) {
+        setPopoverOpen(false)
+      }
+    }
+
+    document.addEventListener('keydown', dismiss)
+    document.addEventListener('pointerdown', dismissOutside)
+    return () => {
+      document.removeEventListener('keydown', dismiss)
+      document.removeEventListener('pointerdown', dismissOutside)
+    }
+  }, [popoverOpen])
+
+  function applyCustomRange(event) {
+    event.preventDefault()
+    setCustomError('')
+    const { start_date: startDate, end_date: endDate } = customDates
+    if (!validDate(startDate) || !validDate(endDate)) {
+      setCustomError('Select valid start and end dates.')
+      return
+    }
+    if (startDate > endDate) {
+      setCustomError('Start Date cannot be later than End Date.')
+      return
+    }
+
+    setCustomRange({ start_date: startDate, end_date: endDate })
+    setPeriod('Custom')
+    setPage(1)
+    setPopoverOpen(false)
+  }
+
+  if (loading) return <PageSkeleton variant="activity" label="activity logs" />;
 
   return (
     <section className="activity-logs-page">
@@ -66,9 +170,66 @@ function ActivityLogs() {
             {periods.map((item) => (
               <button className={period === item ? 'active' : ''} type="button" aria-pressed={period === item} onClick={() => { setPeriod(item); setPage(1) }} key={item}>{item === 'All Logs' ? 'All Activity' : item}</button>
             ))}
+            <button
+              ref={customButtonRef}
+              className={period === 'Custom' ? 'active' : ''}
+              type="button"
+              aria-pressed={period === 'Custom'}
+              aria-expanded={popoverOpen}
+              aria-controls="activity-date-popover"
+              onClick={() => {
+                const today = manilaDateString()
+                setCustomDates(customRange || { start_date: today, end_date: today })
+                setCustomError('')
+                setPopoverOpen((open) => !open)
+              }}
+            >
+              <CalendarRange size={13} aria-hidden="true" />
+              Custom
+            </button>
           </div>
         </div>
-        <footer><span>Showing {logs.length} of {pagination.total} records</span></footer>
+        {popoverOpen && (
+          <form
+            ref={popoverRef}
+            id="activity-date-popover"
+            className="activity-date-popover"
+            onSubmit={applyCustomRange}
+            style={{
+              left: popoverPosition?.left ?? 12,
+              top: popoverPosition?.top ?? 12,
+            }}
+            aria-label="Custom activity date range"
+          >
+            <label>
+              Start Date
+              <input
+                type="date"
+                value={customDates.start_date}
+                onChange={(event) => setCustomDates((current) => ({ ...current, start_date: event.target.value }))}
+              />
+            </label>
+            <label>
+              End Date
+              <input
+                type="date"
+                value={customDates.end_date}
+                onChange={(event) => setCustomDates((current) => ({ ...current, end_date: event.target.value }))}
+              />
+            </label>
+            {customError && <p className="activity-date-error" role="alert">{customError}</p>}
+            <div className="activity-date-actions">
+              <button type="button" onClick={() => setPopoverOpen(false)}>Cancel</button>
+              <button className="active" type="submit">Apply</button>
+            </div>
+          </form>
+        )}
+        <footer>
+          <span>Showing {logs.length} of {pagination.total} records</span>
+          {period === 'Custom' && customRange && (
+            <span>Custom period: {customRange.start_date} to {customRange.end_date}</span>
+          )}
+        </footer>
       </article>
 
       {error ? (
@@ -114,3 +275,4 @@ function ActivityLogs() {
 }
 
 export default ActivityLogs
+import PageSkeleton from '../Shared/PageSkeleton.jsx'

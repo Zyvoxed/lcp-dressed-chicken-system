@@ -108,15 +108,6 @@
   white-space: nowrap;
 }
 
-.status::before {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 6px;
-  border-radius: 50%;
-  background: currentColor;
-  content: '';
-}
-
 .status.paid,
 .status.ready,
 .status.active,
@@ -162,7 +153,7 @@
 .section-heading p {
   margin: 0;
   color: var(--text-heading);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1.3;
