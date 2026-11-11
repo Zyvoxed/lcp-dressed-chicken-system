@@ -74,6 +74,28 @@ CREATE TABLE password_reset_tokens (
         ON DELETE CASCADE
 );
 
+-- Transaction results are committed atomically with their business operation.
+CREATE TABLE idempotency_records (
+    idempotency_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    operation_type ENUM('sale', 'stock_in', 'payment') NOT NULL,
+    idempotency_key VARCHAR(128) NOT NULL,
+    request_hash BINARY(32) NOT NULL,
+    response_status SMALLINT UNSIGNED NULL,
+    response_body JSON NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uq_idempotency_user_operation_key
+        (user_id, operation_type, idempotency_key),
+    KEY idx_idempotency_created_at (created_at),
+
+    CONSTRAINT fk_idempotency_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+);
+
 -- =========================================================
 -- 1C. PASSWORD RESET RATE LIMITS
 -- Stores hashed rate-limit identifiers for serverless-safe throttling.
@@ -107,7 +129,10 @@ CREATE TABLE products (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_products_selling_price_nonnegative CHECK (selling_price >= 0),
+    CONSTRAINT chk_products_stock_quantity_nonnegative CHECK (stock_quantity >= 0),
+    CONSTRAINT chk_products_reorder_level_nonnegative CHECK (reorder_level >= 0)
 );
 
 -- =========================================================
@@ -139,7 +164,8 @@ CREATE TABLE customers (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_customers_current_balance_nonnegative CHECK (current_balance >= 0)
 );
 
 -- =========================================================
@@ -161,6 +187,11 @@ CREATE TABLE stock_in (
 
     delivery_date DATETIME NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_stock_in_quantity_positive CHECK (quantity_received > 0),
+    CONSTRAINT chk_stock_in_remaining_nonnegative CHECK (remaining_quantity >= 0),
+    CONSTRAINT chk_stock_in_cost_price_nonnegative CHECK (cost_price >= 0),
+    CONSTRAINT chk_stock_in_total_cost_nonnegative CHECK (total_cost >= 0),
 
     CONSTRAINT fk_stockin_supplier
         FOREIGN KEY (supplier_id)
@@ -201,6 +232,10 @@ CREATE TABLE sales (
 
     sale_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+    CONSTRAINT chk_sales_total_nonnegative CHECK (total_amount >= 0),
+    CONSTRAINT chk_sales_amount_paid_nonnegative CHECK (amount_paid >= 0),
+    CONSTRAINT chk_sales_remaining_nonnegative CHECK (remaining_balance >= 0),
+
     CONSTRAINT fk_sales_customer
         FOREIGN KEY (customer_id)
         REFERENCES customers(customer_id)
@@ -226,6 +261,10 @@ CREATE TABLE sales_items (
     quantity DECIMAL(10,3) NOT NULL,
     price DECIMAL(10,2) NOT NULL,
     subtotal DECIMAL(12,2) NOT NULL,
+
+    CONSTRAINT chk_sales_items_quantity_positive CHECK (quantity > 0),
+    CONSTRAINT chk_sales_items_price_nonnegative CHECK (price >= 0),
+    CONSTRAINT chk_sales_items_subtotal_nonnegative CHECK (subtotal >= 0),
 
     CONSTRAINT fk_salesitems_sale
         FOREIGN KEY (sale_id)
@@ -255,6 +294,9 @@ CREATE TABLE sale_batch_allocations (
 
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+    CONSTRAINT chk_allocations_quantity_positive CHECK (quantity_deducted > 0),
+    CONSTRAINT chk_allocations_cost_nonnegative CHECK (cost_price >= 0),
+
     CONSTRAINT fk_allocation_salesitem
         FOREIGN KEY (salesitem_id)
         REFERENCES sales_items(salesitem_id)
@@ -281,6 +323,9 @@ CREATE TABLE payments (
     payment_amount DECIMAL(12,2) NOT NULL,
     remaining_balance DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     payment_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_payments_amount_positive CHECK (payment_amount > 0),
+    CONSTRAINT chk_payments_remaining_nonnegative CHECK (remaining_balance >= 0),
 
     CONSTRAINT fk_payments_sale
         FOREIGN KEY (sale_id)

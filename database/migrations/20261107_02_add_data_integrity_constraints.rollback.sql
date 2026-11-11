@@ -1,0 +1,37 @@
+-- Manual rollback procedure only. This file intentionally contains no
+-- unconditional DROP statements: migration DDL commits per ALTER TABLE, so a
+-- prior attempt may have applied only a subset of the constraints.
+--
+-- Before rollback:
+--   1. Take a database backup and stop application writes.
+--   2. Run the constraint-status SELECT at the end of
+--      20261107_02_add_data_integrity_constraints.sql.
+--   3. Record the constraints reported as APPLIED.
+--   4. Execute one DROP statement below only for each constraint reported as
+--      APPLIED. Execute each statement separately and stop on any error.
+--   5. Rerun the status SELECT and confirm all 18 constraints are NOT APPLIED.
+-- No business records are changed by these statements. This is compatible
+-- with MySQL 8.4.8 and safely handles a partially applied migration by making
+-- the operator select only constraints that actually exist.
+--
+-- If rollback stops partway through, rerun the status SELECT and continue
+-- with only the still-APPLIED constraints. Do not rerun this list blindly.
+--
+-- ALTER TABLE payments DROP CHECK chk_payments_amount_positive;
+-- ALTER TABLE payments DROP CHECK chk_payments_remaining_nonnegative;
+-- ALTER TABLE sale_batch_allocations DROP CHECK chk_allocations_quantity_positive;
+-- ALTER TABLE sale_batch_allocations DROP CHECK chk_allocations_cost_nonnegative;
+-- ALTER TABLE sales_items DROP CHECK chk_sales_items_quantity_positive;
+-- ALTER TABLE sales_items DROP CHECK chk_sales_items_price_nonnegative;
+-- ALTER TABLE sales_items DROP CHECK chk_sales_items_subtotal_nonnegative;
+-- ALTER TABLE sales DROP CHECK chk_sales_total_nonnegative;
+-- ALTER TABLE sales DROP CHECK chk_sales_amount_paid_nonnegative;
+-- ALTER TABLE sales DROP CHECK chk_sales_remaining_nonnegative;
+-- ALTER TABLE stock_in DROP CHECK chk_stock_in_quantity_positive;
+-- ALTER TABLE stock_in DROP CHECK chk_stock_in_remaining_nonnegative;
+-- ALTER TABLE stock_in DROP CHECK chk_stock_in_cost_price_nonnegative;
+-- ALTER TABLE stock_in DROP CHECK chk_stock_in_total_cost_nonnegative;
+-- ALTER TABLE customers DROP CHECK chk_customers_current_balance_nonnegative;
+-- ALTER TABLE products DROP CHECK chk_products_selling_price_nonnegative;
+-- ALTER TABLE products DROP CHECK chk_products_stock_quantity_nonnegative;
+-- ALTER TABLE products DROP CHECK chk_products_reorder_level_nonnegative;

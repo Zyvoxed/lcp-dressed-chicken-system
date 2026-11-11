@@ -30,7 +30,7 @@ const navigationLabels = {
   "Record Sales": "Point of Sale",
   "Main Dashboard": "Dashboard",
   "Customer Credits Book": "Customer Credits",
-  "Supplier Contracts": "Suppliers & Deliveries",
+  "Supplier Contracts": "Suppliers",
 };
 
 const navGroups = [
