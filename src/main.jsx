@@ -22,6 +22,7 @@ import "./styles/pages/SupplierContracts.css";
 import "./styles/pages/Reports.css";
 import "./styles/pages/UserAccounts.css";
 import "./styles/shared/SearchControls.css";
+import "./styles/shared/Toast.css";
 import App from "./App.jsx";
 
 createRoot(document.getElementById("root")).render(

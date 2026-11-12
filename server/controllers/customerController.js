@@ -9,6 +9,36 @@ class CustomerError extends Error {
 
 const editableCustomerFields = new Set(['customer_name', 'contact_number', 'address'])
 
+const customerSelectFields = `
+  c.customer_id,
+  c.customer_name,
+  c.contact_number,
+  c.address,
+  c.current_balance,
+  c.is_active,
+  c.created_at,
+  COALESCE(credit_totals.total_credit, 0) AS total_credit,
+  COALESCE(credit_totals.total_paid, 0) AS total_paid,
+  payment_totals.last_payment_at
+`
+
+const customerFinancialJoins = `
+  LEFT JOIN (
+    SELECT customer_id,
+           SUM(total_amount) AS total_credit,
+           SUM(amount_paid) AS total_paid
+    FROM sales
+    WHERE payment_type = 'Credit'
+    GROUP BY customer_id
+  ) credit_totals ON credit_totals.customer_id = c.customer_id
+  LEFT JOIN (
+    SELECT customer_id,
+           CONCAT(DATE_FORMAT(MAX(payment_date), '%Y-%m-%dT%H:%i:%s'), '+08:00') AS last_payment_at
+    FROM payments
+    GROUP BY customer_id
+  ) payment_totals ON payment_totals.customer_id = c.customer_id
+`
+
 function parseCustomerId(value) {
   const customerId = Number(value)
   return Number.isInteger(customerId) && customerId > 0 ? customerId : null
@@ -43,15 +73,133 @@ function failure(error, response, fallback) {
 export async function getCustomers(request, response) {
   try {
     const [customers] = await pool.execute(`
-      SELECT customer_id, customer_name, contact_number, address, current_balance, created_at
-      FROM customers
-      WHERE is_active = TRUE
-      ORDER BY customer_name ASC
+      SELECT ${customerSelectFields}
+      FROM customers c
+      ${customerFinancialJoins}
+      WHERE c.is_active = TRUE
+      ORDER BY c.customer_name ASC
     `)
     return response.json({ success: true, data: customers })
   } catch (error) {
     console.error('Unable to retrieve customers:', error.message)
     return response.status(500).json({ success: false, message: 'Unable to retrieve customers' })
+  }
+}
+
+export async function getArchivedCustomers(request, response) {
+  try {
+    const [customers] = await pool.execute(`
+      SELECT ${customerSelectFields}
+      FROM customers c
+      ${customerFinancialJoins}
+      WHERE c.is_active = FALSE
+      ORDER BY c.customer_name ASC
+    `)
+    return response.json({ success: true, data: customers })
+  } catch (error) {
+    console.error('Unable to retrieve archived customers:', error.message)
+    return response.status(500).json({ success: false, message: 'Unable to retrieve archived customers' })
+  }
+}
+
+export async function archiveCustomer(request, response) {
+  let connection
+  let transactionStarted = false
+
+  try {
+    const customerId = parseCustomerId(request.params.id)
+    if (!customerId) throw new CustomerError(400, 'Invalid customer ID')
+
+    connection = await pool.getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
+
+    const [customers] = await connection.execute(
+      `SELECT customer_id, customer_name, current_balance, is_active
+       FROM customers
+       WHERE customer_id = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [customerId],
+    )
+    const customer = customers[0]
+    if (!customer) throw new CustomerError(404, 'Customer not found')
+    if (!customer.is_active) throw new CustomerError(409, 'Customer is already archived')
+    if (Number(customer.current_balance) > 0) {
+      throw new CustomerError(409, 'Customer has an outstanding balance. Settle the balance before archiving this customer.')
+    }
+
+    await connection.execute(
+      'UPDATE customers SET is_active = FALSE WHERE customer_id = ?',
+      [customerId],
+    )
+    await connection.execute(
+      `INSERT INTO activity_logs (user_id, action, description, created_at)
+       VALUES (?, 'CUSTOMER_ARCHIVED', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
+      [request.user.user_id, `Customer ${customerId} (${customer.customer_name}) archived`],
+    )
+    await connection.commit()
+    transactionStarted = false
+
+    return response.json({
+      success: true,
+      message: 'Customer archived successfully',
+      data: { customer_id: customerId, customer_name: customer.customer_name, is_active: false },
+    })
+  } catch (error) {
+    if (transactionStarted) await connection.rollback()
+    return failure(error, response, 'Unable to archive customer')
+  } finally {
+    connection?.release()
+  }
+}
+
+export async function restoreCustomer(request, response) {
+  let connection
+  let transactionStarted = false
+
+  try {
+    const customerId = parseCustomerId(request.params.id)
+    if (!customerId) throw new CustomerError(400, 'Invalid customer ID')
+
+    connection = await pool.getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
+
+    const [customers] = await connection.execute(
+      `SELECT customer_id, customer_name, is_active
+       FROM customers
+       WHERE customer_id = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [customerId],
+    )
+    const customer = customers[0]
+    if (!customer) throw new CustomerError(404, 'Customer not found')
+    if (customer.is_active) throw new CustomerError(409, 'Customer is already active')
+
+    await connection.execute(
+      'UPDATE customers SET is_active = TRUE WHERE customer_id = ?',
+      [customerId],
+    )
+    await connection.execute(
+      `INSERT INTO activity_logs (user_id, action, description, created_at)
+       VALUES (?, 'CUSTOMER_RESTORED', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
+      [request.user.user_id, `Customer ${customerId} (${customer.customer_name}) restored`],
+    )
+    await connection.commit()
+    transactionStarted = false
+
+    return response.json({
+      success: true,
+      message: 'Customer restored successfully',
+      data: { customer_id: customerId, customer_name: customer.customer_name, is_active: true },
+    })
+  } catch (error) {
+    if (transactionStarted) await connection.rollback()
+    return failure(error, response, 'Unable to restore customer')
+  } finally {
+    connection?.release()
   }
 }
 
@@ -157,8 +305,10 @@ export async function getCustomer(request, response) {
 
   try {
     const [customers] = await pool.execute(
-      `SELECT customer_id, customer_name, contact_number, address, current_balance, created_at
-       FROM customers WHERE customer_id = ? AND is_active = TRUE LIMIT 1`,
+      `SELECT ${customerSelectFields}
+       FROM customers c
+       ${customerFinancialJoins}
+       WHERE c.customer_id = ? LIMIT 1`,
       [customerId],
     )
     if (!customers[0]) return response.status(404).json({ success: false, message: 'Customer not found' })
@@ -166,6 +316,35 @@ export async function getCustomer(request, response) {
   } catch (error) {
     console.error('Unable to retrieve customer:', error.message)
     return response.status(500).json({ success: false, message: 'Unable to retrieve customer' })
+  }
+}
+
+export async function getCustomerSales(request, response) {
+  const customerId = parseCustomerId(request.params.id)
+  if (!customerId) return response.status(400).json({ success: false, message: 'Invalid customer ID' })
+
+  try {
+    const [sales] = await pool.execute(
+      `SELECT sa.sale_id,
+              CONCAT(DATE_FORMAT(sa.sale_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS sale_date,
+              sa.payment_type,
+              sa.total_amount,
+              sa.amount_paid,
+              sa.remaining_balance,
+              sa.status,
+              COUNT(si.salesitem_id) AS item_count
+       FROM sales sa
+       LEFT JOIN sales_items si ON si.sale_id = sa.sale_id
+       WHERE sa.customer_id = ?
+       GROUP BY sa.sale_id, sa.sale_date, sa.payment_type, sa.total_amount,
+                sa.amount_paid, sa.remaining_balance, sa.status
+       ORDER BY sa.sale_date DESC, sa.sale_id DESC`,
+      [customerId],
+    )
+    return response.json({ success: true, data: sales })
+  } catch (error) {
+    console.error('Unable to retrieve customer sales:', error.message)
+    return response.status(500).json({ success: false, message: 'Unable to retrieve customer sales' })
   }
 }
 

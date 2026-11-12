@@ -142,6 +142,7 @@ import ActivityLogs from '/@fs/${sourceRoot}/src/pages/ActivityLogs/ActivityLogs
 import BusinessAnalytics from '/@fs/${sourceRoot}/src/pages/Dashboard/BusinessAnalytics.jsx'
 import UserAccounts from '/@fs/${sourceRoot}/src/pages/UserAccounts/UserAccounts.jsx'
 import { AuthContext } from '/@fs/${sourceRoot}/src/context/AuthContext.jsx'
+import { ToastProvider } from '/@fs/${sourceRoot}/src/context/ToastContext.jsx'
 import SalesChart from '/@fs/${sourceRoot}/src/pages/Dashboard/SalesChart.jsx'
 import SalesSummary from '/@fs/${sourceRoot}/src/pages/Dashboard/SalesSummary.jsx'
 import TopSellingProducts from '/@fs/${sourceRoot}/src/pages/Dashboard/TopSellingProducts.jsx'
@@ -159,6 +160,7 @@ import '/@fs/${sourceRoot}/src/styles/pages/Dashboard.css'
 import '/@fs/${sourceRoot}/src/styles/pages/Inventory.css'
 import '/@fs/${sourceRoot}/src/styles/pages/ActivityLogs.css'
 import '/@fs/${sourceRoot}/src/styles/pages/UserAccounts.css'
+import '/@fs/${sourceRoot}/src/styles/shared/Toast.css'
 
 const fixtures = ${JSON.stringify(products)}
 const stockInRecords = [
@@ -398,7 +400,7 @@ function Harness() {
   </>
 }
 
-createRoot(document.getElementById('root')).render(<Harness />)
+createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></ToastProvider>)
 `,
   )
 
@@ -782,7 +784,7 @@ createRoot(document.getElementById('root')).render(<Harness />)
   await evaluate("document.querySelector('.user-confirmation-modal .primary-action').click(); document.querySelector('.user-confirmation-modal .primary-action').click()")
   await waitForCondition("!document.querySelector('.user-confirmation-modal')")
   assert(await evaluate("userRequests.filter((request) => request.action === '/status').length") === statusRequestCount + 1, 'Account status duplicate-submit lock did not enforce one request')
-  assert(await evaluate("document.querySelector('#user-accounts-test .users-feedback.success').textContent.includes('activated')"), 'Successful account activation did not show backend-confirmed feedback')
+  assert(await evaluate("document.querySelector('.toast-viewport .system-toast.success').textContent.includes('activated')"), 'Successful account activation did not show a success toast')
 
   await evaluate(`${anaRowSelector}().querySelectorAll('.table-action')[1].click()`)
   await setInput('#user-accounts-test #user-password', 'NewSecurePassword1!')
@@ -801,7 +803,7 @@ createRoot(document.getElementById('root')).render(<Harness />)
   await evaluate("document.querySelector('.user-confirmation-modal .primary-action').click(); document.querySelector('.user-confirmation-modal .primary-action').click()")
   await waitForCondition("!document.querySelector('.user-confirmation-modal')")
   assert(await evaluate("userRequests.filter((request) => request.action === '/password').length") === successfulPasswordRequestCount + 1, 'Password reset duplicate-submit lock did not enforce one request')
-  assert(await evaluate("document.querySelector('#user-accounts-test .users-feedback.success').textContent.includes('Password reset successfully')"), 'Successful password reset did not show backend-confirmed feedback')
+  await waitForCondition("document.querySelector('.toast-viewport .system-toast.success')?.textContent.includes('Password reset successfully')")
 
   await click('#user-accounts-test [aria-label="Next page"]')
   assert(await evaluate("document.querySelector('#user-accounts-test .table-pagination').textContent.includes('2 / 2')"), 'User Account next-page navigation failed')

@@ -104,6 +104,8 @@ try {
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { ThemeProvider } from '/@fs/${sourceRoot}/src/context/ThemeContext.jsx'
+import { AuthContext } from '/@fs/${sourceRoot}/src/context/AuthContext.jsx'
+import { ToastProvider } from '/@fs/${sourceRoot}/src/context/ToastContext.jsx'
 import MainLayout from '/@fs/${sourceRoot}/src/layouts/MainLayout.jsx'
 import SupplierContracts from '/@fs/${sourceRoot}/src/pages/SupplierContracts/SupplierContracts.jsx'
 import '/@fs/${sourceRoot}/src/styles/variables.css'
@@ -113,10 +115,12 @@ import '/@fs/${sourceRoot}/src/styles/shared/Cards.css'
 import '/@fs/${sourceRoot}/src/styles/shared/Shared.css'
 import '/@fs/${sourceRoot}/src/styles/shared/Tables.css'
 import '/@fs/${sourceRoot}/src/styles/shared/Modal.css'
+import '/@fs/${sourceRoot}/src/styles/pages/Inventory.css'
 import '/@fs/${sourceRoot}/src/styles/layouts/MainLayout.css'
 import '/@fs/${sourceRoot}/src/styles/layouts/Header.css'
 import '/@fs/${sourceRoot}/src/styles/layouts/Sidebar.css'
 import '/@fs/${sourceRoot}/src/styles/pages/SupplierContracts.css'
+import '/@fs/${sourceRoot}/src/styles/shared/Toast.css'
 
 localStorage.setItem('authToken', 'supplier-test-token')
 localStorage.setItem('theme', 'light')
@@ -126,6 +130,7 @@ let suppliers = [
   { supplier_id: 2, supplier_name: 'Visayas Cold Chain', contact_person: 'Ben Santos', contact_number: '', address: 'Cebu City' },
   { supplier_id: 3, supplier_name: 'Mindanao Farm Goods', contact_person: '', contact_number: '09981234567', address: 'Davao City' },
 ]
+let archivedSuppliers = []
 const deliveries = Array.from({ length: 10 }, (_, index) => ({
   stockin_id: 51 + index,
   supplier_id: index < 2 ? 1 : (index % 2) + 2,
@@ -147,6 +152,26 @@ globalThis.fetch = async (input, options = {}) => {
   const path = new URL(String(input), location.origin).pathname
   if (path === '/api/suppliers' && (!options.method || options.method === 'GET')) {
     return Response.json({ success: true, data: suppliers })
+  }
+  if (path === '/api/suppliers/archived' && (!options.method || options.method === 'GET')) {
+    return Response.json({ success: true, data: archivedSuppliers })
+  }
+  const statusPath = path.split('/')
+  if (statusPath.length === 5 && statusPath[1] === 'api' && statusPath[2] === 'suppliers' && options.method === 'PATCH') {
+    const supplierId = Number(statusPath[3])
+    const action = statusPath[4]
+    if (action === 'archive') {
+      const supplier = suppliers.find((item) => item.supplier_id === supplierId)
+      if (!supplier) return Response.json({ success: false, message: 'Supplier not found' }, { status: 404 })
+      suppliers = suppliers.filter((item) => item.supplier_id !== supplierId)
+      archivedSuppliers = [...archivedSuppliers, supplier]
+      return Response.json({ success: true, data: { supplier_id: supplierId, is_active: false } })
+    }
+    const supplier = archivedSuppliers.find((item) => item.supplier_id === supplierId)
+    if (!supplier) return Response.json({ success: false, message: 'Supplier not found' }, { status: 404 })
+    archivedSuppliers = archivedSuppliers.filter((item) => item.supplier_id !== supplierId)
+    suppliers = [...suppliers, supplier]
+    return Response.json({ success: true, data: { supplier_id: supplierId, is_active: true } })
   }
   if (path === '/api/stock-in' && (!options.method || options.method === 'GET')) {
     return Response.json({ success: true, data: deliveries })
@@ -171,11 +196,15 @@ globalThis.supplierTestState = {
 }
 
 createRoot(document.getElementById('root')).render(
-  <ThemeProvider>
-    <MainLayout activeModule="Supplier Contracts" role="admin" user={{ fullname: 'Test Admin' }} onSelect={() => {}} onLogout={() => {}}>
-      <SupplierContracts />
-    </MainLayout>
-  </ThemeProvider>,
+  <ToastProvider>
+    <AuthContext.Provider value={{ user: { role: 'admin' }, role: 'admin' }}>
+      <ThemeProvider>
+        <MainLayout activeModule="Supplier Contracts" role="admin" user={{ fullname: 'Test Admin' }} onSelect={() => {}} onLogout={() => {}}>
+          <SupplierContracts />
+        </MainLayout>
+      </ThemeProvider>
+    </AuthContext.Provider>
+  </ToastProvider>,
 )
 `)
 
@@ -268,6 +297,43 @@ createRoot(document.getElementById('root')).render(
   await writeFile(join(screenshotRoot, 'desktop-success.png'), screenshot.data, 'base64')
   await clickByText('Done')
   await waitFor("!document.querySelector('[role=dialog]') && document.querySelectorAll('.supplier-card').length === 4")
+  console.log('PASS supplier creation completed')
+
+  for (const supplierName of ['Luzon Poultry Supply', 'Visayas Cold Chain']) {
+    await evaluate(`(() => { const card = [...document.querySelectorAll('.supplier-card')].find((item) => item.querySelector('h3')?.textContent.trim() === ${JSON.stringify(supplierName)}); card.querySelector('.supplier-card-actions button').click() })()`)
+    await waitFor("Boolean(document.querySelector('.supplier-status-modal'))")
+    await clickByText('Confirm Archive')
+    await waitFor(`[...document.querySelectorAll('.toast-viewport .system-toast.success')].some((toast) => toast.textContent.includes(${JSON.stringify(supplierName)}))`)
+  }
+  await clickByText('Archived Suppliers')
+  await waitFor("document.querySelectorAll('.supplier-archive-panel .supplier-card').length === 2")
+  const desktopArchivePanel = await evaluate(`(() => {
+    const panel = document.querySelector('.supplier-archive-panel')
+    const grid = document.querySelector('.supplier-archive-panel .archived-supplier-grid')
+    return {
+      width: panel.getBoundingClientRect().width,
+      columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
+      scrollable: getComputedStyle(panel).overflowY === 'auto',
+      values: [...document.querySelectorAll('.supplier-archive-panel .supplier-contact-list dd')].every((value) => value.clientWidth > 60 && value.scrollWidth <= value.clientWidth),
+    }
+  })()`)
+  assert(desktopArchivePanel.width > 640 && desktopArchivePanel.width <= 800, 'Archived Suppliers panel width was not suitable for desktop')
+  assert(desktopArchivePanel.columns === 2, 'Archived supplier cards did not use two columns on desktop')
+  assert(desktopArchivePanel.scrollable && desktopArchivePanel.values, `Archived supplier panel scrolling or contact text layout was incorrect: ${JSON.stringify(desktopArchivePanel)}`)
+  await browserConnection.command('Emulation.setDeviceMetricsOverride', { width: 700, height: 900, deviceScaleFactor: 1, mobile: false })
+  await delay(120)
+  assert(await evaluate("getComputedStyle(document.querySelector('.supplier-archive-panel .archived-supplier-grid')).gridTemplateColumns.split(' ').length === 2"), 'Archived supplier cards did not retain two columns when they fit on tablet')
+  await browserConnection.command('Emulation.setDeviceMetricsOverride', { width: 600, height: 900, deviceScaleFactor: 1, mobile: false })
+  await delay(120)
+  assert(await evaluate("getComputedStyle(document.querySelector('.supplier-archive-panel .archived-supplier-grid')).gridTemplateColumns.split(' ').length === 1"), 'Archived supplier cards did not collapse to one column when narrow')
+  assert(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth'), 'Archived supplier panel overflowed the narrow viewport')
+  await browserConnection.command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false })
+  await evaluate("document.querySelector('.supplier-archive-panel .supplier-card-actions button').click()")
+  await waitFor("Boolean(document.querySelector('.supplier-status-modal'))")
+  assert(await evaluate("Number(getComputedStyle(document.querySelector('.modal-backdrop')).zIndex) > Number(getComputedStyle(document.querySelector('.inventory-archived-panel-backdrop')).zIndex)"), 'Restore confirmation appeared behind the archived supplier panel')
+  await clickByText('Confirm Restore')
+  await waitFor("!document.querySelector('.supplier-archive-panel') && [...document.querySelectorAll('.toast-viewport .system-toast.success')].some((toast) => toast.textContent.includes('restored'))")
+  console.log('PASS archived supplier panel width, two-column layout, narrow-screen layout, contact readability, restore, and success toast')
 
   await clickByText('Add Supplier')
   await setValue('input[name=supplier_name]', 'Failure Preserved Supplier')

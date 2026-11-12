@@ -1,6 +1,7 @@
+import { Archive, RotateCcw } from 'lucide-react'
 import { peso } from '../../utils/currency.js'
 
-function SupplierCard({ supplier, records }) {
+function SupplierCard({ supplier, records, archived = false, isAdmin = false, onArchive, onRestore }) {
   const totalSpend = records.reduce((sum, record) => sum + Number(record.total_cost), 0)
 
   return (
@@ -18,6 +19,13 @@ function SupplierCard({ supplier, records }) {
         <div><span>Confirmed deliveries</span><strong>{records.length.toLocaleString('en-PH')}</strong></div>
         <div><span>Total recorded cost</span><strong>{peso.format(totalSpend)}</strong></div>
       </div>
+      {isAdmin && (
+        <div className="supplier-card-actions">
+          {archived
+            ? <button className="secondary-action slim" type="button" onClick={() => onRestore(supplier)}><RotateCcw size={14} aria-hidden="true" /> Restore Supplier</button>
+            : <button className="secondary-action slim" type="button" onClick={() => onArchive(supplier)}><Archive size={14} aria-hidden="true" /> Archive Supplier</button>}
+        </div>
+      )}
     </article>
   )
 }

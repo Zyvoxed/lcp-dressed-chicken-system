@@ -4,6 +4,7 @@ import { productCategories } from '../../utils/constants.js'
 import { peso } from '../../utils/currency.js'
 import Modal from '../Shared/Modal.jsx'
 import TransactionSuccessModal from '../Shared/TransactionSuccessModal.jsx'
+import { useToast } from '../../context/ToastContext.jsx'
 
 const initialForm = {
   product_name: '',
@@ -51,6 +52,7 @@ function validateForm(form, includeUnit) {
 }
 
 function ProductModal({ product, onClose, onSaved }) {
+  const { showSuccess, showError } = useToast()
   const isEdit = Boolean(product)
   const [form, setForm] = useState(() => getInitialForm(product))
   const [error, setError] = useState('')
@@ -71,6 +73,7 @@ function ProductModal({ product, onClose, onSaved }) {
     const validationError = validateForm(form, !isEdit)
     if (validationError) {
       setError(validationError)
+      showError(validationError)
       return
     }
 
@@ -89,8 +92,10 @@ function ProductModal({ product, onClose, onSaved }) {
         ? await updateProduct(product.product_id, editableFields)
         : await createProduct({ ...editableFields, unit: form.unit.trim() })
       setSavedProduct(savedProduct)
+      showSuccess(isEdit ? `${savedProduct.product_name} was updated successfully.` : `${savedProduct.product_name} was added successfully.`)
       onSaved(savedProduct, isEdit ? 'edit' : 'create')
     } catch (requestError) {
+      showError(requestError.message || 'Unable to save product')
       setError(requestError.message)
       submissionLock.current = false
       setSubmitting(false)

@@ -27,6 +27,17 @@ export async function getProducts(options = {}) {
   return result.data
 }
 
+export async function getArchivedProducts(options = {}) {
+  const response = await authenticatedApiFetch('/products/archived', options)
+  const result = await parseResponse(response, 'Archived products could not be loaded. Please try again.')
+
+  if (!Array.isArray(result.data)) {
+    throw new Error('Archived products could not be loaded. Please try again.')
+  }
+
+  return result.data
+}
+
 export async function createProduct(data) {
   const response = await authenticatedApiFetch('/products', {
     method: 'POST',
@@ -59,4 +70,30 @@ export async function updateProduct(productId, data) {
   }
 
   return result.data
+}
+
+export async function archiveProduct(productId) {
+  const response = await authenticatedApiFetch(`/products/${productId}/archive`, {
+    method: 'PATCH',
+  })
+  const result = await parseResponse(response, 'Unable to archive product')
+
+  if (!result.data?.product_id) {
+    throw new Error('The archive action could not be verified. Refresh the product list before trying again.')
+  }
+
+  return result
+}
+
+export async function restoreProduct(productId) {
+  const response = await authenticatedApiFetch(`/products/${productId}/restore`, {
+    method: 'PATCH',
+  })
+  const result = await parseResponse(response, 'Unable to restore product')
+
+  if (!result.data?.product_id) {
+    throw new Error('The restore action could not be verified. Refresh the product list before trying again.')
+  }
+
+  return result
 }

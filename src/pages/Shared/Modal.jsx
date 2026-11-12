@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { X } from 'lucide-react'
 import PageHeader from './PageHeader.jsx'
 
-function Modal({ title, children, onClose, className = '' }) {
+function Modal({ title, children, onClose, className = '', backdropClassName = '' }) {
   const dialogRef = useRef(null)
   const closeButtonRef = useRef(null)
   const onCloseRef = useRef(onClose)
@@ -56,7 +56,7 @@ function Modal({ title, children, onClose, className = '' }) {
   }, [])
 
   return createPortal(
-    <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+    <motion.div className={`modal-backdrop ${backdropClassName}`.trim()} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
       <motion.section
         ref={dialogRef}
         className={`modal-card ${className}`.trim()}

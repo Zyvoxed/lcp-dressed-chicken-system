@@ -99,7 +99,7 @@ export async function createStockIn(request, response) {
     await reserveIdempotencyKey(connection, idempotency)
 
     const [suppliers] = await connection.execute(
-      'SELECT supplier_id FROM suppliers WHERE supplier_id = ? AND is_active = TRUE LIMIT 1',
+      'SELECT supplier_id FROM suppliers WHERE supplier_id = ? AND is_active = TRUE LIMIT 1 FOR UPDATE',
       [supplierId],
     )
 

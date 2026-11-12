@@ -1,0 +1,114 @@
+.toast-viewport {
+  position: fixed;
+  z-index: 20000;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  width: min(440px, calc(100vw - 28px));
+  display: grid;
+  gap: 9px;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.system-toast {
+  --toast-accent: var(--primary);
+  --toast-tint: var(--primary-soft);
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 13px 14px 15px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-left: 4px solid var(--toast-accent);
+  border-radius: 12px;
+  color: var(--text-primary);
+  background: var(--card-bg);
+  box-shadow: 0 16px 38px rgba(20, 10, 8, 0.24);
+  pointer-events: auto;
+}
+
+.system-toast.success { --toast-accent: #21854d; --toast-tint: rgba(33, 133, 77, 0.18); }
+.system-toast.error { --toast-accent: var(--danger-text); --toast-tint: var(--danger-border); }
+.system-toast.warning { --toast-accent: #b7791f; --toast-tint: rgba(183, 121, 31, 0.2); }
+.system-toast.info { --toast-accent: var(--primary); --toast-tint: var(--primary-soft); }
+
+.system-toast-icon {
+  margin-top: 1px;
+  color: var(--toast-accent);
+}
+
+.system-toast-copy {
+  min-width: 0;
+}
+
+.system-toast-copy strong {
+  display: block;
+  color: var(--text-heading);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.system-toast-copy p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.system-toast > button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  margin: -5px -5px 0 0;
+  border: 0;
+  border-radius: 7px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.system-toast > button:hover {
+  color: var(--text-heading);
+  background: var(--surface-hover);
+}
+
+.system-toast > button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.system-toast-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--toast-accent);
+  transform-origin: left;
+  animation: toast-progress var(--toast-duration) linear both;
+}
+
+@keyframes toast-progress {
+  to { transform: scaleX(0); }
+}
+
+@media (max-width: 520px) {
+  .toast-viewport {
+    top: max(10px, env(safe-area-inset-top));
+    width: calc(100vw - 20px);
+  }
+
+  .system-toast {
+    gap: 8px;
+    padding: 11px 12px 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .system-toast-progress { animation-duration: 0.01ms; }
+}

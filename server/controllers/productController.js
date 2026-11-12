@@ -94,6 +94,14 @@ function getStockStatus(stockQuantity, reorderLevel) {
   return 'Available'
 }
 
+async function logProductEvent(connection, userId, action, description) {
+  await connection.execute(
+    `INSERT INTO activity_logs (user_id, action, description, created_at)
+     VALUES (?, ?, ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
+    [userId, action, description],
+  )
+}
+
 export async function createProduct(request, response) {
   try {
     const productName = parseRequiredText(request.body?.product_name, 'Product name', 100)
@@ -306,5 +314,208 @@ export async function getProducts(request, response) {
       success: false,
       message: 'Unable to retrieve products',
     })
+  }
+}
+
+export async function getArchivedProducts(request, response) {
+  try {
+    const [products] = await pool.query(`
+      SELECT
+          product_id,
+          product_name,
+          category,
+          unit,
+          selling_price,
+          stock_quantity,
+          reorder_level,
+          status,
+          created_at,
+          updated_at
+      FROM products
+      WHERE is_active = FALSE
+      ORDER BY product_name ASC;
+    `)
+
+    response.json({
+      success: true,
+      data: products,
+    })
+  } catch (error) {
+    console.error('Unable to retrieve archived products:', error.message)
+    response.status(500).json({
+      success: false,
+      message: 'Unable to retrieve archived products',
+    })
+  }
+}
+
+export async function archiveProduct(request, response) {
+  let connection
+  let transactionStarted = false
+
+  try {
+    const productId = parseProductId(request.params.id)
+    connection = await pool.getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
+
+    const [products] = await connection.execute(
+      `SELECT product_id, product_name, stock_quantity, reorder_level, is_active
+       FROM products
+       WHERE product_id = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [productId],
+    )
+
+    if (products.length === 0) {
+      throw new RequestError('Product not found', 404)
+    }
+
+    const product = products[0]
+
+    if (!product.is_active) {
+      throw new RequestError('Product is already archived', 409)
+    }
+
+    const [batches] = await connection.execute(
+      `SELECT COALESCE(SUM(remaining_quantity), 0) AS remaining_quantity
+       FROM stock_in
+       WHERE product_id = ? AND remaining_quantity > 0`,
+      [productId],
+    )
+
+    const remainingQuantity = Number(product.stock_quantity) + Number(batches[0]?.remaining_quantity || 0)
+
+    if (remainingQuantity > 0) {
+      throw new RequestError('Product has remaining inventory. Resolve the remaining stock before archiving this product.', 409)
+    }
+
+    await connection.execute(
+      `UPDATE products
+       SET is_active = FALSE, status = 'Out of Stock'
+       WHERE product_id = ?`,
+      [productId],
+    )
+
+    await logProductEvent(
+      connection,
+      request.user.user_id,
+      'PRODUCT_ARCHIVED',
+      `Product ${productId} (${product.product_name}) archived by user ${request.user.user_id}`,
+    )
+
+    await connection.commit()
+    transactionStarted = false
+
+    return response.json({
+      success: true,
+      message: 'Product archived successfully',
+      data: {
+        product_id: productId,
+        product_name: product.product_name,
+        is_active: false,
+        status: 'Out of Stock',
+      },
+    })
+  } catch (error) {
+    if (transactionStarted && connection) {
+      await connection.rollback()
+    }
+
+    if (error instanceof RequestError) {
+      return response.status(error.status).json({
+        success: false,
+        message: error.message,
+      })
+    }
+
+    console.error('Unable to archive product:', error.message)
+    return response.status(500).json({
+      success: false,
+      message: 'Unable to archive product',
+    })
+  } finally {
+    connection?.release()
+  }
+}
+
+export async function restoreProduct(request, response) {
+  let connection
+  let transactionStarted = false
+
+  try {
+    const productId = parseProductId(request.params.id)
+    connection = await pool.getConnection()
+    await connection.beginTransaction()
+    transactionStarted = true
+
+    const [products] = await connection.execute(
+      `SELECT product_id, product_name, stock_quantity, reorder_level, is_active
+       FROM products
+       WHERE product_id = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [productId],
+    )
+
+    if (products.length === 0) {
+      throw new RequestError('Product not found', 404)
+    }
+
+    const product = products[0]
+
+    if (product.is_active) {
+      throw new RequestError('Product is already active', 409)
+    }
+
+    const nextStatus = getStockStatus(Number(product.stock_quantity), Number(product.reorder_level))
+
+    await connection.execute(
+      `UPDATE products
+       SET is_active = TRUE, status = ?
+       WHERE product_id = ?`,
+      [nextStatus, productId],
+    )
+
+    await logProductEvent(
+      connection,
+      request.user.user_id,
+      'PRODUCT_RESTORED',
+      `Product ${productId} (${product.product_name}) restored by user ${request.user.user_id}`,
+    )
+
+    await connection.commit()
+    transactionStarted = false
+
+    return response.json({
+      success: true,
+      message: 'Product restored successfully',
+      data: {
+        product_id: productId,
+        product_name: product.product_name,
+        is_active: true,
+        status: nextStatus,
+      },
+    })
+  } catch (error) {
+    if (transactionStarted && connection) {
+      await connection.rollback()
+    }
+
+    if (error instanceof RequestError) {
+      return response.status(error.status).json({
+        success: false,
+        message: error.message,
+      })
+    }
+
+    console.error('Unable to restore product:', error.message)
+    return response.status(500).json({
+      success: false,
+      message: 'Unable to restore product',
+    })
+  } finally {
+    connection?.release()
   }
 }

@@ -78,10 +78,10 @@ export async function recordPayment(request, response) {
     if (paymentCents > saleOutstandingCents) throw new PaymentError(400, 'Payment exceeds the outstanding balance')
 
     const [customers] = await connection.execute(
-      'SELECT current_balance FROM customers WHERE customer_id = ? AND is_active = TRUE LIMIT 1 FOR UPDATE',
+      'SELECT current_balance FROM customers WHERE customer_id = ? LIMIT 1 FOR UPDATE',
       [sale.customer_id],
     )
-    if (!customers[0]) throw new PaymentError(404, 'Active customer not found')
+    if (!customers[0]) throw new PaymentError(404, 'Customer not found')
     if (toCents(customers[0].current_balance) < paymentCents) {
       throw new PaymentError(409, 'The customer balance does not match this payment. Please contact the owner.')
     }

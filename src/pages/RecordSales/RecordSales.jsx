@@ -12,6 +12,7 @@ import { createSale } from '../../services/salesService.js'
 import { getIdempotencyStatus } from '../../services/idempotencyService.js'
 import { readPendingTransaction, savePendingTransaction } from '../../utils/pendingTransaction.js'
 import { useAuth } from '../../hooks/useAuth.js'
+import { useToast } from '../../context/ToastContext.jsx'
 
 function getInitialSaleRecovery(userId) {
   try {
@@ -27,6 +28,7 @@ function RecordSales() {
 }
 
 function RecordSalesForUser({ userId }) {
+  const { showWarning } = useToast()
   const [initialRecovery] = useState(() => getInitialSaleRecovery(userId))
   const [category, setCategory] = useState('All')
   const [query, setQuery] = useState('')
@@ -177,7 +179,9 @@ function RecordSalesForUser({ userId }) {
       await refreshProducts()
       setError('')
     } catch (requestError) {
-      setError(`Sale recorded, but product stock could not be refreshed: ${requestError.message}`)
+      const message = `Sale recorded, but product stock could not be refreshed: ${requestError.message}`
+      setError(message)
+      showWarning(message)
     }
   }
 

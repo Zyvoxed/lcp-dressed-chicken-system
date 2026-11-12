@@ -107,6 +107,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { ThemeProvider } from '/@fs/${sourceRoot}/src/context/ThemeContext.jsx'
 import { AuthContext } from '/@fs/${sourceRoot}/src/context/AuthContext.jsx'
+import { ToastProvider } from '/@fs/${sourceRoot}/src/context/ToastContext.jsx'
 import MainLayout from '/@fs/${sourceRoot}/src/layouts/MainLayout.jsx'
 import RecordSales from '/@fs/${sourceRoot}/src/pages/RecordSales/RecordSales.jsx'
 import CustomerCredits from '/@fs/${sourceRoot}/src/pages/CustomerCredits/CustomerCredits.jsx'
@@ -121,6 +122,7 @@ import '/@fs/${sourceRoot}/src/styles/shared/Shared.css'
 import '/@fs/${sourceRoot}/src/styles/shared/Modal.css'
 import '/@fs/${sourceRoot}/src/styles/pages/RecordSales.css'
 import '/@fs/${sourceRoot}/src/styles/pages/CustomerCredits.css'
+import '/@fs/${sourceRoot}/src/styles/shared/Toast.css'
 
 const products = [
   { product_id: 1, product_name: 'Premium Whole Chicken With A Long Product Name', category: 'Whole Chicken', unit: 'kg', selling_price: '120.00', stock_quantity: '10.000', reorder_level: '2.000', status: 'Available' },
@@ -194,6 +196,9 @@ globalThis.fetch = async (url, options = {}) => {
   if (path.endsWith('/customers') && method === 'GET') {
     return new Response(JSON.stringify({ success: true, data: customers }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
+  if (path.endsWith('/customers/archived') && method === 'GET') {
+    return new Response(JSON.stringify({ success: true, data: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
   if (path.endsWith('/customers') && method === 'POST') {
     const body = JSON.parse(options.body)
     globalThis.customerRequests.push(body)
@@ -265,7 +270,7 @@ function Harness() {
   </AuthContext.Provider>
 }
 
-createRoot(document.getElementById('root')).render(<Harness />)
+createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></ToastProvider>)
 `)
 
   vite = await createServer({

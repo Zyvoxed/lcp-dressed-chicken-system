@@ -6,13 +6,14 @@ import Modal from '../Shared/Modal.jsx'
 import UserForm from './UserForm.jsx'
 import UserStats from './UserStats.jsx'
 import UserTable from './UserTable.jsx'
+import { useToast } from '../../context/ToastContext.jsx'
 
 function UserAccounts() {
   const { user: currentUser } = useAuth()
+  const { showSuccess, showError, showWarning } = useToast()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
   const [mode, setMode] = useState('create')
   const [selectedUser, setSelectedUser] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -32,7 +33,7 @@ function UserAccounts() {
     return () => controller.abort()
   }, [])
 
-  function choose(nextMode, user = null) { setMode(nextMode); setSelectedUser(user); setNotice('') }
+  function choose(nextMode, user = null) { setMode(nextMode); setSelectedUser(user) }
   async function submit(form) {
     setBusy(true)
     try {
@@ -40,23 +41,33 @@ function UserAccounts() {
       if (mode === 'create') result = await createUser({ fullname: form.fullname, username: form.username, email: form.email, contact_number: form.contact_number, password: form.password, role: form.role })
       else if (mode === 'edit') result = await updateUser(selectedUser.user_id, { fullname: form.fullname, username: form.username, email: form.email, contact_number: form.contact_number, role: form.role })
       else result = await resetUserPassword(selectedUser.user_id, form.password)
-      choose('create'); setNotice(result.message); await loadUsers()
+      choose('create')
+      showSuccess(result.message)
+      try { await loadUsers() } catch (refreshError) { showWarning(`Saved, but the user list could not be refreshed: ${refreshError.message}`) }
+    } catch (requestError) {
+      showError(requestError.message || 'Unable to save user account')
+      throw requestError
     } finally { setBusy(false) }
   }
   async function toggleStatus(user) {
     if (statusLock.current) return
     statusLock.current = true
-    setBusyId(user.user_id); setNotice(''); setError(''); setStatusError('')
-    try { const result = await updateUserStatus(user.user_id, !user.is_active); setNotice(result.message); await loadUsers(); setPendingStatusUser(null) }
-    catch (requestError) { setStatusError(requestError.message) }
+    setBusyId(user.user_id); setError(''); setStatusError('')
+    try {
+      const result = await updateUserStatus(user.user_id, !user.is_active)
+      showSuccess(result.message)
+      setPendingStatusUser(null)
+      try { await loadUsers() } catch (refreshError) { showWarning(`Account status was updated, but the user list could not be refreshed: ${refreshError.message}`) }
+    }
+    catch (requestError) { showError(requestError.message || 'Unable to update account status'); setStatusError(requestError.message) }
     finally { statusLock.current = false; setBusyId(null) }
   }
   async function sendVerification(user) {
     if (verificationLock.current) return
     verificationLock.current = true
-    setVerificationBusyId(user.user_id); setNotice(''); setError('')
-    try { const result = await resendEmailVerification(user.user_id); setNotice(result.message) }
-    catch (requestError) { setError(requestError.message) }
+    setVerificationBusyId(user.user_id); setError('')
+    try { const result = await resendEmailVerification(user.user_id); showSuccess(result.message) }
+    catch (requestError) { showError(requestError.message || 'Unable to send verification email'); setError(requestError.message) }
     finally { verificationLock.current = false; setVerificationBusyId(null) }
   }
 
@@ -65,7 +76,6 @@ function UserAccounts() {
     <section className="users-layout">
       <div className="full-span user-feedback-stack">
         {error && users.length > 0 && <div className="users-feedback error" role="alert">{error}</div>}
-        {notice && <div className="users-feedback success" role="status">{notice}</div>}
       </div>
       <UserStats users={users} />
       {!users.length && error

@@ -14,6 +14,7 @@ import {
 } from '../../utils/pendingTransaction.js'
 import { toTransactionCents } from '../../utils/transactionMoney.js'
 import { useAuth } from '../../hooks/useAuth.js'
+import { useToast } from '../../context/ToastContext.jsx'
 
 function getInitialPaymentRecovery(userId) {
   try {
@@ -38,6 +39,7 @@ function PaymentForm({ customer, credits, onRecorded, onSelectCustomer }) {
 }
 
 function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCustomer }) {
+  const { showSuccess, showError, showWarning } = useToast()
   const openCredits = credits.filter((credit) => Number(credit.remaining_balance) > 0)
   const [initialRecovery] = useState(() => getInitialPaymentRecovery(userId))
   const [saleId, setSaleId] = useState(() => initialRecovery.attempt ? String(initialRecovery.attempt.payload.sale_id) : '')
@@ -89,6 +91,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
           savePendingTransaction('payment', userId, completedAttempt)
           setPendingAttempt(completedAttempt)
           setSuccessResult(response)
+          showSuccess('The payment was already recorded successfully.')
           setRefreshWarning(warning)
           setRecoveryMessage('The payment was already recorded. Its original result is ready to review.')
         } else {
@@ -101,7 +104,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
 
     recoverPayment()
     return () => { active = false }
-  }, [pendingAttempt, pendingCustomerMatches, onRecorded, userId])
+  }, [pendingAttempt, pendingCustomerMatches, onRecorded, showSuccess, userId])
 
   function validatePayment() {
     const numericAmount = Number(amount)
@@ -133,6 +136,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
     const validationError = validatePayment()
     if (validationError) {
       setError(validationError)
+      showError(validationError)
       return
     }
     setError('')
@@ -145,6 +149,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
     const validationError = pendingAttempt ? '' : validatePayment()
     if (validationError) {
       setError(validationError)
+      showError(validationError)
       return
     }
 
@@ -183,14 +188,17 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
         recordedPayment = await onRecorded(attempt.display.customer_id, result.payment_id)
       } catch (refreshError) {
         setRefreshWarning(`Payment recorded, but the ledger could not be refreshed: ${refreshError.message}`)
+        showWarning(`Payment recorded, but the ledger could not be refreshed: ${refreshError.message}`)
       }
       const completedResult = { ...result, payment_date: recordedPayment?.payment_date }
       const completedAttempt = { ...attempt, state: 'completed', response: completedResult }
       savePendingTransaction('payment', userId, completedAttempt)
       setPendingAttempt(completedAttempt)
       setSuccessResult(completedResult)
+      showSuccess('Payment recorded successfully.')
       setReviewOpen(false)
     } catch (requestError) {
+      showError(requestError.message || 'Unable to record payment')
       setError(requestError.message)
       if (requestError.outcome === 'not_committed' && requestError.code === 'TRANSACTION_REJECTED' && attempt && attempt.state !== 'rejected') {
         setReviewOpen(false)
@@ -245,6 +253,8 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
         savePendingTransaction('payment', userId, completedAttempt)
         setPendingAttempt(completedAttempt)
         setSuccessResult(result)
+        showSuccess('The payment was already recorded successfully.')
+        if (warning) showWarning(warning)
         setRefreshWarning(warning)
         setRecoveryMessage('The payment was already recorded. Its original result is ready to review.')
       } else {

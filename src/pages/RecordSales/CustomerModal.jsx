@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import Modal from '../Shared/Modal.jsx'
 import TransactionSuccessModal from '../Shared/TransactionSuccessModal.jsx'
 import { createCustomer, updateCustomer } from '../../services/customerService.js'
+import { useToast } from '../../context/ToastContext.jsx'
 
 const initialForm = { customer_name: '', contact_number: '', address: '' }
 
@@ -15,6 +16,7 @@ function customerForm(customer) {
 }
 
 function CustomerModal({ onClose, onCreated, onUpdated, customer = null }) {
+  const { showSuccess, showError, showWarning } = useToast()
   const editing = Boolean(customer?.customer_id)
   const [form, setForm] = useState(() => customerForm(customer))
   const [saving, setSaving] = useState(false)
@@ -33,6 +35,7 @@ function CustomerModal({ onClose, onCreated, onUpdated, customer = null }) {
     if (submissionLock.current) return
     if (!form.customer_name.trim()) {
       setError('Customer name is required.')
+      showError('Customer name is required.')
       return
     }
 
@@ -52,13 +55,16 @@ function CustomerModal({ onClose, onCreated, onUpdated, customer = null }) {
         ? result
         : { ...payload, customer_id: result.customer_id }
       setSavedCustomer(saved)
+      showSuccess(editing ? `${saved.customer_name} was updated successfully.` : `${saved.customer_name} was added successfully.`)
       try {
         if (editing) await onUpdated(saved)
         else await onCreated(result.customer_id)
       } catch (refreshError) {
         setRefreshWarning(`Customer saved, but the customer list could not be refreshed: ${refreshError.message}`)
+        showWarning(`Customer saved, but the customer list could not be refreshed: ${refreshError.message}`)
       }
     } catch (requestError) {
+      showError(requestError.message || 'Unable to save customer')
       setError(requestError.message)
       submissionLock.current = false
       setSaving(false)

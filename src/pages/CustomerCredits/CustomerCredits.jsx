@@ -1,13 +1,28 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import EmptyState from '../Shared/EmptyState.jsx'
 import CreditStats from './CreditStats.jsx'
 import CustomerLedger from './CustomerLedger.jsx'
-import CustomerList from './CustomerList.jsx'
+import CustomerList, { ArchivedCustomerPanel } from './CustomerList.jsx'
 import CustomerModal from '../RecordSales/CustomerModal.jsx'
-import { getCustomer, getCustomerCredits, getCustomerPayments, getCustomers } from '../../services/customerService.js'
+import { useAuth } from '../../hooks/useAuth.js'
+import { useToast } from '../../context/ToastContext.jsx'
+import {
+  archiveCustomer,
+  getCustomer,
+  getArchivedCustomers,
+  getCustomerCredits,
+  getCustomerPayments,
+  getCustomerSales,
+  getCustomers,
+  restoreCustomer,
+} from '../../services/customerService.js'
 
 function CustomerCredits() {
   const [customers, setCustomers] = useState([])
+  const [archivedCustomers, setArchivedCustomers] = useState([])
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [credits, setCredits] = useState([])
   const [payments, setPayments] = useState([])
@@ -15,19 +30,26 @@ function CustomerCredits() {
   const [error, setError] = useState('')
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [detailsError, setDetailsError] = useState('')
+  const [sales, setSales] = useState([])
+  const [salesLoading, setSalesLoading] = useState(false)
+  const [salesError, setSalesError] = useState('')
   const [customerModalOpen, setCustomerModalOpen] = useState(false)
-  const [editingCustomer, setEditingCustomer] = useState(null)
+  const [showArchivedPanel, setShowArchivedPanel] = useState(false)
+  const [archivedCustomersLoading, setArchivedCustomersLoading] = useState(false)
+  const [archivedCustomersError, setArchivedCustomersError] = useState('')
+  const { showSuccess, showError, showWarning } = useToast()
   const selectedCustomerIdRef = useRef(null)
 
   useEffect(() => {
     const controller = new AbortController()
     async function loadCustomers() {
       try {
-        const data = await getCustomers({ signal: controller.signal })
+        const [data, archivedData] = await Promise.all([
+          getCustomers({ signal: controller.signal }),
+          getArchivedCustomers({ signal: controller.signal }),
+        ])
         setCustomers(data)
-        setDetailsLoading(Boolean(data[0]))
-        setSelectedCustomer(data[0] || null)
-        selectedCustomerIdRef.current = data[0]?.customer_id || null
+        setArchivedCustomers(archivedData)
       } catch (requestError) {
         if (requestError.name !== 'AbortError') setError(requestError.message)
       } finally {
@@ -36,7 +58,25 @@ function CustomerCredits() {
     }
     loadCustomers()
     return () => controller.abort()
-  }, [])
+  }, [isAdmin])
+
+  useEffect(() => {
+    if (!showArchivedPanel) return undefined
+    const controller = new AbortController()
+    async function loadArchivedCustomers() {
+      setArchivedCustomersLoading(true)
+      setArchivedCustomersError('')
+      try {
+        setArchivedCustomers(await getArchivedCustomers({ signal: controller.signal }))
+      } catch (requestError) {
+        if (requestError.name !== 'AbortError') setArchivedCustomersError(requestError.message)
+      } finally {
+        if (!controller.signal.aborted) setArchivedCustomersLoading(false)
+      }
+    }
+    loadArchivedCustomers()
+    return () => controller.abort()
+  }, [showArchivedPanel])
 
   useEffect(() => {
     if (!selectedCustomer) return undefined
@@ -56,33 +96,93 @@ function CustomerCredits() {
         if (!controller.signal.aborted) setDetailsLoading(false)
       }
     }
+    async function loadSales() {
+      try {
+        setSalesLoading(true)
+        const salesData = await getCustomerSales(selectedCustomer.customer_id, { signal: controller.signal })
+        setSales(salesData)
+        setSalesError('')
+      } catch (requestError) {
+        if (requestError.name !== 'AbortError') setSalesError(requestError.message)
+      } finally {
+        if (!controller.signal.aborted) setSalesLoading(false)
+      }
+    }
     loadDetails()
+    loadSales()
     return () => controller.abort()
   }, [selectedCustomer])
 
   function selectCustomer(customer) {
-    if (customer.customer_id === selectedCustomer?.customer_id) return
-    setDetailsLoading(true)
-    setDetailsError('')
-    setCredits([])
-    setPayments([])
+    if (Number(customer.customer_id) !== Number(selectedCustomer?.customer_id)) {
+      setDetailsLoading(true)
+      setSalesLoading(true)
+      setDetailsError('')
+      setSalesError('')
+      setCredits([])
+      setPayments([])
+      setSales([])
+    }
     setSelectedCustomer(customer)
     selectedCustomerIdRef.current = customer.customer_id
   }
 
-  async function refreshCustomer(customerId, paymentId) {
-    const [customer, customerList, creditData, paymentData] = await Promise.all([
-      getCustomer(customerId), getCustomers(),
-      getCustomerCredits(customerId), getCustomerPayments(customerId),
+  const refreshCustomer = useCallback(async (customerId, paymentId) => {
+    const [customer, customerList, creditData, paymentData, salesData] = await Promise.all([
+      getCustomer(customerId),
+      getCustomers(),
+      getCustomerCredits(customerId),
+      getCustomerPayments(customerId),
+      getCustomerSales(customerId),
     ])
     setCustomers(customerList)
     if (Number(selectedCustomerIdRef.current) === Number(customerId)) {
       setSelectedCustomer(customer)
       setCredits(creditData)
       setPayments(paymentData)
+      setSales(salesData)
     }
     return paymentData.find((payment) => payment.payment_id === paymentId)
-  }
+  }, [])
+
+  const refreshLists = useCallback(async () => {
+    const [active, archived] = await Promise.all([
+      getCustomers(),
+      getArchivedCustomers(),
+    ])
+    setCustomers(active)
+    setArchivedCustomers(archived)
+  }, [])
+
+  const closeCustomerDrawer = useCallback(() => {
+    setSelectedCustomer(null)
+    selectedCustomerIdRef.current = null
+  }, [])
+
+  const archiveSelectedCustomer = useCallback(async (customer) => {
+    try {
+      await archiveCustomer(customer.customer_id)
+      showSuccess(`${customer.customer_name} was archived. Historical sales and payments were preserved.`)
+      try { await refreshLists() } catch (refreshError) { showWarning(`Customer was archived, but the lists could not be refreshed: ${refreshError.message}`) }
+      closeCustomerDrawer()
+    } catch (error) {
+      showError(error.message || 'Unable to archive customer')
+      throw error
+    }
+  }, [closeCustomerDrawer, refreshLists, showError, showSuccess, showWarning])
+
+  const restoreSelectedCustomer = useCallback(async (customer) => {
+    try {
+      await restoreCustomer(customer.customer_id)
+      showSuccess(`${customer.customer_name} was restored and is available for new transactions.`)
+      try { await refreshLists() } catch (refreshError) { showWarning(`Customer was restored, but the lists could not be refreshed: ${refreshError.message}`) }
+      closeCustomerDrawer()
+      setShowArchivedPanel(false)
+    } catch (error) {
+      showError(error.message || 'Unable to restore customer')
+      throw error
+    }
+  }, [closeCustomerDrawer, refreshLists, showError, showSuccess, showWarning])
 
   async function selectCustomerById(customerId) {
     const listedCustomer = customers.find((customer) => Number(customer.customer_id) === Number(customerId))
@@ -97,19 +197,8 @@ function CustomerCredits() {
     if (customer) selectCustomer(customer)
   }
 
-  async function customerUpdated(updatedCustomer) {
-    const [customerList, customer] = await Promise.all([
-      getCustomers(),
-      getCustomer(updatedCustomer.customer_id),
-    ])
-    setCustomers(customerList)
-    setSelectedCustomer(customer)
-    selectedCustomerIdRef.current = customer.customer_id
-  }
-
   function closeCustomerModal() {
     setCustomerModalOpen(false)
-    setEditingCustomer(null)
   }
 
   return (
@@ -117,25 +206,55 @@ function CustomerCredits() {
       <div className="credits-layout">
       {loading
         ? <PageSkeleton variant="customer-credit-stats" label="customer credit summary" />
-        : <CreditStats customers={customers} />}
+        : <CreditStats customers={customers} archivedCustomers={archivedCustomers} />}
       {loading && <PageSkeleton variant="customer-credits" label="customer credit records" />}
       {!loading && error && <EmptyState>{error}</EmptyState>}
       {!loading && !error && (
         <CustomerList
           customers={customers}
-          selectedCustomer={selectedCustomer}
           onSelect={selectCustomer}
-          onAddCustomer={() => { setEditingCustomer(null); setCustomerModalOpen(true) }}
+          onAddCustomer={() => setCustomerModalOpen(true)}
+          onShowArchived={() => setShowArchivedPanel(true)}
+          isAdmin={isAdmin}
         />
       )}
-      {!loading && !error && <CustomerLedger customer={selectedCustomer} credits={credits} payments={payments} onPayment={refreshCustomer} onSelectCustomer={selectCustomerById} onEdit={(customer) => { setEditingCustomer(customer); setCustomerModalOpen(true) }} loading={detailsLoading} error={detailsError} />}
+      {!loading && !error && (
+        <AnimatePresence>
+          {selectedCustomer && (
+            <CustomerLedger
+              key={selectedCustomer.customer_id}
+              customer={selectedCustomer}
+              credits={credits}
+              payments={payments}
+              sales={sales}
+              onPayment={refreshCustomer}
+              onArchive={archiveSelectedCustomer}
+              onRestore={restoreSelectedCustomer}
+              isAdmin={isAdmin}
+              onSelectCustomer={selectCustomerById}
+              onClose={closeCustomerDrawer}
+              loading={detailsLoading}
+              error={detailsError}
+              salesLoading={salesLoading}
+              salesError={salesError}
+            />
+          )}
+        </AnimatePresence>
+      )}
       {customerModalOpen && (
         <CustomerModal
-          key={editingCustomer ? `edit-${editingCustomer.customer_id}` : 'add-customer'}
-          customer={editingCustomer}
+          key="add-customer"
           onClose={closeCustomerModal}
           onCreated={customerCreated}
-          onUpdated={customerUpdated}
+        />
+      )}
+      {showArchivedPanel && (
+        <ArchivedCustomerPanel
+          customers={archivedCustomers}
+          loading={archivedCustomersLoading}
+          error={archivedCustomersError}
+          onClose={() => setShowArchivedPanel(false)}
+          onRestore={restoreSelectedCustomer}
         />
       )}
       </div>

@@ -17,6 +17,7 @@ import {
   transactionCentsToAmount,
   transactionTotalCents,
 } from '../../utils/transactionMoney.js'
+import { useToast } from '../../context/ToastContext.jsx'
 
 const maximumTransactionCents = 999999999999n
 
@@ -37,6 +38,7 @@ function SalesBasket({
   recoveryMessage,
   recoveryError,
 }) {
+  const { showSuccess, showError } = useToast()
   const [amountPaid, setAmountPaid] = useState(() => pendingSale ? String(pendingSale.payload.amount_paid) : '')
   const [paymentType, setPaymentType] = useState(() => pendingSale?.payload.payment_type || 'Cash')
   const [confirmationOpen, setConfirmationOpen] = useState(false)
@@ -77,6 +79,7 @@ function SalesBasket({
     setError('')
     if (recoveryError) {
       setError('Saved sale recovery data must be resolved before another sale can be started.')
+      showError('Saved sale recovery data must be resolved before another sale can be started.')
       return
     }
     if (pendingSale) {
@@ -87,22 +90,27 @@ function SalesBasket({
     if (!cart.length) return
     if (totalCents > maximumTransactionCents) {
       setError('Sale total cannot exceed ₱9,999,999,999.99.')
+      showError('Sale total cannot exceed ₱9,999,999,999.99.')
       return
     }
     if (amountPaid.trim() === '' || !Number.isFinite(numericAmountPaid) || numericAmountPaid < 0 || amountPaidCents === null) {
       setError('Enter a valid amount paid with no more than two decimal places.')
+      showError('Enter a valid amount paid with no more than two decimal places.')
       return
     }
     if (amountPaidCents > totalCents) {
       setError('Amount paid cannot exceed the sale total.')
+      showError('Amount paid cannot exceed the sale total.')
       return
     }
     if (paymentType === 'Cash' && amountPaidCents !== totalCents) {
       setError('Cash payment must equal the full sale total.')
+      showError('Cash payment must equal the full sale total.')
       return
     }
     if (paymentType === 'Credit' && !selectedCustomer) {
       setError('Select a customer for this credit sale.')
+      showError('Select a customer for this credit sale.')
       return
     }
     setConfirmationOpen(true)
@@ -148,8 +156,10 @@ function SalesBasket({
       const completedAttempt = { ...attempt, state: 'completed', response: result }
       savePendingTransaction('sale', userId, completedAttempt)
       onPendingSaleChange(completedAttempt)
+      showSuccess('Sale recorded successfully.')
       setConfirmationOpen(false)
     } catch (requestError) {
+      showError(requestError.message || 'Unable to record sale')
       setError(requestError.message)
       if (requestError.outcome === 'not_committed' && requestError.code === 'TRANSACTION_REJECTED' && attempt && attempt.state !== 'rejected') {
         setConfirmationOpen(false)

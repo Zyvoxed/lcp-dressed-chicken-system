@@ -14,6 +14,20 @@ export async function getCustomers(options = {}) {
   return data
 }
 
+export async function getArchivedCustomers(options = {}) {
+  const data = await request('/customers/archived', options, 'Unable to retrieve archived customers')
+  if (!Array.isArray(data)) throw new Error('Archived customers could not be loaded. Please try again.')
+  return data
+}
+
+export function archiveCustomer(id) {
+  return request(`/customers/${id}/archive`, { method: 'PATCH' }, 'Unable to archive customer')
+}
+
+export function restoreCustomer(id) {
+  return request(`/customers/${id}/restore`, { method: 'PATCH' }, 'Unable to restore customer')
+}
+
 export function createCustomer(data) {
   return request('/customers', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
@@ -39,5 +53,11 @@ export async function getCustomerCredits(id, options = {}) {
 export async function getCustomerPayments(id, options = {}) {
   const data = await request(`/customers/${id}/payments`, options, 'Unable to retrieve customer payments')
   if (!Array.isArray(data)) throw new Error('Customer payment records could not be loaded. Please try again.')
+  return data
+}
+
+export async function getCustomerSales(id, options = {}) {
+  const data = await request(`/customers/${id}/sales`, options, 'Unable to retrieve customer sales')
+  if (!Array.isArray(data)) throw new Error('Customer sales could not be loaded. Please try again.')
   return data
 }

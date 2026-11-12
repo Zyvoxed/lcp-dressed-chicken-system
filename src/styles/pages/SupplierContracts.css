@@ -73,6 +73,40 @@
   background: var(--surface-inset);
 }
 
+.supplier-directory-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.supplier-directory-actions button { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.supplier-archive-panel { width: min(760px, calc(100vw - 16px)); gap: 14px; padding: 20px 18px 18px; }
+.supplier-archive-panel .archived-supplier-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr)); gap: 12px; }
+.supplier-archive-panel .supplier-card { height: 100%; gap: 12px; padding: 14px; }
+.supplier-archive-panel .supplier-contact-list > div { grid-template-columns: minmax(105px, 0.75fr) minmax(0, 1.25fr); gap: 10px; padding: 7px 0; }
+.supplier-archive-panel .supplier-card-summary { gap: 8px; }
+.supplier-archive-panel .supplier-card-summary > div { gap: 3px; padding: 9px; }
+.supplier-archive-panel .supplier-card-summary strong { white-space: nowrap; overflow-wrap: normal; }
+.supplier-archive-panel .supplier-card-actions { align-self: end; width: 100%; padding-top: 8px; }
+.archive-panel-confirmation-backdrop { z-index: 80; }
+
+.supplier-status-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--success-border);
+  border-radius: var(--radius-md);
+  color: var(--status-success-text);
+  background: var(--status-success-bg);
+  font-size: 12px;
+}
+
+.supplier-status-notice button {
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+}
+
 .supplier-directory-controls .table-search {
   width: min(100%, 340px);
   min-height: 42px;
@@ -187,6 +221,31 @@
   color: var(--text-heading);
   font-size: 13px;
   overflow-wrap: anywhere;
+}
+
+.supplier-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.supplier-card-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.supplier-status-confirmation {
+  display: grid;
+  gap: 12px;
+}
+
+.supplier-status-confirmation > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .procurement-layout {
@@ -419,13 +478,20 @@
 }
 
 @media (max-width: 640px) {
+  .supplier-archive-panel { width: 100%; padding: 16px 12px 12px; }
+  .supplier-archive-panel .archived-supplier-grid { grid-template-columns: minmax(0, 1fr); }
+  .supplier-archive-panel .supplier-contact-list > div { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .supplier-archive-panel .supplier-contact-list dd { text-align: left; }
+  .supplier-archive-panel .supplier-card-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
   .supplier-section-heading,
   .supplier-directory-controls {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .supplier-section-heading .primary-action,
+  .supplier-directory-actions,
+  .supplier-directory-actions button,
   .supplier-directory-controls .table-search {
     width: 100%;
   }

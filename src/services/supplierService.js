@@ -27,6 +27,31 @@ export async function getSuppliers(options = {}) {
   return result.data
 }
 
+export async function getArchivedSuppliers(options = {}) {
+  const response = await authenticatedApiFetch('/suppliers/archived', options)
+  const result = await parseResponse(response, 'Unable to retrieve archived suppliers')
+
+  if (!Array.isArray(result.data)) {
+    throw new Error('Archived suppliers could not be loaded. Please try again.')
+  }
+
+  return result.data
+}
+
+async function updateSupplierStatus(id, action, fallbackMessage) {
+  const response = await authenticatedApiFetch(`/suppliers/${id}/${action}`, { method: 'PATCH' })
+  const result = await parseResponse(response, fallbackMessage)
+  return result.data
+}
+
+export function archiveSupplier(id) {
+  return updateSupplierStatus(id, 'archive', 'Unable to archive supplier')
+}
+
+export function restoreSupplier(id) {
+  return updateSupplierStatus(id, 'restore', 'Unable to restore supplier')
+}
+
 export async function createSupplier(data) {
   const response = await authenticatedApiFetch('/suppliers', {
     method: 'POST',

@@ -1,18 +1,31 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Plus, Search } from 'lucide-react'
+import { useContext, useEffect, useMemo, useState } from 'react'
+import { Archive, Plus, Search, X } from 'lucide-react'
 import EmptyState from '../Shared/EmptyState.jsx'
+import Modal from '../Shared/Modal.jsx'
 import ProcurementChart from './ProcurementChart.jsx'
 import SupplierCard from './SupplierCard.jsx'
 import SupplierLedger from './SupplierLedger.jsx'
 import SupplierModal from './SupplierModal.jsx'
-import { getSuppliers } from '../../services/supplierService.js'
+import { archiveSupplier, getArchivedSuppliers, getSuppliers, restoreSupplier } from '../../services/supplierService.js'
 import { getStockInRecords } from '../../services/stockInService.js'
+import { AuthContext } from '../../context/AuthContext.jsx'
+import { useToast } from '../../context/ToastContext.jsx'
 
 function SupplierContracts() {
   const [showSupplierModal, setShowSupplierModal] = useState(false)
   const [suppliers, setSuppliers] = useState([])
+  const [archivedSuppliers, setArchivedSuppliers] = useState([])
   const [records, setRecords] = useState([])
   const [query, setQuery] = useState('')
+  const [showArchivedPanel, setShowArchivedPanel] = useState(false)
+  const [archivedSuppliersLoading, setArchivedSuppliersLoading] = useState(false)
+  const [archivedSuppliersError, setArchivedSuppliersError] = useState('')
+  const [confirmation, setConfirmation] = useState(null)
+  const [actionBusy, setActionBusy] = useState(false)
+  const [actionError, setActionError] = useState('')
+  const { showSuccess, showError, showWarning } = useToast()
+  const auth = useContext(AuthContext)
+  const isAdmin = auth?.user?.role === 'admin'
   const [suppliersLoading, setSuppliersLoading] = useState(true)
   const [recordsLoading, setRecordsLoading] = useState(true)
   const [supplierError, setSupplierError] = useState('')
@@ -20,7 +33,9 @@ function SupplierContracts() {
 
   async function refreshSuppliers() {
     try {
-      setSuppliers(await getSuppliers())
+      const [active, archived] = await Promise.all([getSuppliers(), getArchivedSuppliers()])
+      setSuppliers(active)
+      setArchivedSuppliers(archived)
       setSupplierError('')
       return ''
     } catch (requestError) {
@@ -34,8 +49,11 @@ function SupplierContracts() {
   useEffect(() => {
     const controller = new AbortController()
 
-    getSuppliers({ signal: controller.signal })
-      .then((data) => { setSuppliers(data); setSupplierError('') })
+    Promise.all([
+      getSuppliers({ signal: controller.signal }),
+      getArchivedSuppliers({ signal: controller.signal }),
+    ])
+      .then(([active, archived]) => { setSuppliers(active); setArchivedSuppliers(archived); setSupplierError('') })
       .catch((requestError) => {
         if (requestError.name !== 'AbortError') setSupplierError(requestError.message)
       })
@@ -66,6 +84,44 @@ function SupplierContracts() {
     ].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery))
   }, [query, suppliers])
 
+  useEffect(() => {
+    if (!showArchivedPanel) return undefined
+    const controller = new AbortController()
+    async function loadArchivedSuppliers() {
+      setArchivedSuppliersLoading(true)
+      setArchivedSuppliersError('')
+      try {
+        setArchivedSuppliers(await getArchivedSuppliers({ signal: controller.signal }))
+      } catch (requestError) {
+        if (requestError.name !== 'AbortError') setArchivedSuppliersError(requestError.message)
+      } finally {
+        if (!controller.signal.aborted) setArchivedSuppliersLoading(false)
+      }
+    }
+    loadArchivedSuppliers()
+    return () => controller.abort()
+  }, [showArchivedPanel])
+
+  async function confirmStatusChange() {
+    if (!confirmation || actionBusy) return
+    setActionBusy(true)
+    setActionError('')
+    try {
+      const { action, supplier } = confirmation
+      await (action === 'archive' ? archiveSupplier(supplier.supplier_id) : restoreSupplier(supplier.supplier_id))
+      const refreshWarning = await refreshSuppliers()
+      showSuccess(`${supplier.supplier_name} was ${action === 'archive' ? 'archived' : 'restored'}.`)
+      if (refreshWarning) showWarning(refreshWarning)
+      if (action === 'restore') setShowArchivedPanel(false)
+      setConfirmation(null)
+    } catch (error) {
+      showError(error.message || 'Unable to update supplier status')
+      setActionError(error.message || 'Unable to update supplier status')
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
   return (
     <section className="supplier-page page-stack">
       <section className="panel supplier-directory-panel">
@@ -74,9 +130,14 @@ function SupplierContracts() {
             <h2>Qualified Suppliers</h2>
             <p>Review active supplier contact details and confirmed delivery activity.</p>
           </div>
-          <button className="primary-action slim" type="button" onClick={() => setShowSupplierModal(true)}>
-            <Plus size={15} aria-hidden="true" /> Add Supplier
-          </button>
+          <div className="supplier-directory-actions">
+            <button className="primary-action slim" type="button" onClick={() => setShowSupplierModal(true)}>
+              <Plus size={15} aria-hidden="true" /> Add Supplier
+            </button>
+            {isAdmin && <button className="secondary-action slim" type="button" onClick={() => setShowArchivedPanel(true)}>
+              <Archive size={15} aria-hidden="true" /> Archived Suppliers
+            </button>}
+          </div>
         </div>
 
         {!suppliersLoading && !supplierError && suppliers.length > 0 && <div className="supplier-directory-controls">
@@ -96,6 +157,10 @@ function SupplierContracts() {
             <SupplierCard
               key={supplier.supplier_id}
               supplier={supplier}
+              archived={false}
+              isAdmin={isAdmin}
+              onArchive={(target) => { setConfirmation({ action: 'archive', supplier: target }); setActionError('') }}
+              onRestore={(target) => { setConfirmation({ action: 'restore', supplier: target }); setActionError('') }}
               records={records.filter((record) => String(record.supplier_id) === String(supplier.supplier_id))}
             />
           ))}
@@ -109,6 +174,57 @@ function SupplierContracts() {
 
       {showSupplierModal && (
         <SupplierModal onClose={() => setShowSupplierModal(false)} onCreated={refreshSuppliers} />
+      )}
+
+      {confirmation && (
+        <Modal
+          title={confirmation.action === 'archive' ? 'Archive Supplier' : 'Restore Supplier'}
+          onClose={() => { if (!actionBusy) { setConfirmation(null); setActionError('') } }}
+          className="supplier-status-modal"
+          backdropClassName={showArchivedPanel ? 'archive-panel-confirmation-backdrop' : ''}
+        >
+          <div className="supplier-status-confirmation">
+            <p><strong>{confirmation.supplier.supplier_name}</strong> · SUP-{confirmation.supplier.supplier_id}</p>
+            <p>{confirmation.action === 'archive'
+              ? 'This supplier will no longer be available for new Stock In deliveries. Existing delivery history and recorded costs will be preserved.'
+              : 'Restoring this supplier makes it available again for new Stock In deliveries.'}</p>
+            {actionError && <p className="supplier-form-error" role="alert">{actionError}</p>}
+            <div className="modal-actions">
+              <button className="secondary-action" type="button" disabled={actionBusy} onClick={() => setConfirmation(null)}>Cancel</button>
+              <button className="primary-action" type="button" disabled={actionBusy} onClick={confirmStatusChange}>
+                {actionBusy ? 'Saving…' : confirmation.action === 'archive' ? 'Confirm Archive' : 'Confirm Restore'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {showArchivedPanel && (
+        <div className="inventory-archived-panel-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowArchivedPanel(false) }}>
+          <aside className="inventory-archived-panel supplier-archive-panel" role="dialog" aria-modal="true" aria-label="Archived suppliers">
+            <div className="inventory-archived-panel-header">
+              <div><p className="inventory-archived-kicker">Supplier Contracts</p><h2>Archived Suppliers</h2></div>
+              <button className="close-button" type="button" onClick={() => setShowArchivedPanel(false)} aria-label="Close archived suppliers panel"><X size={18} aria-hidden="true" /></button>
+            </div>
+            {archivedSuppliersLoading
+              ? <PageSkeleton variant="supplier-directory" label="archived suppliers" />
+              : archivedSuppliersError
+                ? <EmptyState>{archivedSuppliersError}</EmptyState>
+                : !archivedSuppliers.length
+                  ? <EmptyState>No archived suppliers found.</EmptyState>
+                  : <div className="supplier-grid archived-supplier-grid">
+                    {archivedSuppliers.map((supplier) => (
+                      <SupplierCard
+                        key={supplier.supplier_id}
+                        supplier={supplier}
+                        archived
+                        isAdmin={isAdmin}
+                        onRestore={(target) => { setConfirmation({ action: 'restore', supplier: target }); setActionError('') }}
+                        records={records.filter((record) => String(record.supplier_id) === String(supplier.supplier_id))}
+                      />
+                    ))}
+                  </div>}
+          </aside>
+        </div>
       )}
     </section>
   )

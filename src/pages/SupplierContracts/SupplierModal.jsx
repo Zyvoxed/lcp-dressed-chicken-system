@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import Modal from '../Shared/Modal.jsx'
 import TransactionSuccessModal from '../Shared/TransactionSuccessModal.jsx'
 import { createSupplier } from '../../services/supplierService.js'
+import { useToast } from '../../context/ToastContext.jsx'
 
 const initialForm = {
   supplier_name: '',
@@ -20,6 +21,7 @@ function supplierDetails(form) {
 }
 
 function SupplierModal({ onClose, onCreated }) {
+  const { showSuccess, showError, showWarning } = useToast()
   const [form, setForm] = useState(initialForm)
   const [step, setStep] = useState('form')
   const [saving, setSaving] = useState(false)
@@ -37,6 +39,7 @@ function SupplierModal({ onClose, onCreated }) {
     event.preventDefault()
     if (!form.supplier_name.trim()) {
       setError('Supplier name is required.')
+      showError('Supplier name is required.')
       return
     }
     setError('')
@@ -52,9 +55,12 @@ function SupplierModal({ onClose, onCreated }) {
     try {
       const result = await createSupplier(form)
       const refreshWarning = await onCreated?.()
+      showSuccess(`${form.supplier_name.trim()} was added successfully.`)
+      if (refreshWarning) showWarning(refreshWarning)
       setSuccess({ result, details: supplierDetails(form), refreshWarning })
       setStep('success')
     } catch (requestError) {
+      showError(requestError.message || 'Unable to create supplier')
       setError(requestError.message)
     } finally {
       submissionLock.current = false

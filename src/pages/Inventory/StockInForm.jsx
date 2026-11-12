@@ -15,6 +15,7 @@ import {
 import { transactionLineCents } from '../../utils/transactionMoney.js'
 import StockInConfirmationModal from './StockInConfirmationModal.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
+import { useToast } from '../../context/ToastContext.jsx'
 
 function getLocalDateTime() {
   const now = new Date()
@@ -86,6 +87,7 @@ function StockInForm({ onCreated }) {
 }
 
 function StockInFormForUser({ userId, onCreated }) {
+  const { showSuccess, showError, showWarning } = useToast()
   const [initialRecovery] = useState(() => getInitialStockInRecovery(userId))
   const [products, setProducts] = useState([])
   const [suppliers, setSuppliers] = useState([])
@@ -153,6 +155,7 @@ function StockInFormForUser({ userId, onCreated }) {
           savePendingTransaction('stock_in', userId, completedAttempt)
           setPendingAttempt(completedAttempt)
           setSuccessResult(result)
+          showSuccess('The stock delivery was already recorded successfully.')
           setRecoveryMessage('The stock delivery was already recorded. Its original result is ready to review.')
         } else {
           setRecoveryMessage('No completed result was found. Retry the original delivery to safely recover or finish it.')
@@ -164,7 +167,7 @@ function StockInFormForUser({ userId, onCreated }) {
 
     recoverStockIn()
     return () => { active = false }
-  }, [loading, pendingAttempt, products, suppliers, userId])
+  }, [loading, pendingAttempt, products, showSuccess, suppliers, userId])
 
   function handleChange(event) {
     if (pendingAttempt) return
@@ -185,6 +188,7 @@ function StockInFormForUser({ userId, onCreated }) {
     const validationError = validateStockIn(form, selectedProduct, selectedSupplier)
     if (validationError) {
       setError(validationError)
+      showError(validationError)
       return
     }
     setError('')
@@ -230,14 +234,17 @@ function StockInFormForUser({ userId, onCreated }) {
       savePendingTransaction('stock_in', userId, completedAttempt)
       setPendingAttempt(completedAttempt)
       setSuccessResult({ ...result, product: selectedProduct, supplier: selectedSupplier })
+      showSuccess('Stock-in recorded successfully.')
       setConfirmationOpen(false)
       onCreated()
       try {
         setProducts(await getProducts())
       } catch (refreshError) {
         setRefreshWarning(`Delivery recorded, but stock figures could not be refreshed: ${refreshError.message}`)
+        showWarning(`Delivery recorded, but stock figures could not be refreshed: ${refreshError.message}`)
       }
     } catch (requestError) {
+      showError(requestError.message || 'Unable to record stock-in')
       setError(requestError.message)
       if (requestError.outcome === 'not_committed' && requestError.code === 'TRANSACTION_REJECTED' && attempt && attempt.state !== 'rejected') {
         setConfirmationOpen(false)
@@ -284,12 +291,14 @@ function StockInFormForUser({ userId, onCreated }) {
         savePendingTransaction('stock_in', userId, completedAttempt)
         setPendingAttempt(completedAttempt)
         setSuccessResult(result)
+        showSuccess('Stock-in recorded successfully.')
         onCreated()
         try {
           setProducts(await getProducts())
           setRefreshWarning('')
         } catch (refreshError) {
           setRefreshWarning(`Delivery was recorded, but stock figures could not be refreshed: ${refreshError.message}`)
+          showWarning(`Delivery was recorded, but stock figures could not be refreshed: ${refreshError.message}`)
         }
         setRecoveryMessage('The stock delivery was already recorded. Its original result is ready to review.')
       } else {
