@@ -25,10 +25,14 @@ function productColor(product) {
   const seed = Number.isInteger(numericId)
     ? numericId
     : [...String(product.product_name)].reduce((total, character) => total + character.charCodeAt(0), 0)
-  const hue = Math.round((seed * 137.508) % 360)
-  const saturation = 52 + (seed % 3) * 6
-  const lightness = 43 + (seed % 4) * 3
-  return `hsl(${hue} ${saturation}% ${lightness}%)`
+  const chartColors = [
+    'var(--chart-series-1)',
+    'var(--chart-series-2)',
+    'var(--chart-series-3)',
+    'var(--chart-series-4)',
+    'var(--chart-series-5)',
+  ]
+  return chartColors[Math.abs(seed) % chartColors.length]
 }
 
 function InventoryValuation() {
@@ -83,12 +87,14 @@ function InventoryValuation() {
   const activeProduct = chartProducts.find((product) => product.product_id === activeProductId) ?? null
 
   function showProductTooltip(productId, x, y) {
-    const tooltipHalfWidth = Math.min(140, Math.max(window.innerWidth / 2 - 12, 0))
+    const tooltipWidth = Math.min(280, Math.max(window.innerWidth - 24, 0))
+    const gap = 14
+    const left = x + tooltipWidth + gap <= window.innerWidth - 12
+      ? x + gap
+      : Math.max(x - tooltipWidth - gap, 12)
+    const top = Math.min(Math.max(y - 12, 12), Math.max(window.innerHeight - 230, 12))
     setHoveredProductId(productId)
-    setTooltipPosition({
-      x: Math.max(tooltipHalfWidth, Math.min(x, window.innerWidth - tooltipHalfWidth)),
-      y,
-    })
+    setTooltipPosition({ x: left, y: top })
   }
 
   function hideProductTooltip() {

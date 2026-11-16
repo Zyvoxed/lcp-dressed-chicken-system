@@ -32,6 +32,7 @@ function DataTable({
   searchable = true,
   searchPlaceholder = 'Search records',
   toolbarContent = null,
+  nonSortableColumns = [],
 }) {
   const [query, setQuery] = useState('')
   const [sortConfig, setSortConfig] = useState({ index: null, direction: 'asc' })
@@ -92,19 +93,33 @@ function DataTable({
         <table className="system-data-table">
           <thead>
             <tr>
-              {columns.map((column, index) => (
-                <th
-                  key={column}
-                  aria-sort={sortConfig.index === index
-                    ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending')
-                    : undefined}
-                >
-                  <button type="button" onClick={() => handleSort(index)}>
-                    {column}
-                    <ArrowUpDown size={13} aria-hidden="true" />
-                  </button>
-                </th>
-              ))}
+              {columns.map((column, index) => {
+                const isActionColumn = typeof column === 'string' && (
+                  /^(actions?)$/i.test(column.trim()) || nonSortableColumns.includes(column)
+                )
+
+                if (isActionColumn) {
+                  return (
+                    <th key={column} className="table-header-static">
+                      <span className="table-header-static-title">{column}</span>
+                    </th>
+                  )
+                }
+
+                return (
+                  <th
+                    key={column}
+                    aria-sort={sortConfig.index === index
+                      ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending')
+                      : undefined}
+                  >
+                    <button type="button" onClick={() => handleSort(index)}>
+                      {column}
+                      <ArrowUpDown size={13} aria-hidden="true" />
+                    </button>
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>

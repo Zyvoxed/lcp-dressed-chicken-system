@@ -10,7 +10,7 @@
   padding: 20px;
   background: var(--modal-backdrop);
   z-index: 50;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(3px);
 }
 
 .modal-card {
@@ -62,18 +62,18 @@
 
 .transaction-success-modal {
   width: min(100%, 540px);
-  border-color: #dce7df;
-  color: #33413a;
-  background: #ffffff;
+  border-color: var(--success-border);
+  color: var(--text-primary);
+  background: var(--card-bg);
 }
 
 .transaction-success-modal :is(h2, .panel-title-row h2) {
-  color: #1d2d25;
+  color: var(--text-heading);
 }
 
 .transaction-success-modal .close-button {
-  border-color: #dce7df;
-  color: #52645a;
+  border-color: var(--border);
+  color: var(--text-secondary);
 }
 
 .transaction-success-intro {
@@ -85,13 +85,13 @@
 }
 
 .transaction-success-intro svg {
-  color: #21854d;
+  color: var(--status-success-text);
 }
 
 .transaction-success-intro p {
   max-width: 400px;
   margin: 0;
-  color: #52645a;
+  color: var(--text-secondary);
   line-height: 1.55;
 }
 
@@ -106,8 +106,8 @@
 }
 
 .transaction-success-modal .transaction-detail-list {
-  border-color: #e4ebe7;
-  background: #f7faf8;
+  border-color: var(--border-subtle);
+  background: var(--surface-inset);
 }
 
 .transaction-detail-list > div {
@@ -121,7 +121,7 @@
 }
 
 .transaction-success-modal .transaction-detail-list > div {
-  border-bottom-color: #e4ebe7;
+  border-bottom-color: var(--border-subtle);
 }
 
 .transaction-detail-list > div:last-child {
@@ -134,7 +134,7 @@
 }
 
 .transaction-success-modal .transaction-detail-list dt {
-  color: #66786e;
+  color: var(--text-muted);
 }
 
 .transaction-detail-list dd {
@@ -148,7 +148,7 @@
 }
 
 .transaction-success-modal .transaction-detail-list dd {
-  color: #1d2d25;
+  color: var(--text-heading);
 }
 
 .transaction-detail-list .confirmation-total {
@@ -165,10 +165,10 @@
 .transaction-success-notice {
   margin: 0;
   padding: 10px 12px;
-  border: 1px solid #ead59c;
+  border: 1px solid var(--warning-border);
   border-radius: var(--radius-md);
-  color: #6e5520;
-  background: #fff9e8;
+  color: var(--status-warn-text);
+  background: var(--status-warn-bg);
   font-size: 12px;
   line-height: 1.45;
 }

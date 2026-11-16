@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import EmptyState from '../Shared/EmptyState.jsx'
 import DashboardStats from './DashboardStats.jsx'
-import LowSellingProducts from './LowSellingProducts.jsx'
 import RecentActivity from './RecentActivity.jsx'
 import RestockChecklist from './RestockChecklist.jsx'
 import SalesChart from './SalesChart.jsx'
+import SalesByProductChart from './SalesByProductChart.jsx'
 import SalesSummary from './SalesSummary.jsx'
 import TopSellingProducts from './TopSellingProducts.jsx'
 import { getDashboard } from '../../services/dashboardService.js'
@@ -30,12 +30,12 @@ function Dashboard() {
     <section className="page-stack dashboard-page">
       <DashboardStats dashboard={dashboard} />
       <div className="dashboard-primary-grid">
-        <SalesChart trends={dashboard.trends} />
+        <SalesChart />
         <SalesSummary summary={dashboard.summary} />
       </div>
       <div className="dashboard-two-column-grid dashboard-product-grid">
-        <TopSellingProducts products={dashboard.top_products} />
-        <LowSellingProducts products={dashboard.low_products} />
+        <SalesByProductChart products={dashboard.top_products} />
+        <TopSellingProducts products={dashboard.top_products} leastProducts={dashboard.low_products} />
       </div>
       <div className="dashboard-two-column-grid dashboard-operations-grid">
         <RestockChecklist products={dashboard.low_stock_alerts} total={dashboard.summary.low_stock_count} />

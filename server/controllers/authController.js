@@ -76,6 +76,21 @@ export async function login(request, response) {
   }
 }
 
+export async function logout(request, response) {
+  try {
+    await pool.execute(
+      `INSERT INTO activity_logs (user_id, action, description, created_at)
+       VALUES (?, 'LOGOUT', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
+      [request.user.user_id, 'User logged out'],
+    )
+
+    return response.json({ success: true })
+  } catch (error) {
+    console.error('Unable to record logout activity:', error.message)
+    return response.status(500).json({ success: false, message: 'Unable to record logout activity' })
+  }
+}
+
 export async function getCurrentUser(request, response) {
   try {
     const [users] = await pool.execute(

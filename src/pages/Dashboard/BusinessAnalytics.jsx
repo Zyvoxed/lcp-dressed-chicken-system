@@ -6,6 +6,7 @@ import ExecutiveOperationsInsights from './ExecutiveOperationsInsights.jsx'
 import ProductSalesPerformanceChart from './ProductSalesPerformanceChart.jsx'
 import ProductPerformanceLists from './ProductPerformanceLists.jsx'
 import RestockWarnings from './RestockWarnings.jsx'
+import PageSkeleton from '../Shared/PageSkeleton.jsx'
 
 function BusinessAnalytics() {
   const [analytics, setAnalytics] = useState(null)
@@ -46,4 +47,3 @@ function BusinessAnalytics() {
 }
 
 export default BusinessAnalytics
-import PageSkeleton from '../Shared/PageSkeleton.jsx'

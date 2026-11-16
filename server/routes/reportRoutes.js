@@ -10,10 +10,10 @@ import {
 } from '../controllers/reportController.js'
 
 const router = Router()
-router.use(authenticate, authorizeRoles('Admin'))
-router.get('/sales', getSalesReport)
-router.get('/sales/:id', getSalesReportDetail)
-router.get('/inventory', getInventoryReport)
-router.get('/receivables', getReceivablesReport)
-router.post('/log', logReportGeneration)
+router.use(authenticate)
+router.get('/sales', authorizeRoles('Admin', 'Staff'), getSalesReport)
+router.get('/sales/:id', authorizeRoles('Admin', 'Staff'), getSalesReportDetail)
+router.get('/inventory', authorizeRoles('Admin'), getInventoryReport)
+router.get('/receivables', authorizeRoles('Admin', 'Staff'), getReceivablesReport)
+router.post('/log', authorizeRoles('Admin', 'Staff'), logReportGeneration)
 export default router

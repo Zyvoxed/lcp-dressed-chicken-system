@@ -33,7 +33,7 @@ function VerifyEmail() {
   }, [token])
 
   return (
-    <main className="login-page">
+    <main className="login-page login-page-auth-layout login-page-recovery">
       <div className="login-ambient" aria-hidden="true"></div>
       <div className="login-shell">
         <LoginHeader />

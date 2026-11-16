@@ -1,7 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
-import { ClipboardList, PackageSearch } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ArrowUpDown,
+  ClipboardList,
+  PackageSearch,
+  Search,
+  X,
+} from 'lucide-react'
 import EmptyState from '../Shared/EmptyState.jsx'
-import SearchBar from '../Shared/SearchBar.jsx'
+import PageSkeleton from '../Shared/PageSkeleton.jsx'
 import CategoryFilter from './CategoryFilter.jsx'
 import ProductGrid from './ProductGrid.jsx'
 import SalesBasket from './SalesBasket.jsx'
@@ -32,6 +38,8 @@ function RecordSalesForUser({ userId }) {
   const [initialRecovery] = useState(() => getInitialSaleRecovery(userId))
   const [category, setCategory] = useState('All')
   const [query, setQuery] = useState('')
+  const [sortBy, setSortBy] = useState('name-asc')
+  const [inStockOnly, setInStockOnly] = useState(false)
   const [products, setProducts] = useState([])
   const [cart, setCart] = useState(() => initialRecovery.attempt?.display.cart || [])
   const [customers, setCustomers] = useState([])
@@ -105,13 +113,51 @@ function RecordSalesForUser({ userId }) {
     return () => { active = false }
   }, [loading, pendingSale, userId])
 
+  // Category counts breakdown
+  const categoryCounts = useMemo(() => {
+    const counts = { All: products.length }
+    for (const p of products) {
+      const cat = p.category ? p.category.replace(' and ', ' & ') : 'Uncategorized'
+      counts[cat] = (counts[cat] || 0) + 1
+    }
+    return counts
+  }, [products])
+
+  // Available in-stock count
+  const inStockCount = useMemo(() => {
+    return products.filter((p) => Number(p.stock_quantity) > 0).length
+  }, [products])
+
+  // Filtered & sorted products list
   const normalizedQuery = query.trim().toLowerCase()
-  const visibleProducts = products.filter((product) => {
-    const normalizedCategory = product.category.replace(' and ', ' & ')
-    const categoryMatches = category === 'All' || normalizedCategory === category
-    const queryMatches = !normalizedQuery || product.product_name.toLowerCase().includes(normalizedQuery)
-    return categoryMatches && queryMatches
-  })
+  const visibleProducts = useMemo(() => {
+    const filtered = products.filter((product) => {
+      const normalizedCategory = product.category ? product.category.replace(' and ', ' & ') : ''
+      const categoryMatches = category === 'All' || normalizedCategory === category
+      const queryMatches = !normalizedQuery || product.product_name.toLowerCase().includes(normalizedQuery)
+      const stockMatches = !inStockOnly || Number(product.stock_quantity) > 0
+      return categoryMatches && queryMatches && stockMatches
+    })
+
+    return [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'name-asc':
+          return a.product_name.localeCompare(b.product_name)
+        case 'name-desc':
+          return b.product_name.localeCompare(a.product_name)
+        case 'price-asc':
+          return Number(a.selling_price) - Number(b.selling_price)
+        case 'price-desc':
+          return Number(b.selling_price) - Number(a.selling_price)
+        case 'stock-desc':
+          return Number(b.stock_quantity) - Number(a.stock_quantity)
+        case 'stock-asc':
+          return Number(a.stock_quantity) - Number(b.stock_quantity)
+        default:
+          return 0
+      }
+    })
+  }, [products, category, normalizedQuery, inStockOnly, sortBy])
 
   function addProduct(product) {
     if (pendingSale || recoveryError || Number(product.stock_quantity) <= 0) return
@@ -140,6 +186,11 @@ function RecordSalesForUser({ userId }) {
   function removeProduct(productId) {
     if (pendingSale || recoveryError) return
     setCart((current) => current.filter((item) => item.product_id !== productId))
+  }
+
+  function clearCart() {
+    if (pendingSale || recoveryError) return
+    setCart([])
   }
 
   async function processSale(payload, idempotencyKey) {
@@ -192,6 +243,7 @@ function RecordSalesForUser({ userId }) {
 
   return (
     <section className="sales-page page-stack">
+      {/* Mobile/Tablet View Switcher */}
       <div className="pos-mobile-switch" role="tablist" aria-label="Point of Sale panels">
         <button
           type="button"
@@ -201,7 +253,8 @@ function RecordSalesForUser({ userId }) {
           onClick={() => setMobileView('products')}
         >
           <PackageSearch size={16} aria-hidden="true" />
-          Products
+          <span>Products</span>
+          <span className="pos-badge-subtle">{visibleProducts.length}</span>
         </button>
         <button
           type="button"
@@ -211,24 +264,126 @@ function RecordSalesForUser({ userId }) {
           onClick={() => setMobileView('order')}
         >
           <ClipboardList size={16} aria-hidden="true" />
-          Current Order
-          {cart.length > 0 && <span>{cart.length}</span>}
+          <span>Current Order</span>
+          {cart.length > 0 && <span className="pos-cart-badge">{cart.length}</span>}
         </button>
       </div>
+
       <div className={`sales-layout pos-mobile-${mobileView}`}>
         {recoveryError && <p className="sales-feedback error" role="alert">{recoveryError}</p>}
+
+        {/* Product Catalog Panel */}
         <article className="panel catalog-panel">
-          <div className="section-heading">
-            <p>PRODUCTS</p>
-            <span>{visibleProducts.length} products</span>
+          {/* Header */}
+          <div className="pos-catalog-header">
+            <div className="pos-header-title-wrap">
+              <span className="pos-header-icon-badge">
+                <PackageSearch size={17} aria-hidden="true" />
+              </span>
+              <div>
+                <h2>Product Catalog</h2>
+                <p>Browse and click products to add to current order.</p>
+              </div>
+            </div>
+
+            <div className="pos-catalog-stats">
+              <span className="pos-stat-pill">
+                <strong>{visibleProducts.length}</strong> {visibleProducts.length === 1 ? 'product' : 'products'}
+              </span>
+              <span className="pos-stat-pill in-stock">
+                <span className="stock-dot" aria-hidden="true" />
+                <strong>{inStockCount}</strong> in stock
+              </span>
+            </div>
           </div>
-          <SearchBar placeholder="Search product catalog" value={query} onChange={(event) => setQuery(event.target.value)} />
-          <CategoryFilter category={category} onCategory={setCategory} />
+
+          {/* Search & Sort Controls Toolbar */}
+          <div className="pos-toolbar">
+            <div className="pos-search-wrap">
+              <Search size={15} className="pos-search-icon" aria-hidden="true" />
+              <input
+                type="search"
+                className="pos-search-input"
+                placeholder="Search products by name or code..."
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                aria-label="Search product catalog"
+              />
+              {query && (
+                <button
+                  type="button"
+                  className="pos-search-clear"
+                  onClick={() => setQuery('')}
+                  aria-label="Clear search"
+                  title="Clear search"
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+
+            <div className="pos-toolbar-actions">
+              {/* Sort Selector Dropdown */}
+              <label className="pos-sort-select-label" title="Sort products">
+                <ArrowUpDown size={14} aria-hidden="true" />
+                <span>Sort:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  aria-label="Sort product catalog"
+                  className="pos-sort-select"
+                >
+                  <option value="name-asc">Name: A &rarr; Z</option>
+                  <option value="name-desc">Name: Z &rarr; A</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="stock-desc">Stock: High to Low</option>
+                  <option value="stock-asc">Stock: Low to High</option>
+                </select>
+              </label>
+
+              {/* In-Stock Filter Toggle */}
+              <button
+                type="button"
+                className={`pos-stock-filter-btn ${inStockOnly ? 'active' : ''}`}
+                onClick={() => setInStockOnly((prev) => !prev)}
+                aria-pressed={inStockOnly}
+                title="Toggle between all products and in-stock only"
+              >
+                <span className={`stock-filter-dot ${inStockOnly ? 'active' : ''}`} aria-hidden="true" />
+                <span>In-Stock Only</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Categories Pill Navigation */}
+          <CategoryFilter
+            category={category}
+            onCategory={setCategory}
+            counts={categoryCounts}
+          />
+
+          {/* Catalog Table */}
           {loading && <PageSkeleton variant="record-sales-catalog" label="product catalog" />}
           {!loading && error && <EmptyState>{error}</EmptyState>}
-          {!loading && !error && !visibleProducts.length && <EmptyState>No products found.</EmptyState>}
-          {!loading && !error && visibleProducts.length > 0 && <ProductGrid products={visibleProducts} onAdd={addProduct} />}
+          {!loading && !error && !visibleProducts.length && (
+            <EmptyState>
+              {query || category !== 'All' || inStockOnly
+                ? 'No products match your current filters. Try resetting search or category.'
+                : 'No products found.'}
+            </EmptyState>
+          )}
+          {!loading && !error && visibleProducts.length > 0 && (
+            <ProductGrid
+              products={visibleProducts}
+              onAdd={addProduct}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+            />
+          )}
         </article>
+
+        {/* Current Order / Cart Basket */}
         <SalesBasket
           userId={userId}
           cart={cart}
@@ -236,6 +391,7 @@ function RecordSalesForUser({ userId }) {
           onAddCustomer={() => setCustomerModal(true)}
           onQuantity={updateQuantity}
           onRemove={removeProduct}
+          onClearCart={clearCart}
           onProcess={processSale}
           onComplete={completeSale}
           pendingSale={pendingSale}
@@ -247,10 +403,12 @@ function RecordSalesForUser({ userId }) {
           onCustomerChange={setSelectedCustomerId}
         />
       </div>
-      {customerModal && <CustomerModal onClose={() => setCustomerModal(false)} onCreated={customerCreated} />}
+
+      {customerModal && (
+        <CustomerModal onClose={() => setCustomerModal(false)} onCreated={customerCreated} />
+      )}
     </section>
   )
 }
 
 export default RecordSales
-import PageSkeleton from '../Shared/PageSkeleton.jsx'

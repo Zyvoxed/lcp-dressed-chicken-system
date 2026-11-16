@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   BarChart3,
   Boxes,
@@ -37,14 +38,51 @@ const navGroups = [
   { label: "MAIN", items: ["Main Dashboard"] },
   { label: "OPERATIONS", items: ["Record Sales", "Inventory & Stock In", "Customer Credits Book", "Supplier Contracts"] },
   { label: "INSIGHTS", items: ["Business Analytics", "Reports & Audits"] },
-  { label: "SYSTEM", items: ["Activity Logs", "User Accounts"] },
+  { label: "SYSTEM", items: ["User Accounts", "Activity Logs"] },
 ];
 
 function Sidebar({ activeModule, onSelect, onLogout, role, collapsed, mobileOpen }) {
+  const navRef = useRef(null);
+  const activeItemRef = useRef(null);
+  const [activeIndicatorStyle, setActiveIndicatorStyle] = useState({ opacity: 0 });
   const accessibleModules = modules.filter((module) =>
     hasRouteAccess(module, role),
   );
   const accessibleLabels = new Set(accessibleModules.map((m) => m.label));
+
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const activeItem = activeItemRef.current;
+    if (!nav || !activeItem) {
+      setActiveIndicatorStyle({ opacity: 0 });
+      return undefined;
+    }
+
+    const updateActiveIndicator = () => {
+      const navRect = nav.getBoundingClientRect();
+      const itemRect = activeItem.getBoundingClientRect();
+      setActiveIndicatorStyle({
+        opacity: 1,
+        height: `${itemRect.height}px`,
+        transform: `translate3d(0, ${Math.round(itemRect.top - navRect.top + nav.scrollTop)}px, 0)`,
+      });
+    };
+
+    updateActiveIndicator();
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(updateActiveIndicator);
+    resizeObserver?.observe(nav);
+    resizeObserver?.observe(activeItem);
+    nav.addEventListener("scroll", updateActiveIndicator);
+    window.addEventListener("resize", updateActiveIndicator);
+
+    return () => {
+      resizeObserver?.disconnect();
+      nav.removeEventListener("scroll", updateActiveIndicator);
+      window.removeEventListener("resize", updateActiveIndicator);
+    };
+  }, [activeModule, collapsed, mobileOpen, role]);
 
   return (
     <aside id="primary-sidebar" className={`sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`} aria-label="Application navigation">
@@ -53,12 +91,17 @@ function Sidebar({ activeModule, onSelect, onLogout, role, collapsed, mobileOpen
           <img src={lcpLogo} alt="" />
         </div>
         <div className="sidebar-brand-text">
-          <strong>LCP Trading</strong>
+          <strong>LCP Dressed Chicken</strong>
           <small>Management System</small>
         </div>
       </div>
 
-      <nav aria-label="Primary modules">
+      <nav ref={navRef} aria-label="Primary modules">
+        <span
+          className="sidebar-active-indicator"
+          aria-hidden="true"
+          style={activeIndicatorStyle}
+        />
         {(role === "employee"
           ? [{ label: "", items: ["Record Sales"] }]
           : navGroups
@@ -78,6 +121,7 @@ function Sidebar({ activeModule, onSelect, onLogout, role, collapsed, mobileOpen
                   <button
                     key={module.path}
                     className={activeModule === label ? "active" : ""}
+                    ref={activeModule === label ? activeItemRef : null}
                     aria-current={activeModule === label ? "page" : undefined}
                     type="button"
                     onClick={() => onSelect(label)}

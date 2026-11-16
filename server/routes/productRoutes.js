@@ -14,9 +14,9 @@ const router = Router()
 
 router.get('/', authenticate, getProducts)
 router.get('/archived', authenticate, authorizeRoles('Admin'), getArchivedProducts)
-router.post('/', authenticate, createProduct)
+router.post('/', authenticate, authorizeRoles('Admin'), createProduct)
 router.patch('/:id/archive', authenticate, authorizeRoles('Admin'), archiveProduct)
 router.patch('/:id/restore', authenticate, authorizeRoles('Admin'), restoreProduct)
-router.patch('/:id', authenticate, updateProduct)
+router.patch('/:id', authenticate, authorizeRoles('Admin'), updateProduct)
 
 export default router

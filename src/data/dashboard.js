@@ -115,21 +115,21 @@ export const productTrendSeries = [
   {
     name: 'Breast Fillet',
     product: 'Chicken Breast Fillet',
-    color: '#38bdf8',
+    color: 'var(--chart-series-2)',
   },
   {
     name: 'Wings',
     product: 'Chicken Wings',
-    color: '#f97316',
+    color: 'var(--chart-series-3)',
   },
   {
     name: 'Drumsticks',
     product: 'Chicken Drumsticks',
-    color: '#22c55e',
+    color: 'var(--chart-series-1)',
   },
   {
     name: 'Whole Chicken',
     product: 'Regular Dressed Chicken',
-    color: '#a78bfa',
+    color: 'var(--chart-series-5)',
   },
 ]

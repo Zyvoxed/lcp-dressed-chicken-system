@@ -75,6 +75,21 @@
   color: var(--text-heading);
 }
 
+.system-data-table th.table-header-static {
+  cursor: default;
+  user-select: none;
+}
+
+.system-data-table th .table-header-static-title {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+
 .system-data-table td {
   color: var(--text-soft);
   font-size: 14px;

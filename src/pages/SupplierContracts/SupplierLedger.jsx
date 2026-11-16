@@ -1,3 +1,4 @@
+import { ReceiptText } from 'lucide-react'
 import DataTable from '../Shared/DataTable.jsx'
 import EmptyState from '../Shared/EmptyState.jsx'
 import { peso } from '../../utils/currency.js'
@@ -9,7 +10,10 @@ function SupplierLedger({ records, loading, error }) {
   return (
     <article className="panel table-panel supplier-ledger-panel">
       <div className="supplier-panel-heading">
-        <h2>Delivery History</h2>
+        <h2>
+          <ReceiptText size={18} aria-hidden="true" />
+          <span>Delivery History</span>
+        </h2>
         <p>Search, sort, and review confirmed supplier deliveries recorded through Stock In.</p>
       </div>
       {loading && <PageSkeleton variant="supplier-ledger" label="supplier ledger" />}

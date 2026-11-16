@@ -120,7 +120,18 @@ textarea::placeholder {
 
 .primary-action,
 .secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  vertical-align: middle;
   padding-inline: 16px;
+}
+
+.primary-action svg,
+.secondary-action svg {
+  display: block;
+  flex-shrink: 0;
 }
 
 .primary-action:focus-visible,
@@ -146,7 +157,7 @@ textarea::placeholder {
 .role-cards button {
   border: 1px solid var(--border-strong);
   color: var(--secondary-action-text);
-  background: transparent;
+  background: var(--secondary-action-bg);
 }
 
 .secondary-action:hover:not(:disabled),
@@ -156,7 +167,7 @@ textarea::placeholder {
 .role-cards button:hover {
   border-color: var(--border-strong);
   color: var(--text-heading);
-  background: var(--surface-hover);
+  background: var(--secondary-action-hover);
 }
 
 /* — Tab bar — */

@@ -14,12 +14,12 @@ function BusinessAnalyticsStats({ summary }) {
         <strong>{Number(summary.total_transactions).toLocaleString('en-PH')}</strong>
         <p>Recorded transactions</p>
       </article>
-      <article className="outlined">
+      <article>
         <header><span>GROSS SALES</span><PhilippinePeso size={18} aria-hidden="true" /></header>
         <strong>{peso.format(Number(summary.gross_revenue))}</strong>
         <p>Cash and credit sales</p>
       </article>
-      <article className="outlined">
+      <article>
         <header><span>AVERAGE SALE AMOUNT</span><Sigma size={18} aria-hidden="true" /></header>
         <strong>{peso.format(Number(summary.average_ticket_value))}</strong>
         <p>Average amount per sale</p>

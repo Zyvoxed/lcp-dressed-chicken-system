@@ -215,6 +215,7 @@ function CustomerCredits() {
           onSelect={selectCustomer}
           onAddCustomer={() => setCustomerModalOpen(true)}
           onShowArchived={() => setShowArchivedPanel(true)}
+          archivedCount={archivedCustomers.length}
           isAdmin={isAdmin}
         />
       )}
@@ -248,15 +249,18 @@ function CustomerCredits() {
           onCreated={customerCreated}
         />
       )}
-      {showArchivedPanel && (
-        <ArchivedCustomerPanel
-          customers={archivedCustomers}
-          loading={archivedCustomersLoading}
-          error={archivedCustomersError}
-          onClose={() => setShowArchivedPanel(false)}
-          onRestore={restoreSelectedCustomer}
-        />
-      )}
+      <AnimatePresence>
+        {showArchivedPanel && (
+          <ArchivedCustomerPanel
+            key="archived-customers-panel"
+            customers={archivedCustomers}
+            loading={archivedCustomersLoading}
+            error={archivedCustomersError}
+            onClose={() => setShowArchivedPanel(false)}
+            onRestore={restoreSelectedCustomer}
+          />
+        )}
+      </AnimatePresence>
       </div>
     </section>
   )

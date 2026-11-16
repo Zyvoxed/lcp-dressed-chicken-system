@@ -53,6 +53,16 @@ export async function getCurrentUser(token) {
   return result.user
 }
 
+export async function recordLogout(token) {
+  const response = await apiFetch('/auth/logout', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  return parseResponse(response, 'Unable to record logout activity')
+}
+
 export async function verifyRecoveryEmail(token) {
   const response = await apiFetch('/auth/verify-email', {
     method: 'POST',

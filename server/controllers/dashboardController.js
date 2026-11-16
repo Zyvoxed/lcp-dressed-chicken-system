@@ -30,6 +30,50 @@ function fillSeries(length, rows, indexField, labelForIndex) {
 
 export async function getDashboard(request, response) {
   try {
+    if (request.user?.role === 'Staff') {
+      const [summaryRows] = await pool.execute(`
+        SELECT
+          (SELECT COALESCE(SUM(total_amount), 0) FROM sales
+           WHERE sale_date >= ${manilaCurrentDate}
+             AND sale_date < ${manilaCurrentDate} + INTERVAL 1 DAY) AS today_sales,
+          (SELECT COUNT(*) FROM sales
+           WHERE sale_date >= ${manilaCurrentDate}
+             AND sale_date < ${manilaCurrentDate} + INTERVAL 1 DAY) AS today_transactions,
+          (SELECT COALESCE(SUM(current_balance), 0) FROM customers
+           WHERE is_active = TRUE) AS outstanding_credits,
+          (SELECT COALESCE(SUM(payment_amount), 0) FROM payments
+           WHERE payment_date >= ${manilaCurrentDate}
+             AND payment_date < ${manilaCurrentDate} + INTERVAL 1 DAY) AS payments_today
+      `)
+      const [recentTransactions] = await pool.execute(`
+        SELECT transaction_type, reference_id, customer_name, amount, status, occurred_at
+        FROM (
+          SELECT 'Sale' AS transaction_type, sa.sale_id AS reference_id,
+                 COALESCE(c.customer_name, 'Walk-In Customer') AS customer_name,
+                 sa.total_amount AS amount, sa.status,
+                 CONCAT(DATE_FORMAT(sa.sale_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS occurred_at
+          FROM sales sa
+          LEFT JOIN customers c ON c.customer_id = sa.customer_id
+          UNION ALL
+          SELECT 'Payment' AS transaction_type, pa.payment_id AS reference_id,
+                 c.customer_name,
+                 pa.payment_amount AS amount, 'Recorded' AS status,
+                 CONCAT(DATE_FORMAT(pa.payment_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS occurred_at
+          FROM payments pa
+          JOIN customers c ON c.customer_id = pa.customer_id
+        ) transactions
+        ORDER BY occurred_at DESC, reference_id DESC
+        LIMIT 10
+      `)
+      return response.json({
+        success: true,
+        data: {
+          summary: summaryRows[0],
+          recent_transactions: recentTransactions,
+        },
+      })
+    }
+
     const [summaries] = await pool.execute(`
       SELECT
         (SELECT COALESCE(SUM(total_amount), 0) FROM sales) AS total_revenue,

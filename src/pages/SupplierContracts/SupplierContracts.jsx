@@ -1,7 +1,10 @@
 import { useContext, useEffect, useMemo, useState } from 'react'
-import { Archive, Plus, Search, X } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { Archive, Plus, RotateCcw, Search, X } from 'lucide-react'
 import EmptyState from '../Shared/EmptyState.jsx'
 import Modal from '../Shared/Modal.jsx'
+import DataTable from '../Shared/DataTable.jsx'
+import StatusBadge from '../Shared/StatusBadge.jsx'
 import ProcurementChart from './ProcurementChart.jsx'
 import SupplierCard from './SupplierCard.jsx'
 import SupplierLedger from './SupplierLedger.jsx'
@@ -10,8 +13,10 @@ import { archiveSupplier, getArchivedSuppliers, getSuppliers, restoreSupplier } 
 import { getStockInRecords } from '../../services/stockInService.js'
 import { AuthContext } from '../../context/AuthContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
+import { peso } from '../../utils/currency.js'
 
 function SupplierContracts() {
+  const reduceMotion = useReducedMotion()
   const [showSupplierModal, setShowSupplierModal] = useState(false)
   const [suppliers, setSuppliers] = useState([])
   const [archivedSuppliers, setArchivedSuppliers] = useState([])
@@ -135,7 +140,9 @@ function SupplierContracts() {
               <Plus size={15} aria-hidden="true" /> Add Supplier
             </button>
             {isAdmin && <button className="secondary-action slim" type="button" onClick={() => setShowArchivedPanel(true)}>
-              <Archive size={15} aria-hidden="true" /> Archived Suppliers
+              <Archive size={15} aria-hidden="true" />
+              <span>Archived Suppliers</span>
+              {archivedSuppliers.length > 0 && <span className="supplier-archived-badge">{archivedSuppliers.length}</span>}
             </button>}
           </div>
         </div>
@@ -168,7 +175,7 @@ function SupplierContracts() {
       </section>
 
       <section className="procurement-layout">
-        <ProcurementChart records={records} loading={recordsLoading} error={recordsError} />
+        <ProcurementChart records={records} suppliers={suppliers} loading={recordsLoading} error={recordsError} />
         <SupplierLedger records={records} loading={recordsLoading} error={recordsError} />
       </section>
 
@@ -198,34 +205,75 @@ function SupplierContracts() {
           </div>
         </Modal>
       )}
-      {showArchivedPanel && (
-        <div className="inventory-archived-panel-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowArchivedPanel(false) }}>
-          <aside className="inventory-archived-panel supplier-archive-panel" role="dialog" aria-modal="true" aria-label="Archived suppliers">
-            <div className="inventory-archived-panel-header">
-              <div><p className="inventory-archived-kicker">Supplier Contracts</p><h2>Archived Suppliers</h2></div>
-              <button className="close-button" type="button" onClick={() => setShowArchivedPanel(false)} aria-label="Close archived suppliers panel"><X size={18} aria-hidden="true" /></button>
-            </div>
-            {archivedSuppliersLoading
-              ? <PageSkeleton variant="supplier-directory" label="archived suppliers" />
-              : archivedSuppliersError
-                ? <EmptyState>{archivedSuppliersError}</EmptyState>
-                : !archivedSuppliers.length
-                  ? <EmptyState>No archived suppliers found.</EmptyState>
-                  : <div className="supplier-grid archived-supplier-grid">
-                    {archivedSuppliers.map((supplier) => (
-                      <SupplierCard
-                        key={supplier.supplier_id}
-                        supplier={supplier}
-                        archived
-                        isAdmin={isAdmin}
-                        onRestore={(target) => { setConfirmation({ action: 'restore', supplier: target }); setActionError('') }}
-                        records={records.filter((record) => String(record.supplier_id) === String(supplier.supplier_id))}
+      <AnimatePresence>
+        {showArchivedPanel && (
+          <motion.div
+            className="archive-drawer-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.18, ease: 'easeOut' }}
+            onMouseDown={(event) => { if (event.target === event.currentTarget) setShowArchivedPanel(false) }}
+          >
+            <motion.aside
+              className="archive-drawer supplier-archive-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="supplier-archive-title"
+              initial={{ x: reduceMotion ? 0 : '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: reduceMotion ? 0 : '100%' }}
+              transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="archive-drawer-header">
+                <div className="archive-drawer-heading">
+                  <span className="archive-drawer-icon"><Archive size={17} aria-hidden="true" /></span>
+                  <div>
+                    <p className="archive-drawer-kicker">Supplier records</p>
+                    <h2 id="supplier-archive-title">Archived suppliers</h2>
+                    <p className="archive-drawer-description">Review supplier details and delivery history, or restore a supplier.</p>
+                  </div>
+                </div>
+                <button className="close-button" type="button" onClick={() => setShowArchivedPanel(false)} aria-label="Close archived suppliers panel"><X size={18} aria-hidden="true" /></button>
+              </div>
+              {archivedSuppliersLoading
+                ? <div className="loading-state" role="status"><i aria-hidden="true" /> Loading archived suppliers…</div>
+                : archivedSuppliersError
+                  ? <EmptyState>{archivedSuppliersError}</EmptyState>
+                  : !archivedSuppliers.length
+                    ? <EmptyState>No archived suppliers found.</EmptyState>
+                    : <div className="supplier-archive-table">
+                      <DataTable
+                        columns={['Supplier', 'Contact person', 'Contact number', 'Address', 'Deliveries', 'Recorded cost', 'Status', 'Action']}
+                        rows={archivedSuppliers}
+                        searchPlaceholder="Search archived suppliers"
+                        getSortValue={(supplier, columnIndex) => {
+                          const supplierRecords = records.filter((record) => String(record.supplier_id) === String(supplier.supplier_id))
+                          const totalSpend = supplierRecords.reduce((sum, record) => sum + Number(record.total_cost), 0)
+                          return [supplier.supplier_name, supplier.contact_person, supplier.contact_number, supplier.address, supplierRecords.length, totalSpend, 'Archived', ''][columnIndex] ?? ''
+                        }}
+                        renderRow={(supplier) => {
+                          const supplierRecords = records.filter((record) => String(record.supplier_id) === String(supplier.supplier_id))
+                          const totalSpend = supplierRecords.reduce((sum, record) => sum + Number(record.total_cost), 0)
+                          return (
+                            <tr key={supplier.supplier_id}>
+                              <td><div className="supplier-archive-name"><strong>{supplier.supplier_name}</strong><span>SUP-{supplier.supplier_id}</span></div></td>
+                              <td>{supplier.contact_person || 'Not provided'}</td>
+                              <td>{supplier.contact_number || 'Not provided'}</td>
+                              <td className="supplier-archive-address">{supplier.address || 'Not provided'}</td>
+                              <td>{supplierRecords.length.toLocaleString('en-PH')}</td>
+                              <td>{peso.format(totalSpend)}</td>
+                              <td><StatusBadge value="Archived" /></td>
+                              <td><button className="secondary-action slim supplier-archive-restore" type="button" onClick={() => { setConfirmation({ action: 'restore', supplier }); setActionError('') }}><RotateCcw size={14} aria-hidden="true" /> Restore</button></td>
+                            </tr>
+                          )
+                        }}
                       />
-                    ))}
-                  </div>}
-          </aside>
-        </div>
-      )}
+                    </div>}
+            </motion.aside>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   )
 }

@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "create-admin": "node scripts/createAdmin.js",
     "reset-admin-password": "node scripts/resetAdminPassword.js",
@@ -18,12 +21,16 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "bcrypt": "latest",
-    "cors": "latest",
-    "dotenv": "latest",
+    "bcrypt": "6.0.0",
+    "cors": "2.8.6",
+    "dotenv": "17.4.2",
     "express": "5.2.1",
-    "jsonwebtoken": "latest",
-    "mysql2": "latest",
+    "jsonwebtoken": "9.0.3",
+    "mysql2": "3.23.3",
     "nodemailer": "10.1.6"
+  },
+  "overrides": {
+    "body-parser": "2.4.0",
+    "qs": "6.16.1"
   }
 }

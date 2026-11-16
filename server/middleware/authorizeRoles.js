@@ -1,5 +1,5 @@
 export default function authorizeRoles(...allowedRoles) {
-  return function authorize(request, response, next) {
+  function authorize(request, response, next) {
     if (!request.user || !allowedRoles.includes(request.user.role)) {
       return response.status(403).json({
         success: false,
@@ -9,4 +9,7 @@ export default function authorizeRoles(...allowedRoles) {
 
     return next()
   }
+
+  authorize.allowedRoles = allowedRoles
+  return authorize
 }

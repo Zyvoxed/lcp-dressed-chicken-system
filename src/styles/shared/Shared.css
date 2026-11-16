@@ -12,7 +12,7 @@
   border-radius: 10px;
   overflow: hidden;
   border: 2px solid rgba(255, 255, 255, 0.82);
-  background: #fffaf5;
+  background: #FFFFFF;
 }
 
 .brand-mark img {
@@ -32,6 +32,108 @@
 
 .full-span {
   grid-column: 1 / -1;
+}
+
+/* Shared archive drawer shell */
+.archive-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+  background: var(--modal-backdrop);
+  backdrop-filter: blur(2px);
+}
+
+.archive-drawer {
+  width: min(760px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 26px 24px 22px;
+  border-left: 1px solid var(--border-strong);
+  background: var(--card-bg);
+  box-shadow: -18px 0 36px rgba(10, 9, 8, 0.2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.archive-drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.archive-drawer-heading {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.archive-drawer-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--brand-dark);
+  background: var(--brand-dark-soft);
+}
+
+.archive-drawer-kicker {
+  margin: 0 0 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.archive-drawer-heading h2 {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.archive-drawer-description {
+  margin: 5px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 640px) {
+  .archive-drawer {
+    width: 100%;
+    padding: 18px 14px;
+  }
+
+  .archive-drawer-header {
+    gap: 10px;
+    padding-bottom: 14px;
+  }
+
+  .archive-drawer-heading {
+    gap: 9px;
+  }
+
+  .archive-drawer-icon {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+
+  .archive-drawer-heading h2 {
+    font-size: 18px;
+  }
 }
 
 /* — Page intro — */

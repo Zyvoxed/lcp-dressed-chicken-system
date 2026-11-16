@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react'
+import { RotateCcw, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import DataTable from '../Shared/DataTable.jsx'
 import EmptyState from '../Shared/EmptyState.jsx'
@@ -196,7 +196,7 @@ export function ArchivedProductList({ products, loading, error, onRestore }) {
   const [restoring, setRestoring] = useState(false)
 
   if (loading) {
-    return <PageSkeleton variant="inventory-products" label="archived products" />
+    return <div className="loading-state" role="status"><i aria-hidden="true" /> Loading archived products…</div>
   }
 
   if (error) {
@@ -224,11 +224,11 @@ export function ArchivedProductList({ products, loading, error, onRestore }) {
   }
 
   return (
-    <div className="inventory-product-list">
+    <div className="inventory-product-list inventory-archive-content">
       <DataTable
         columns={archivedColumns}
         rows={products}
-        searchable={false}
+        searchPlaceholder="Search archived products"
         getSortValue={(product, columnIndex) => archivedSortAccessors[columnIndex](product)}
         renderRow={(product) => (
           <tr key={product.product_id} className="inventory-product-row archived-product">
@@ -242,19 +242,19 @@ export function ArchivedProductList({ products, loading, error, onRestore }) {
             <td><StatusBadge value="Archived" /></td>
             <td>
               <button
-                className="table-action success"
+                className="secondary-action slim inventory-archive-restore"
                 type="button"
                 onClick={() => setProductToRestore(product)}
                 aria-label={`Restore ${product.product_name}`}
               >
-                Restore
+                <RotateCcw size={14} aria-hidden="true" /> Restore
               </button>
             </td>
           </tr>
         )}
       />
       {productToRestore && (
-        <Modal title="Restore Product" onClose={() => { if (!restoring) setProductToRestore(null) }} className="user-confirmation-modal">
+        <Modal title="Restore Product" onClose={() => { if (!restoring) setProductToRestore(null) }} className="user-confirmation-modal" backdropClassName="inventory-archive-restore-backdrop">
           <p>Restore <strong>{productToRestore.product_name}</strong> to active inventory?</p>
           <p>Restoring the product makes it available again in active inventory and eligible selection areas.</p>
           {restoreError && <p className="form-error" role="alert">{restoreError}</p>}

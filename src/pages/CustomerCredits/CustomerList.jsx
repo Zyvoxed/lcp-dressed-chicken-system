@@ -1,8 +1,9 @@
 import { Archive, Plus, RotateCcw, Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
+import Modal from '../Shared/Modal.jsx'
 import DataTable from '../Shared/DataTable.jsx'
 import EmptyState from '../Shared/EmptyState.jsx'
-import PageSkeleton from '../Shared/PageSkeleton.jsx'
 import StatusBadge from '../Shared/StatusBadge.jsx'
 import { peso } from '../../utils/currency.js'
 import { formatActivityTimestamp } from '../../utils/activityDateTime.js'
@@ -27,7 +28,7 @@ const sortAccessors = [
   (customer) => Number(customer.current_balance) > 0 ? 'Unpaid' : 'Paid',
 ]
 
-function CustomerList({ customers, onSelect, onAddCustomer, onShowArchived, isAdmin }) {
+function CustomerList({ customers, onSelect, onAddCustomer, onShowArchived, archivedCount = 0, isAdmin }) {
   const [query, setQuery] = useState('')
   const [balanceFilter, setBalanceFilter] = useState('All')
   const filteredCustomers = useMemo(() => {
@@ -59,7 +60,9 @@ function CustomerList({ customers, onSelect, onAddCustomer, onShowArchived, isAd
             <Plus size={15} aria-hidden="true" /> Add Customer
           </button>
           {isAdmin && <button className="secondary-action slim" type="button" onClick={onShowArchived}>
-            <Archive size={15} aria-hidden="true" /> Archived Customers
+            <Archive size={15} aria-hidden="true" />
+            <span>Archived Customers</span>
+            {archivedCount > 0 && <span className="customer-archived-badge">{archivedCount}</span>}
           </button>}
         </div>
       </div>
@@ -140,6 +143,7 @@ export function ArchivedCustomerPanel({ customers, loading, error, onClose, onRe
   const [customerToRestore, setCustomerToRestore] = useState(null)
   const [restoreError, setRestoreError] = useState('')
   const [restoring, setRestoring] = useState(false)
+  const reduceMotion = useReducedMotion()
 
   async function confirmRestore() {
     if (!customerToRestore || restoring) return
@@ -156,44 +160,108 @@ export function ArchivedCustomerPanel({ customers, loading, error, onClose, onRe
   }
 
   return (
-    <div className="inventory-archived-panel-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-      <aside className="inventory-archived-panel" role="dialog" aria-modal="true" aria-label="Archived customers">
-        <div className="inventory-archived-panel-header">
-          <div><p className="inventory-archived-kicker">Customer Credits</p><h2>Archived Customers</h2></div>
+    <motion.div
+      className="customer-archived-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: reduceMotion ? 0 : 0.18, ease: 'easeOut' }}
+      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}
+    >
+      <motion.aside
+        className="customer-archived-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="customer-archived-title"
+        initial={{ x: reduceMotion ? 0 : '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: reduceMotion ? 0 : '100%' }}
+        transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <div className="customer-archived-header">
+          <div className="customer-archived-heading">
+            <span className="customer-archived-icon"><Archive size={17} aria-hidden="true" /></span>
+            <div>
+              <p className="customer-archived-kicker">Customer records</p>
+              <h2 id="customer-archived-title">Archived customers</h2>
+              <p className="customer-archived-description">Review archived records and restore customers when needed.</p>
+            </div>
+          </div>
           <button className="close-button" type="button" onClick={onClose} aria-label="Close archived customers panel"><X size={18} aria-hidden="true" /></button>
         </div>
         {loading
-          ? <PageSkeleton variant="customer-credits" label="archived customers" />
+          ? <div className="loading-state" role="status"><i aria-hidden="true" /> Loading archived customers…</div>
           : error
             ? <EmptyState>{error}</EmptyState>
             : !customers.length
               ? <EmptyState>No archived customers found.</EmptyState>
-              : <div className="customer-archive-list">
-                {customers.map((customer) => (
-                  <article className="customer-archive-card" key={customer.customer_id}>
-                    <div className="customer-archive-card-heading">
-                      <div><span>CUS-{customer.customer_id}</span><h3>{customer.customer_name}</h3></div>
-                      <StatusBadge value="Archived" />
-                    </div>
-                    <dl>
-                      <div><dt>Contact number</dt><dd>{customer.contact_number || 'Not provided'}</dd></div>
-                      <div><dt>Address</dt><dd>{customer.address || 'Not provided'}</dd></div>
-                    </dl>
-                    {customerToRestore?.customer_id === customer.customer_id
-                      ? <div className="customer-archive-confirmation">
-                        <p>Restore <strong>{customer.customer_name}</strong> to active customers?</p>
-                        {restoreError && <p className="form-error" role="alert">{restoreError}</p>}
-                        <div>
-                          <button className="secondary-action slim" type="button" onClick={() => setCustomerToRestore(null)} disabled={restoring}>Cancel</button>
-                          <button className="primary-action slim" type="button" onClick={confirmRestore} disabled={restoring}>{restoring ? 'Restoring…' : 'Confirm Restore'}</button>
-                        </div>
-                      </div>
-                      : <button className="secondary-action slim" type="button" onClick={() => { setRestoreError(''); setCustomerToRestore(customer) }}><RotateCcw size={14} aria-hidden="true" /> Restore Customer</button>}
-                  </article>
-                ))}
-              </div>}
-      </aside>
-    </div>
+                : <div className="customer-archived-table">
+                  <DataTable
+                    columns={['Customer', 'Contact number', 'Address', 'Status', 'Action']}
+                    rows={customers}
+                    pageSize={8}
+                    searchPlaceholder="Search archived customers"
+                    getSortValue={(customer, columnIndex) => [
+                      customer.customer_name,
+                      customer.contact_number,
+                      customer.address,
+                      'Archived',
+                      '',
+                    ][columnIndex] ?? ''}
+                    renderRow={(customer) => (
+                      <tr key={customer.customer_id}>
+                        <td>
+                          <div className="customer-archived-name">
+                            <strong>{customer.customer_name}</strong>
+                            <span>CUS-{customer.customer_id}</span>
+                          </div>
+                        </td>
+                        <td>{customer.contact_number || 'Not provided'}</td>
+                        <td className="customer-archived-address">{customer.address || 'Not provided'}</td>
+                        <td><StatusBadge value="Archived" /></td>
+                        <td>
+                          <button className="secondary-action slim customer-archived-restore" type="button" onClick={() => { setRestoreError(''); setCustomerToRestore(customer) }}><RotateCcw size={14} aria-hidden="true" /> Restore</button>
+                        </td>
+                      </tr>
+                    )}
+                  />
+                </div>}
+      </motion.aside>
+      {customerToRestore && (
+        <Modal
+          title="Restore Customer"
+          onClose={() => {
+            if (!restoring) {
+              setCustomerToRestore(null)
+              setRestoreError('')
+            }
+          }}
+          className="customer-restore-confirmation-modal"
+          backdropClassName="customer-restore-confirmation-backdrop"
+        >
+          <p>
+            Restore <strong>{customerToRestore.customer_name}</strong> to the active customer list?
+          </p>
+          <p className="customer-restore-confirmation-subtext">
+            Restoring this customer makes them available again for new business transactions.
+          </p>
+          {restoreError && <p className="form-error" role="alert">{restoreError}</p>}
+          <div className="customer-restore-confirmation-actions">
+            <button
+              className="secondary-action"
+              type="button"
+              onClick={() => { setCustomerToRestore(null); setRestoreError('') }}
+              disabled={restoring}
+            >
+              Cancel
+            </button>
+            <button className="primary-action" type="button" onClick={confirmRestore} disabled={restoring}>
+              {restoring ? 'Restoring…' : 'Confirm Restore'}
+            </button>
+          </div>
+        </Modal>
+      )}
+    </motion.div>
   )
 }
 

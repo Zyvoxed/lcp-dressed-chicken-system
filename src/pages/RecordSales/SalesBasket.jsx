@@ -1,5 +1,15 @@
 import { useMemo, useRef, useState } from 'react'
-import { Minus, Plus, Trash2 } from 'lucide-react'
+import {
+  AlertCircle,
+  Banknote,
+  CheckCircle2,
+  CreditCard,
+  Minus,
+  Plus,
+  ShoppingCart,
+  Trash2,
+  UserPlus,
+} from 'lucide-react'
 import EmptyState from '../Shared/EmptyState.jsx'
 import TransactionSuccessModal from '../Shared/TransactionSuccessModal.jsx'
 import CustomerSelector from './CustomerSelector.jsx'
@@ -30,6 +40,7 @@ function SalesBasket({
   onCustomerChange,
   onQuantity,
   onRemove,
+  onClearCart,
   onProcess,
   onComplete,
   pendingSale,
@@ -74,6 +85,15 @@ function SalesBasket({
   const previewRemainingCents = amountPaidCents !== null && amountPaidCents <= totalCents
     ? totalCents - amountPaidCents
     : totalCents
+
+  const isExactCash = paymentType === 'Cash' && totalCents > 0n && amountPaidCents === totalCents
+
+  function handleSetExactCash() {
+    if (totalCents > 0n && !submitting && !lockPending) {
+      setAmountPaid(transactionCentsToAmount(totalCents))
+      setError('')
+    }
+  }
 
   function reviewSale() {
     setError('')
@@ -229,14 +249,38 @@ function SalesBasket({
 
   return (
     <aside className="panel basket-panel" aria-busy={submitting}>
+      {/* Basket Header */}
       <div className="basket-heading">
-        <div>
-          <span>TRANSACTION CART</span>
-          <h2>Current Sale</h2>
+        <div className="basket-title-wrap">
+          <span className="basket-icon-badge">
+            <ShoppingCart size={17} aria-hidden="true" />
+          </span>
+          <div>
+            <span className="basket-subtitle">TRANSACTION CART</span>
+            <h2>Current Sale</h2>
+          </div>
         </div>
-        <span>{cart.length} product{cart.length === 1 ? '' : 's'}</span>
+
+        <div className="basket-heading-actions">
+          <span className="basket-count-pill">
+            {cart.length} {cart.length === 1 ? 'item' : 'items'}
+          </span>
+          {cart.length > 0 && !lockPending && onClearCart && (
+            <button
+              type="button"
+              className="basket-clear-btn"
+              onClick={onClearCart}
+              disabled={submitting || lockPending}
+              title="Clear all items in cart"
+            >
+              <Trash2 size={12} aria-hidden="true" />
+              <span>Clear</span>
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Recovery Notice */}
       {pendingSale?.state === 'pending' && (
         <div className="sales-feedback" role="status">
           <p>A sale submission is unresolved. The original items and payment are locked to prevent a duplicate or changed retry.</p>
@@ -263,87 +307,236 @@ function SalesBasket({
         </div>
       )}
 
+      {/* Cart Items List */}
       <div className="basket-items" aria-label="Selected products">
-        {!cart.length && <EmptyState>Select an available product to start a sale.</EmptyState>}
+        {!cart.length && (
+          <EmptyState>
+            No items in cart. Click any available product from the catalog to start a sale.
+          </EmptyState>
+        )}
         {cart.map((item) => {
-            const atStockLimit = item.quantity >= Number(item.stock_quantity)
-            const lineCents = transactionLineCents(item.quantity, item.selling_price)
-            return (
-              <div className="basket-item" key={item.product_id}>
-                <div className="basket-item-heading">
-                  <div>
-                    <strong>{item.product_name}</strong>
-                    <span>{peso.format(Number(item.selling_price))} per {item.unit}</span>
-                  </div>
-                  <button className="basket-remove-button" type="button" disabled={submitting || lockPending} onClick={() => onRemove(item.product_id)} aria-label={`Remove ${item.product_name}`}>
-                    <Trash2 size={16} aria-hidden="true" />
+          const atStockLimit = item.quantity >= Number(item.stock_quantity)
+          const lineCents = transactionLineCents(item.quantity, item.selling_price)
+          return (
+            <div className="basket-item" key={item.product_id}>
+              <div className="basket-item-heading">
+                <div className="basket-item-meta">
+                  <strong className="basket-item-name">{item.product_name}</strong>
+                  <span className="basket-item-rate">
+                    {peso.format(Number(item.selling_price))} / {item.unit || 'kg'}
+                  </span>
+                </div>
+                <button
+                  className="basket-remove-button"
+                  type="button"
+                  disabled={submitting || lockPending}
+                  onClick={() => onRemove(item.product_id)}
+                  aria-label={`Remove ${item.product_name}`}
+                  title={`Remove ${item.product_name}`}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                </button>
+              </div>
+
+              <div className="basket-item-controls">
+                <div className="quantity-stepper">
+                  <button
+                    type="button"
+                    disabled={submitting || lockPending || item.quantity <= 0.001}
+                    onClick={() => onQuantity(item.product_id, item.quantity - 1)}
+                    aria-label={`Decrease ${item.product_name} quantity`}
+                  >
+                    <Minus size={14} aria-hidden="true" />
+                  </button>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0.001"
+                    max={Number(item.stock_quantity)}
+                    step="0.001"
+                    value={item.quantity}
+                    disabled={submitting || lockPending}
+                    onChange={(event) => onQuantity(item.product_id, event.target.value)}
+                    aria-label={`${item.product_name} quantity`}
+                  />
+                  <button
+                    type="button"
+                    disabled={submitting || lockPending || atStockLimit}
+                    onClick={() => onQuantity(item.product_id, item.quantity + 1)}
+                    aria-label={`Increase ${item.product_name} quantity`}
+                  >
+                    <Plus size={14} aria-hidden="true" />
                   </button>
                 </div>
-                <div className="basket-item-controls">
-                  <div className="quantity-stepper">
-                    <button type="button" disabled={submitting || lockPending || item.quantity <= 0.001} onClick={() => onQuantity(item.product_id, item.quantity - 1)} aria-label={`Decrease ${item.product_name} quantity`}>
-                      <Minus size={15} aria-hidden="true" />
-                    </button>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min="0.001"
-                      max={Number(item.stock_quantity)}
-                      step="0.001"
-                      value={item.quantity}
-                      disabled={submitting || lockPending}
-                      onChange={(event) => onQuantity(item.product_id, event.target.value)}
-                      aria-label={`${item.product_name} quantity`}
-                    />
-                    <button type="button" disabled={submitting || lockPending || atStockLimit} onClick={() => onQuantity(item.product_id, item.quantity + 1)} aria-label={`Increase ${item.product_name} quantity`}>
-                      <Plus size={15} aria-hidden="true" />
-                    </button>
-                  </div>
-                  <div className="basket-item-subtotal">
-                    <span>Subtotal</span>
-                    <strong>{formatTransactionCents(lineCents, peso)}</strong>
-                  </div>
+                <div className="basket-item-subtotal">
+                  <span>Subtotal</span>
+                  <strong>{formatTransactionCents(lineCents, peso)}</strong>
                 </div>
-                {atStockLimit && <p className="stock-limit-note">Maximum available stock selected.</p>}
               </div>
-            )
-          })}
+
+              {atStockLimit && (
+                <div className="stock-limit-note">
+                  <AlertCircle size={12} aria-hidden="true" />
+                  <span>Max stock reached ({Number(item.stock_quantity)} {item.unit || 'kg'})</span>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
+      {/* Customer, Payment, & Summary Section */}
       <div className="basket-checkout">
         <div className="basket-section">
-          <h3>Customer and payment</h3>
+          <h3>Customer & Payment</h3>
+
+          {/* Payment Method Switch */}
           <div className="terms-row payment-methods" aria-label="Payment method">
-            <button className={paymentType === 'Cash' ? 'selected' : ''} type="button" aria-pressed={paymentType === 'Cash'} disabled={submitting || lockPending} onClick={() => { setPaymentType('Cash'); setError('') }}>
-              Cash Sale
+            <button
+              className={`payment-toggle-btn ${paymentType === 'Cash' ? 'selected' : ''}`}
+              type="button"
+              aria-pressed={paymentType === 'Cash'}
+              disabled={submitting || lockPending}
+              onClick={() => { setPaymentType('Cash'); setError('') }}
+            >
+              <Banknote size={15} aria-hidden="true" />
+              <span>Cash Sale</span>
             </button>
-            <button className={paymentType === 'Credit' ? 'selected' : ''} type="button" aria-pressed={paymentType === 'Credit'} disabled={submitting || lockPending} onClick={() => { setPaymentType('Credit'); setError('') }}>Credit Sale</button>
+            <button
+              className={`payment-toggle-btn ${paymentType === 'Credit' ? 'selected' : ''}`}
+              type="button"
+              aria-pressed={paymentType === 'Credit'}
+              disabled={submitting || lockPending}
+              onClick={() => { setPaymentType('Credit'); setError('') }}
+            >
+              <CreditCard size={15} aria-hidden="true" />
+              <span>Credit Sale</span>
+            </button>
           </div>
-          <label>
-            Customer
-            <CustomerSelector customers={customers} paymentType={paymentType} value={customerId} onChange={(event) => { onCustomerChange(event.target.value); setError('') }} disabled={submitting || lockPending} />
-          </label>
-          <button className="secondary-action add-customer-button" type="button" onClick={onAddCustomer} disabled={submitting || lockPending}>
-            Add Customer
-          </button>
-          <label>
-            {paymentType === 'Cash' ? 'Cash received (exact amount)' : 'Amount paid'}
-            <input type="number" inputMode="decimal" min="0" max={Number(transactionCentsToAmount(totalCents)) || undefined} step="0.01" placeholder="0.00" value={amountPaid} disabled={submitting || lockPending} onChange={(event) => { setAmountPaid(event.target.value); setError('') }} />
-          </label>
+
+          {/* Customer Selection */}
+          <div className="pos-customer-row">
+            <label className="pos-field-label">
+              <span>Customer</span>
+              <CustomerSelector
+                customers={customers}
+                paymentType={paymentType}
+                value={customerId}
+                onChange={(event) => { onCustomerChange(event.target.value); setError('') }}
+                disabled={submitting || lockPending}
+              />
+            </label>
+            <button
+              className="secondary-action add-customer-button"
+              type="button"
+              onClick={onAddCustomer}
+              disabled={submitting || lockPending}
+              title="Add a new customer"
+            >
+              <UserPlus size={14} aria-hidden="true" />
+              <span>New</span>
+            </button>
+          </div>
+
+          {/* Credit Customer Balance Badge */}
+          {paymentType === 'Credit' && selectedCustomer && (
+            <div className="pos-customer-credit-info">
+              <span className="customer-credit-label">Current Outstanding Balance:</span>
+              <strong className="customer-credit-amount">
+                {peso.format(Number(selectedCustomer.current_balance || 0))}
+              </strong>
+            </div>
+          )}
+
+          {/* Amount Paid Input & Quick Cash Preset */}
+          <div className="pos-amount-field-wrap">
+            <label className="pos-field-label">
+              <span>{paymentType === 'Cash' ? 'Cash Received (Exact Amount)' : 'Amount Paid (Deposit)'}</span>
+              <div className="pos-input-currency-wrap">
+                <span className="currency-prefix" aria-hidden="true">₱</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  max={Number(transactionCentsToAmount(totalCents)) || undefined}
+                  step="0.01"
+                  placeholder="0.00"
+                  value={amountPaid}
+                  disabled={submitting || lockPending}
+                  onChange={(event) => { setAmountPaid(event.target.value); setError('') }}
+                />
+              </div>
+            </label>
+
+            {/* Quick Cash Button */}
+            {paymentType === 'Cash' && totalCents > 0n && (
+              <div className="pos-quick-cash-row">
+                <button
+                  type="button"
+                  className={`quick-cash-btn ${isExactCash ? 'is-exact' : ''}`}
+                  onClick={handleSetExactCash}
+                  disabled={submitting || lockPending}
+                  title="Click to automatically tender exact cash amount"
+                >
+                  {isExactCash ? (
+                    <>
+                      <CheckCircle2 size={13} aria-hidden="true" />
+                      <span>Exact Cash Tendered ({formatTransactionCents(totalCents, peso)})</span>
+                    </>
+                  ) : (
+                    <span>Exact Total: {formatTransactionCents(totalCents, peso)}</span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Order Summary */}
         <div className="sale-summary" aria-label="Sales summary">
-          <h3>Sales summary</h3>
-          <div><span>Total selected items</span><strong>{totalQuantity}</strong></div>
-          <div><span>Subtotal</span><strong>{formatTransactionCents(totalCents, peso)}</strong></div>
-          <div><span>Amount paid</span><strong>{peso.format(Number.isFinite(numericAmountPaid) ? numericAmountPaid : 0)}</strong></div>
-          {paymentType === 'Credit' && <div className="sale-summary-balance"><span>Remaining balance</span><strong>{formatTransactionCents(previewRemainingCents, peso)}</strong></div>}
-          <div className="sale-summary-total"><span>Final transaction total</span><strong>{formatTransactionCents(totalCents, peso)}</strong></div>
+          <h3>Sales Summary</h3>
+          <div>
+            <span>Total Items</span>
+            <strong>{cart.length} {cart.length === 1 ? 'item' : 'items'} ({totalQuantity.toLocaleString('en-PH', { maximumFractionDigits: 1 })} kg)</strong>
+          </div>
+          <div>
+            <span>Subtotal</span>
+            <strong>{formatTransactionCents(totalCents, peso)}</strong>
+          </div>
+          <div>
+            <span>Amount Paid</span>
+            <strong>{peso.format(Number.isFinite(numericAmountPaid) ? numericAmountPaid : 0)}</strong>
+          </div>
+          {paymentType === 'Credit' && (
+            <div className="sale-summary-balance">
+              <span>Remaining Balance</span>
+              <strong>{formatTransactionCents(previewRemainingCents, peso)}</strong>
+            </div>
+          )}
+          <div className="sale-summary-total">
+            <span>Final Transaction Total</span>
+            <strong>{formatTransactionCents(totalCents, peso)}</strong>
+          </div>
         </div>
+
         {error && !confirmationOpen && <p className="sales-feedback error" role="alert">{error}</p>}
       </div>
-      <button className="primary-action" type="button" onClick={reviewSale} disabled={!cart.length || submitting || amountPaid === '' || recoveryError || (paymentType === 'Credit' && !customerId) || pendingSale?.state === 'rejected'}>
-        {pendingSale?.state === 'pending' ? 'Retry Pending Sale' : 'Review Sale'}
+
+      {/* Review / Submit Action */}
+      <button
+        className="primary-action pos-submit-btn"
+        type="button"
+        onClick={reviewSale}
+        disabled={
+          !cart.length ||
+          submitting ||
+          amountPaid === '' ||
+          recoveryError ||
+          (paymentType === 'Credit' && !customerId) ||
+          pendingSale?.state === 'rejected'
+        }
+      >
+        {pendingSale?.state === 'pending' ? 'Retry Pending Sale' : 'Review & Confirm Sale'}
       </button>
 
       {confirmationOpen && (

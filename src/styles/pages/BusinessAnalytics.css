@@ -1,3 +1,7 @@
+/* ============================================================
+   Business Analytics — Page & Chart Styles
+   ============================================================ */
+
 /* KPI icon treatment shared with the other non-dashboard metric cards. */
 .business-analytics-page .business-kpi-grid header svg {
   flex: 0 0 auto;
@@ -7,4 +11,673 @@
   border-radius: 50%;
   color: var(--primary);
   background: var(--primary-soft);
+}
+
+/* ============================================================
+   Product Sales Trends Multi-Line Chart Section
+   ============================================================ */
+
+.product-trends-chart-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 20px 22px;
+}
+
+/* — Chart Header — */
+.product-trends-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.product-trends-title-group h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-heading);
+  letter-spacing: 0.02em;
+}
+
+.product-trends-title-group h2 svg {
+  color: var(--primary);
+}
+
+.product-trends-title-group p {
+  margin: 4px 0 0 26px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* — Filter Controls (Monthly / Yearly / Year select) — */
+.product-trends-filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.analytics-period-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.analytics-period-toggle button {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.analytics-period-toggle button:hover:not(.active) {
+  color: var(--text-heading);
+  background: var(--surface-hover);
+}
+
+.analytics-period-toggle button.active {
+  color: var(--primary-action-text);
+  background: var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.analytics-year-select-wrap {
+  position: relative;
+}
+
+.analytics-year-select {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  color: var(--text-heading);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.analytics-year-badge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--surface-inset);
+  color: var(--text-heading);
+  border: 1px solid var(--border);
+}
+
+/* — Product Selector Bar — */
+.product-selector-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.product-selector-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.product-selector-helper {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.product-selector-count {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--card-bg);
+  color: var(--primary);
+  border: 1px solid var(--border);
+}
+
+.product-selector-actions {
+  position: relative;
+}
+
+.product-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  color: var(--text-heading);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.product-dropdown-trigger:hover,
+.product-dropdown-trigger.open {
+  border-color: var(--primary);
+}
+
+.product-dropdown-trigger .dropdown-arrow {
+  transition: transform 0.18s ease;
+}
+
+.product-dropdown-trigger.open .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+/* — Searchable Dropdown Popup Menu — */
+.product-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 320px;
+  max-width: 90vw;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: dropdown-fade-in 0.15s ease-out;
+}
+
+@keyframes dropdown-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.product-dropdown-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-inset);
+  color: var(--text-muted);
+}
+
+.product-dropdown-search input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text-heading);
+  font-size: 12px;
+  outline: none;
+}
+
+.product-search-clear {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+
+.product-dropdown-list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  scrollbar-width: thin;
+}
+
+.product-dropdown-empty {
+  padding: 18px 12px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.product-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 0;
+  background: transparent;
+  color: var(--text-heading);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.12s ease;
+}
+
+.product-dropdown-item:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.product-dropdown-item.selected {
+  background: var(--primary-soft);
+  color: var(--text-heading);
+  font-weight: 600;
+}
+
+.product-dropdown-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.product-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.product-checkbox.checked {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-action-text);
+}
+
+.product-item-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.product-item-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-item-limit-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-inset);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.product-dropdown-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-inset);
+}
+
+.product-footer-btn {
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.product-footer-btn:hover {
+  background: var(--card-bg);
+}
+
+.product-footer-btn.clear {
+  color: var(--text-muted);
+}
+.product-footer-btn.clear:hover {
+  color: #c0392b;
+}
+
+/* — Chips Row — */
+.product-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.product-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: 550;
+  color: var(--text-heading);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.product-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.product-chip-name {
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 50%;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.product-chip-remove:hover {
+  color: #c0392b;
+  background: rgba(192, 57, 43, 0.1);
+}
+
+/* — Legend — */
+.product-trends-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 11.5px;
+  font-weight: 550;
+  color: var(--text-secondary);
+  padding: 4px 2px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-item i {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* — Canvas & SVG Chart — */
+.product-trends-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 310px;
+  margin-top: 6px;
+}
+
+.product-trends-svg {
+  width: 100%;
+  height: 310px;
+  overflow: visible;
+  display: block;
+}
+
+.product-trends-gridline {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.product-trends-axis-label {
+  fill: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.product-trends-axis-label.x-axis {
+  font-size: 11px;
+}
+
+.product-trends-line {
+  transition: stroke-width 0.15s ease;
+}
+
+.product-trends-point {
+  cursor: pointer;
+  transition: r 0.15s ease, stroke-width 0.15s ease;
+  outline: none;
+}
+
+.product-trends-point:hover,
+.product-trends-point:focus-visible {
+  r: 6;
+  stroke-width: 2.5;
+}
+
+/* — Floating Tooltip — */
+.product-trends-tooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--tooltip-bg);
+  border: 1px solid var(--tooltip-border);
+  color: var(--tooltip-text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  font-size: 12px;
+  min-width: 160px;
+  transform: translate(-50%, -100%);
+  margin-top: -12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  animation: tooltip-fade 0.12s ease-out;
+}
+
+.product-trends-tooltip.below {
+  transform: translate(-50%, 14px);
+  margin-top: 0;
+}
+
+@keyframes tooltip-fade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -90%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+}
+
+.product-trends-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.product-trends-tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.product-trends-tooltip-period {
+  font-size: 11px;
+  opacity: 0.82;
+}
+
+.product-trends-tooltip-metric {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.product-trends-tooltip-metric strong {
+  font-weight: 700;
+}
+
+.product-trends-tooltip-pinned-hint {
+  font-size: 10px;
+  opacity: 0.65;
+  margin-top: 3px;
+}
+
+/* — Empty & Loading States — */
+.product-trends-empty-state {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 30px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.product-trends-empty-state .empty-icon {
+  color: var(--primary);
+  opacity: 0.7;
+}
+
+.product-trends-empty-state h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.product-trends-empty-state p {
+  margin: 0;
+  font-size: 12px;
+  max-width: 380px;
+}
+
+.product-trends-loading-state {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+/* — Responsive Adjustments — */
+@media (max-width: 768px) {
+  .product-trends-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .product-trends-filter-controls {
+    justify-content: space-between;
+  }
+
+  .product-selector-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .product-selector-actions {
+    width: 100%;
+  }
+
+  .product-dropdown-trigger {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .product-dropdown-menu {
+    width: 100%;
+    right: 0;
+    left: 0;
+  }
+}
+
+/* ============================================================
+   Main Analytics Grid & Restock Panel Height Responsiveness
+   ============================================================ */
+
+.business-analytics-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(290px, 1fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.business-analytics-page .analytics-restock-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.business-analytics-page .analytics-restock-panel .analytics-scroll-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 2px;
+}
+
+@media (max-width: 900px) {
+  .business-analytics-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .business-analytics-page .analytics-restock-panel .analytics-scroll-list {
+    max-height: 380px;
+  }
 }

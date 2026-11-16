@@ -1,501 +1,288 @@
-import { BarChart3, CalendarRange } from 'lucide-react'
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { buildMonotonePath } from '../../utils/chartPaths.js'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { BarChart3 } from 'lucide-react'
 import { peso } from '../../utils/currency.js'
+import { toTransactionCents } from '../../utils/transactionMoney.js'
+import { buildMonotonePath } from '../../utils/chartPaths.js'
 import EmptyState from '../Shared/EmptyState.jsx'
 import { getSalesReport } from '../../services/reportService.js'
 
-const chart = {
-  height: 310,
-  left: 72,
-  right: 24,
-  top: 28,
-  bottom: 54,
-}
-
-const rangeOptions = [
-  { key: 'daily', label: 'Today', heading: 'Today', grouping: 'hour' },
-  { key: 'weekly', label: 'Week', heading: 'Weekly', grouping: 'day' },
-  { key: 'monthly', label: 'Month', heading: 'Monthly', grouping: 'calendar day' },
-]
-const customOption = { key: 'custom', label: 'Custom', heading: 'Custom', grouping: 'selected period' }
-
+const chart = { height: 310, left: 72, right: 18, top: 24, bottom: 48 }
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const compactPeso = new Intl.NumberFormat('en-PH', {
-  style: 'currency',
-  currency: 'PHP',
-  notation: 'compact',
-  maximumFractionDigits: 1,
+  style: 'currency', currency: 'PHP', notation: 'compact', maximumFractionDigits: 1,
 })
 
-function chartModel(data, chartWidth) {
-  const bottom = chart.height - chart.bottom
-  const plotWidth = chartWidth - chart.left - chart.right
-  const plotHeight = bottom - chart.top
-  const normalizedData = data.map((item) => ({
-    ...item,
-    label: String(item.label ?? ''),
-    sales: Math.max(Number(item.sales) || 0, 0),
-    transactions: Math.max(Number(item.transactions) || 0, 0),
-  }))
-  const highest = Math.max(...normalizedData.map((item) => item.sales), 0)
-  const maximum = Math.max(Math.ceil((highest * 1.15) / 1000) * 1000, 1000)
-  const points = normalizedData.map((item, index) => ({
-    ...item,
-    x: normalizedData.length === 1
-      ? chart.left + (plotWidth / 2)
-      : chart.left + (plotWidth / (normalizedData.length - 1)) * index,
-    y: bottom - (item.sales / maximum) * plotHeight,
-  }))
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => ({
-    value: maximum * fraction,
-    y: bottom - plotHeight * fraction,
-  }))
-
-  return { bottom, path: buildMonotonePath(points), points, ticks }
+function areaPath(points, baseline, linePath) {
+  if (!points.length) return ''
+  return `${linePath} L ${points.at(-1).x} ${baseline} L ${points[0].x} ${baseline} Z`
 }
 
-function hitArea(points, index, chartWidth) {
-  const point = points[index]
-  const left = index === 0 ? chart.left : (points[index - 1].x + point.x) / 2
-  const right = index === points.length - 1 ? chartWidth - chart.right : (point.x + points[index + 1].x) / 2
-  return { left, width: Math.max(right - left, 1) }
+function saleYear(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return Number(new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', year: 'numeric' }).format(date))
 }
 
-function manilaDateString(date = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Manila',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date)
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return `${values.year}-${values.month}-${values.day}`
+function saleMonth(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return Number(new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', month: 'numeric' }).format(date)) - 1
 }
 
-function validDate(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-  const [year, month, day] = value.split('-').map(Number)
-  if (year < 1000) return false
-  const date = new Date(Date.UTC(year, month - 1, day))
-  return date.getUTCFullYear() === year
-    && date.getUTCMonth() === month - 1
-    && date.getUTCDate() === day
-}
+function normalizeSales(records) {
+  const seenSaleIds = new Set()
+  const sales = []
 
-function dateLabel(dateKey) {
-  return new Intl.DateTimeFormat('en-PH', {
-    timeZone: 'Asia/Manila',
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date(`${dateKey}T12:00:00+08:00`))
-}
+  for (const record of records) {
+    const saleId = String(record.sale_id ?? '')
+    const year = saleYear(record.sale_date)
+    const month = saleMonth(record.sale_date)
+    if (!saleId || seenSaleIds.has(saleId) || year === null || month === null) continue
 
-function customTrend(records, startDate, endDate) {
-  const buckets = new Map()
-  const singleDay = startDate === endDate
-  const uniqueRecords = new Map(records.map((record) => [String(record.sale_id), record]))
+    let revenueCents
+    try {
+      revenueCents = toTransactionCents(record.total_amount)
+    } catch {
+      continue
+    }
 
-  for (const sale of uniqueRecords.values()) {
-    const saleDate = new Date(sale.sale_date)
-    if (Number.isNaN(saleDate.getTime())) continue
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Manila',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      hourCycle: 'h23',
-    }).formatToParts(saleDate)
-    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-    const key = singleDay
-      ? `${values.year}-${values.month}-${values.day}-${values.hour}`
-      : `${values.year}-${values.month}-${values.day}`
-    const bucket = buckets.get(key) || { salesCents: 0, transactions: 0 }
-    bucket.salesCents += Math.round(Number(sale.total_amount) * 100)
-    bucket.transactions += 1
-    buckets.set(key, bucket)
+    seenSaleIds.add(saleId)
+    sales.push({ saleId, year, month, revenueCents })
   }
 
-  if (singleDay) {
-    return Array.from({ length: 24 }, (_, hour) => {
-      const bucket = buckets.get(`${startDate}-${String(hour).padStart(2, '0')}`)
-      return {
-        label: `${String(hour).padStart(2, '0')}:00`,
-        sales: (bucket?.salesCents || 0) / 100,
-        transactions: bucket?.transactions || 0,
-      }
-    })
-  }
-
-  const start = new Date(`${startDate}T00:00:00Z`)
-  const end = new Date(`${endDate}T00:00:00Z`)
-  const series = []
-  for (let cursor = start; cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
-    const key = cursor.toISOString().slice(0, 10)
-    const bucket = buckets.get(key)
-    series.push({
-      label: dateLabel(key),
-      sales: (bucket?.salesCents || 0) / 100,
-      transactions: bucket?.transactions || 0,
-    })
-  }
-  return series
+  return sales
 }
 
-function SalesChart({ trends }) {
-  const chartId = useId().replaceAll(':', '')
-  const gradientId = `sales-gradient-${chartId}`
-  const clipId = `sales-plot-${chartId}`
+function formatPesoCents(cents) {
+  const value = BigInt(cents)
+  const negative = value < 0n
+  const absolute = negative ? -value : value
+  const whole = absolute / 100n
+  const fraction = String(absolute % 100n).padStart(2, '0')
+  const parts = peso.formatToParts(negative ? -whole : whole)
+  return parts.map((part) => part.type === 'fraction' ? fraction : part.value).join('')
+}
+
+function niceMaximum(maxValue) {
+  if (!(maxValue > 0)) return 1
+  const target = maxValue * 1.1
+  const magnitude = 10 ** Math.floor(Math.log10(target / 4))
+  const step = Math.max(magnitude, 0.01)
+  return Math.ceil(target / step) * step
+}
+
+function SalesChart() {
   const chartContainerRef = useRef(null)
-  const customButtonRef = useRef(null)
-  const popoverRef = useRef(null)
-  const requestControllerRef = useRef(null)
-  const [range, setRange] = useState('weekly')
+  const tooltipRef = useRef(null)
+  const pointerRef = useRef(null)
+  const [period, setPeriod] = useState('monthly')
+  const [selectedYear, setSelectedYear] = useState(null)
+  const [chartWidth, setChartWidth] = useState(700)
   const [activeIndex, setActiveIndex] = useState(null)
-  const [chartWidth, setChartWidth] = useState(760)
-  const [customData, setCustomData] = useState(null)
-  const [customDates, setCustomDates] = useState(() => {
-    const today = manilaDateString()
-    return { start_date: today, end_date: today }
-  })
-  const [customRange, setCustomRange] = useState(null)
-  const [popoverOpen, setPopoverOpen] = useState(false)
-  const [popoverPosition, setPopoverPosition] = useState(null)
-  const [customLoading, setCustomLoading] = useState(false)
-  const [customError, setCustomError] = useState('')
-  const rangeOption = rangeOptions.find((option) => option.key === range) || customOption
-  const data = useMemo(
-    () => range === 'custom' ? customData || [] : trends[range] || [],
-    [customData, range, trends],
-  )
-  const model = useMemo(() => chartModel(data, chartWidth), [chartWidth, data])
-  const hasRecordedSales = data.some((item) => Number(item.sales) > 0 || Number(item.transactions) > 0)
-  const customHasNoSales = range === 'custom' && customData && !hasRecordedSales
-  const areaPath = model.points.length > 1 && hasRecordedSales
-    ? `${model.path} L ${model.points.at(-1).x} ${model.bottom} L ${model.points[0].x} ${model.bottom} Z`
-    : ''
-  const activePoint = activeIndex === null ? null : model.points[activeIndex] || null
-  const compactLayout = chartWidth < 480
-  const labelStep = range === 'custom'
-    ? Math.max(Math.ceil(data.length / (compactLayout ? 5 : 9)), 1)
-    : range === 'daily'
-    ? (compactLayout ? 6 : 4)
-    : range === 'monthly' ? (compactLayout ? 7 : 5) : (compactLayout ? 2 : 1)
+  const [sales, setSales] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    getSalesReport({}, { signal: controller.signal }).then((report) => {
+      const normalizedSales = normalizeSales(report.records || [])
+      setSales(normalizedSales)
+      const availableYears = normalizedSales.map((sale) => sale.year)
+      setSelectedYear(availableYears.length ? Math.max(...availableYears) : null)
+    }).catch((requestError) => {
+      if (requestError.name !== 'AbortError') setError(requestError.message)
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoading(false)
+    })
+    return () => controller.abort()
+  }, [])
 
   useEffect(() => {
     const container = chartContainerRef.current
     if (!container) return undefined
-
     const observer = new ResizeObserver((entries) => {
-      const nextWidth = Math.max(Math.round(entries[0].contentRect.width), 280)
-      setChartWidth((current) => current === nextWidth ? current : nextWidth)
+      const width = Math.max(Math.round(entries[0].contentRect.width), 280)
+      setChartWidth((current) => current === width ? current : width)
     })
     observer.observe(container)
     return () => observer.disconnect()
   }, [])
 
+  const years = useMemo(() => [...new Set((sales || []).map((sale) => sale.year))].sort((a, b) => a - b), [sales])
+
+  const periodData = useMemo(() => {
+    if (!sales) return null
+    const buckets = period === 'monthly' ? months.map((_, index) => index) : years
+    const totals = new Map(buckets.map((bucket) => [bucket, 0n]))
+
+    for (const sale of sales) {
+      if (period === 'monthly' && sale.year !== selectedYear) continue
+      const bucket = period === 'monthly' ? sale.month : sale.year
+      totals.set(bucket, (totals.get(bucket) || 0n) + sale.revenueCents)
+    }
+
+    return { buckets, values: buckets.map((bucket) => totals.get(bucket) || 0n) }
+  }, [period, sales, selectedYear, years])
+
+  const model = useMemo(() => {
+    if (!periodData) return null
+    const bottom = chart.height - chart.bottom
+    const plotWidth = chartWidth - chart.left - chart.right
+    const plotHeight = bottom - chart.top
+    const values = periodData.values.map((value) => Number(value) / 100)
+    const maximum = niceMaximum(Math.max(...values, 0))
+    const points = periodData.buckets.map((bucket, index) => ({
+      bucket,
+      value: periodData.values[index],
+      x: periodData.buckets.length === 1
+        ? chart.left + plotWidth / 2
+        : chart.left + plotWidth * index / (periodData.buckets.length - 1),
+      y: bottom - (values[index] / maximum) * plotHeight,
+    }))
+    const ticks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => ({
+      value: maximum * fraction,
+      y: bottom - plotHeight * fraction,
+    }))
+
+    const path = buildMonotonePath(points)
+    return { bottom, points, ticks, path, area: areaPath(points, bottom, path) }
+  }, [chartWidth, periodData])
+
+  const positionTooltip = useCallback((x, y) => {
+    pointerRef.current = { x, y }
+    const tooltip = tooltipRef.current
+    if (!tooltip) return
+
+    const halfTooltipWidth = Math.min(150, (window.innerWidth - 24) / 2)
+    const left = Math.max(12 + halfTooltipWidth, Math.min(x, window.innerWidth - 12 - halfTooltipWidth))
+    tooltip.style.left = `${left}px`
+    tooltip.style.top = `${y}px`
+    tooltip.classList.toggle('above', y > 150)
+    tooltip.classList.toggle('below', y <= 150)
+  }, [])
+
+  function showPoint(index, event) {
+    setActiveIndex(index)
+    positionTooltip(event.clientX, event.clientY)
+  }
+
+  function hideTooltip() {
+    setActiveIndex(null)
+    pointerRef.current = null
+  }
+
   useLayoutEffect(() => {
-    if (!popoverOpen || !customButtonRef.current || !popoverRef.current) return undefined
-
-    function positionPopover() {
-      const button = customButtonRef.current?.getBoundingClientRect()
-      const panel = popoverRef.current?.getBoundingClientRect()
-      if (!button || !panel) return
-
-      const margin = 12
-      const gap = 8
-      const left = Math.min(
-        Math.max(button.right - panel.width, margin),
-        window.innerWidth - panel.width - margin,
-      )
-      const below = button.bottom + panel.height + gap <= window.innerHeight - margin
-      const top = below
-        ? button.bottom + gap
-        : Math.max(margin, button.top - panel.height - gap)
-      setPopoverPosition({ left, top })
-    }
-
-    positionPopover()
-    window.addEventListener('resize', positionPopover)
-    window.addEventListener('scroll', positionPopover, true)
-    return () => {
-      window.removeEventListener('resize', positionPopover)
-      window.removeEventListener('scroll', positionPopover, true)
-    }
-  }, [popoverOpen, customError, customLoading])
+    if (activeIndex === null || !pointerRef.current) return
+    positionTooltip(pointerRef.current.x, pointerRef.current.y)
+  }, [activeIndex, positionTooltip])
 
   useEffect(() => {
-    if (!popoverOpen) return undefined
-
-    function dismiss(event) {
-      if (event.key === 'Escape') {
-        requestControllerRef.current?.abort()
-        setCustomLoading(false)
-        setPopoverOpen(false)
-        setCustomError('')
-      }
+    function repositionTooltip() {
+      if (pointerRef.current) positionTooltip(pointerRef.current.x, pointerRef.current.y)
     }
+    window.addEventListener('resize', repositionTooltip)
+    return () => window.removeEventListener('resize', repositionTooltip)
+  }, [positionTooltip])
 
-    function dismissOutside(event) {
-      if (
-        !popoverRef.current?.contains(event.target)
-        && !customButtonRef.current?.contains(event.target)
-      ) {
-        requestControllerRef.current?.abort()
-        setCustomLoading(false)
-        setPopoverOpen(false)
-        setCustomError('')
-      }
-    }
-
-    document.addEventListener('keydown', dismiss)
-    document.addEventListener('pointerdown', dismissOutside)
-    return () => {
-      document.removeEventListener('keydown', dismiss)
-      document.removeEventListener('pointerdown', dismissOutside)
-    }
-  }, [popoverOpen])
-
-  useEffect(() => () => requestControllerRef.current?.abort(), [])
-
-  async function applyCustomRange(event) {
-    event.preventDefault()
-    setCustomError('')
-    const { start_date: startDate, end_date: endDate } = customDates
-    if (!validDate(startDate) || !validDate(endDate)) {
-      setCustomError('Select valid start and end dates.')
-      return
-    }
-    if (startDate > endDate) {
-      setCustomError('Start Date cannot be later than End Date.')
-      return
-    }
-
-    requestControllerRef.current?.abort()
-    const controller = new AbortController()
-    requestControllerRef.current = controller
-    setCustomLoading(true)
-    try {
-      const report = await getSalesReport(
-        { start_date: startDate, end_date: endDate },
-        { signal: controller.signal },
-      )
-      if (controller.signal.aborted) return
-      const records = (report.records || []).filter(
-        (record) => record.payment_type === 'Cash' || record.payment_type === 'Credit',
-      )
-      setCustomData(customTrend(records, startDate, endDate))
-      setCustomRange({ start_date: startDate, end_date: endDate })
-      setRange('custom')
-      setActiveIndex(null)
-      setPopoverOpen(false)
-    } catch (requestError) {
-      if (requestError.name !== 'AbortError') setCustomError(requestError.message)
-    } finally {
-      if (!controller.signal.aborted) setCustomLoading(false)
-    }
-  }
+  const activePoint = activeIndex === null ? null : model?.points[activeIndex]
+  const activePeriod = activePoint
+    ? period === 'monthly' ? `${monthNames[activePoint.bucket]} ${selectedYear}` : String(activePoint.bucket)
+    : ''
+  const yearLabelStep = Math.max(Math.ceil((periodData?.buckets.length || 1) / (chartWidth < 500 ? 4 : 8)), 1)
+  const hasSales = Boolean(periodData?.values.some((value) => value > 0n))
+  const emptyMessage = period === 'monthly'
+    ? `No sales revenue recorded for ${selectedYear ?? 'the selected year'}.`
+    : 'No recorded sales revenue is available.'
 
   return (
     <article className="panel dashboard-sales-chart" ref={chartContainerRef}>
       <header className="dashboard-chart-header">
         <div>
-          <h2><BarChart3 size={18} aria-hidden="true" /> {rangeOption.heading} Sales Performance</h2>
-          <p>
-            {range === 'custom' && customRange
-              ? `${customRange.start_date} to ${customRange.end_date}`
-              : 'Sales Performance Overview'}
-          </p>
+          <h2><BarChart3 size={18} aria-hidden="true" /> Sales Revenue Overview</h2>
+          <p>{period === 'monthly' ? `Monthly business revenue for ${selectedYear ?? 'selected year'}` : 'Annual business revenue across recorded sales'}</p>
         </div>
-        <div className="dashboard-segments" aria-label="Sales chart period">
-          {rangeOptions.map((option) => (
-            <button
-              className={range === option.key ? 'active' : ''}
-              type="button"
-              aria-pressed={range === option.key}
-              key={option.key}
-              onClick={() => {
-                requestControllerRef.current?.abort()
-                setCustomLoading(false)
-                setRange(option.key)
-                setActiveIndex(null)
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
-          <button
-            ref={customButtonRef}
-            className={range === 'custom' ? 'active' : ''}
-            type="button"
-            aria-pressed={range === 'custom'}
-            aria-expanded={popoverOpen}
-            onClick={() => {
-              const today = manilaDateString()
-              setCustomDates(customRange || { start_date: today, end_date: today })
-              setCustomError('')
-              setPopoverOpen((open) => !open)
-            }}
-          >
-            <CalendarRange size={13} aria-hidden="true" />
-            Custom
-          </button>
+        <div className="sales-chart-filters">
+          {period === 'monthly' && years.length > 0 && (
+            <label className="sales-chart-year">Year
+              <select value={selectedYear ?? ''} onChange={(event) => { setSelectedYear(Number(event.target.value)); hideTooltip() }}>
+                {[...years].reverse().map((year) => <option key={year} value={year}>{year}</option>)}
+              </select>
+            </label>
+          )}
+          <div className="dashboard-segments" role="group" aria-label="Sales chart period">
+            {['monthly', 'yearly'].map((option) => (
+              <button
+                key={option}
+                className={period === option ? 'active' : ''}
+                type="button"
+                aria-pressed={period === option}
+                onClick={() => { setPeriod(option); hideTooltip() }}
+              >
+                {option === 'monthly' ? 'Monthly' : 'Yearly'}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
-      {popoverOpen && (
-        <form
-          ref={popoverRef}
-          className="panel"
-          onSubmit={applyCustomRange}
-          style={{
-            position: 'fixed',
-            left: popoverPosition?.left ?? 12,
-            top: popoverPosition?.top ?? 12,
-            zIndex: 50,
-            width: 'min(320px, calc(100vw - 24px))',
-            maxHeight: 'calc(100vh - 24px)',
-            overflowY: 'auto',
-            display: 'grid',
-            gap: 12,
-            padding: 16,
-            border: '1px solid var(--border-strong)',
-            borderRadius: 'var(--radius-lg)',
-            background: 'var(--card-bg)',
-            boxShadow: 'var(--shadow)',
-          }}
-          aria-label="Custom sales date range"
-        >
-          <label>
-            Start Date
-            <input
-              type="date"
-              value={customDates.start_date}
-              disabled={customLoading}
-              onChange={(event) => setCustomDates((current) => ({ ...current, start_date: event.target.value }))}
-            />
-          </label>
-          <label>
-            End Date
-            <input
-              type="date"
-              value={customDates.end_date}
-              disabled={customLoading}
-              onChange={(event) => setCustomDates((current) => ({ ...current, end_date: event.target.value }))}
-            />
-          </label>
-          {customError && <p className="report-inline-error" role="alert">{customError}</p>}
-          {customLoading && <span role="status">Loading sales data…</span>}
-          <div className="dashboard-segments" style={{ justifyContent: 'flex-end', gap: 6 }}>
-            <button
-              type="button"
-              onClick={() => {
-                requestControllerRef.current?.abort()
-                setCustomLoading(false)
-                setPopoverOpen(false)
-              }}
-            >
-              Cancel
-            </button>
-            <button className="active" type="submit" disabled={customLoading}>
-              {customLoading ? 'Applying…' : 'Apply'}
-            </button>
-          </div>
-        </form>
-      )}
-      {!data.length || customHasNoSales ? (
-        <EmptyState>No sales trend data available for this period.</EmptyState>
-      ) : (
-        <div className="dashboard-chart-scroll">
-          <div className="chart-canvas">
-            {activePoint && (
-              <div
-                className={`chart-tooltip ${activePoint.y < 104 ? 'below' : ''}`}
-                style={{
-                  left: `clamp(78px, ${(activePoint.x / chartWidth) * 100}%, calc(100% - 78px))`,
-                  top: `${(activePoint.y / chart.height) * 100}%`,
-                }}
-              >
-                <strong>{activePoint.label || 'Time unavailable'}</strong>
-                <span>Sales: {peso.format(activePoint.sales)}</span>
-                <small>
-                  {activePoint.transactions} {activePoint.transactions === 1 ? 'transaction' : 'transactions'}
-                </small>
+      {loading ? <p className="sales-chart-state" role="status">Loading sales records…</p>
+        : error ? <EmptyState>{error}</EmptyState>
+          : !periodData?.buckets.length || !hasSales ? <EmptyState>{emptyMessage}</EmptyState>
+            : (
+              <div className="dashboard-chart-scroll">
+                <div className="chart-canvas sales-overview-canvas">
+                  <svg className="line-chart" viewBox={`0 0 ${chartWidth} ${chart.height}`} preserveAspectRatio="none" role="img" aria-label={`${period} total sales revenue overview`}>
+                    <defs>
+                      <linearGradient id="sales-revenue-area-gradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.22" />
+                        <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.015" />
+                      </linearGradient>
+                    </defs>
+                    {model.ticks.map((tick) => (
+                      <g key={tick.value}>
+                        <line className="sales-overview-gridline" x1={chart.left} x2={chartWidth - chart.right} y1={tick.y} y2={tick.y} />
+                        <text className="chart-axis-label" x={chart.left - 9} y={tick.y + 4} textAnchor="end">{compactPeso.format(tick.value)}</text>
+                      </g>
+                    ))}
+                    <path className="sales-overview-area" d={model.area} />
+                    <path className="chart-line sales-overview-line" d={model.path} />
+                    {model.points.map((point, index) => (
+                      <circle
+                        key={point.bucket}
+                        className="sales-overview-point"
+                        cx={point.x}
+                        cy={point.y}
+                        r="4.5"
+                        onPointerEnter={(event) => showPoint(index, event)}
+                        onPointerMove={(event) => showPoint(index, event)}
+                        onPointerLeave={hideTooltip}
+                        aria-label={`${period === 'monthly' ? `${monthNames[point.bucket]} ${selectedYear}` : point.bucket}: ${formatPesoCents(point.value)}`}
+                      />
+                    ))}
+                    {model.points.map((point, index) => (
+                      period === 'monthly' || index === 0 || index === model.points.length - 1 || index % yearLabelStep === 0
+                        ? <text key={`label-${point.bucket}`} className="chart-x-label" x={point.x} y={chart.height - 18} textAnchor="middle">
+                          {period === 'monthly' ? months[point.bucket] : point.bucket}
+                        </text>
+                        : null
+                    ))}
+                  </svg>
+                </div>
               </div>
             )}
-            <svg
-              className="line-chart"
-              viewBox={`0 0 ${chartWidth} ${chart.height}`}
-              preserveAspectRatio="xMidYMid meet"
-              role="img"
-              aria-label={`${rangeOption.label} sales performance`}
-            >
-              <defs>
-                <linearGradient id={gradientId} x1="0" x2="0" y1={chart.top} y2={model.bottom} gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.22" />
-                  <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-                </linearGradient>
-                <clipPath id={clipId}>
-                  <rect
-                    x={chart.left}
-                    y={chart.top}
-                    width={chartWidth - chart.left - chart.right}
-                    height={model.bottom - chart.top}
-                  />
-                </clipPath>
-              </defs>
-              {areaPath && (
-                <path
-                  className="chart-fill"
-                  d={areaPath}
-                  clipPath={`url(#${clipId})`}
-                  style={{ fill: `url(#${gradientId})` }}
-                />
-              )}
-              {model.ticks.map((tick) => (
-                <g key={tick.value}>
-                  <line x1={chart.left} x2={chartWidth - chart.right} y1={tick.y} y2={tick.y} />
-                  <text className="chart-axis-label" x={chart.left - 10} y={tick.y + 4} textAnchor="end">
-                    {compactPeso.format(tick.value)}
-                  </text>
-                </g>
-              ))}
-              {model.points.length > 1 && <path className="chart-line" d={model.path} />}
-              {model.points.map((point, index) => {
-                const area = hitArea(model.points, index, chartWidth)
-                const isActive = activeIndex === index
-
-                return (
-                  <g
-                    className={`chart-point${isActive ? ' active' : ''}`}
-                    key={`${point.label}-${index}`}
-                    data-chart-y={point.y}
-                    tabIndex="0"
-                    role="img"
-                    aria-label={`${point.label || 'Time unavailable'}: ${peso.format(point.sales)}, ${point.transactions} ${point.transactions === 1 ? 'transaction' : 'transactions'}`}
-                    onPointerEnter={() => setActiveIndex(index)}
-                    onPointerLeave={() => setActiveIndex(null)}
-                    onFocus={() => setActiveIndex(index)}
-                    onBlur={() => setActiveIndex(null)}
-                  >
-                    <rect
-                      className="chart-hit-area"
-                      x={area.left}
-                      y={chart.top}
-                      width={area.width}
-                      height={model.bottom - chart.top}
-                    />
-                    {isActive && <line className="chart-hover-guide" x1={point.x} x2={point.x} y1={chart.top} y2={model.bottom} />}
-                    {index % labelStep === 0 && (
-                      <text className="chart-x-label" x={point.x} y={chart.height - 20} textAnchor="middle">
-                        {point.label}
-                      </text>
-                    )}
-                  </g>
-                )
-              })}
-            </svg>
-          </div>
-        </div>
+      {activePoint && createPortal(
+        <div
+          ref={tooltipRef}
+          className={`dashboard-product-sales-tooltip ${pointerRef.current?.y > 150 ? 'above' : 'below'}`}
+          role="tooltip"
+          style={{ '--tooltip-color': 'var(--primary)' }}
+        >
+          <strong>{activePeriod}</strong>
+          <span>Total sales revenue: {formatPesoCents(activePoint.value)}</span>
+        </div>,
+        document.body,
       )}
     </article>
   )

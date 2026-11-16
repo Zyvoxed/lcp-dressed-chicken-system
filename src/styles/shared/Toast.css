@@ -26,14 +26,14 @@
   border-radius: 12px;
   color: var(--text-primary);
   background: var(--card-bg);
-  box-shadow: 0 16px 38px rgba(20, 10, 8, 0.24);
+  box-shadow: 0 16px 38px rgba(10, 9, 8, 0.24);
   pointer-events: auto;
 }
 
-.system-toast.success { --toast-accent: #21854d; --toast-tint: rgba(33, 133, 77, 0.18); }
-.system-toast.error { --toast-accent: var(--danger-text); --toast-tint: var(--danger-border); }
-.system-toast.warning { --toast-accent: #b7791f; --toast-tint: rgba(183, 121, 31, 0.2); }
-.system-toast.info { --toast-accent: var(--primary); --toast-tint: var(--primary-soft); }
+.system-toast.success { --toast-accent: var(--green); --toast-tint: var(--status-success-bg); }
+.system-toast.error { --toast-accent: var(--red); --toast-tint: var(--danger-bg); }
+.system-toast.warning { --toast-accent: var(--gold); --toast-tint: var(--status-warn-bg); }
+.system-toast.info { --toast-accent: var(--blue); --toast-tint: var(--info-bg); }
 
 .system-toast-icon {
   margin-top: 1px;

@@ -13,7 +13,11 @@ dist-ssr
 test-results/
 *.local
 .env
+.env.*
+!.env.example
 server/.env
+server/.env.*
+!server/.env.example
 
 # Editor directories and files
 .vscode/*

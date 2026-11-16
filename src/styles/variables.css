@@ -1,23 +1,23 @@
 :root,
 [data-theme="dark"],
 .dark-theme {
-  --primary: #e98a24; --primary-strong: #d77918; --primary-soft: rgba(233, 138, 36, 0.15); --primary-tint: rgba(233, 138, 36, 0.08); --primary-muted: #eda153;
-  --brand-dark: #7a302b; --brand-dark-strong: #692824; --brand-dark-soft: rgba(122, 48, 43, 0.17);
-  --gold: #c98227; --green: #65a078; --red: #d2635b; --blue: #ae6748; --violet: #966d63; --orange: var(--primary); --orange-strong: var(--primary-strong);
-  --app-bg: #191716; --bg-primary: #191716; --bg-secondary: #211f1e; --sidebar-bg: #692824; --topbar-bg: rgba(37, 34, 33, 0.95);
-  --card-bg: #282524; --card-bg-soft: #211f1e; --card-gradient: linear-gradient(180deg, #292726, #242120); --surface-raised: #282524; --surface-inset: #191716; --surface-hover: #33302e; --input-bg: #201e1d;
-  --text-primary: #f3f0ee; --text-heading: #fffdfc; --text-secondary: #c5bfbc; --text-soft: #ded9d6; --text-label: #c5bfbc; --text-muted: #948b87; --money-text: #eba24f;
-  --border: #3e3a38; --border-subtle: #3e3a38; --border-strong: #554f4c; --input-placeholder: #8e8581; --table-heading-text: #ddd6d3; --secondary-action-text: #eee9e6;
-  --status-warn-text: #efc56e; --status-warn-bg: rgba(227, 167, 60, 0.14); --status-success-text: #9bc2a1; --status-success-bg: rgba(111, 164, 119, 0.14); --status-danger-text: #f08b8b; --status-danger-bg: rgba(225, 82, 82, 0.14);
-  --info-text: #e2a083; --info-bg: rgba(189, 105, 68, 0.15); --system-text: #d8a99c; --system-bg: rgba(168, 107, 91, 0.15); --danger-bg: rgba(225, 82, 82, 0.14); --danger-text: #f08b8b;
-  --success-border: rgba(111, 164, 119, 0.45); --warning-border: rgba(227, 167, 60, 0.45); --danger-border: rgba(225, 82, 82, 0.5); --system-border: rgba(156, 127, 196, 0.45);
-  --chart-series-1: #e98a24; --chart-series-2: #98443d; --chart-series-3: #65a078; --chart-series-4: #c98227; --chart-series-5: #8f746c; --chart-grid: rgba(197, 191, 188, 0.12); --chart-point-fill: #fffdfc; --chart-accent-shadow: rgba(233, 138, 36, 0.16);
-  --bar-fill: linear-gradient(180deg, #eda04e, #e98a24); --bar-shadow: 0 8px 20px rgba(233, 138, 36, 0.14);
-  --table-header-bg: var(--card-bg-soft); --row-hover: var(--surface-hover); --row-zebra: transparent; --nav-hover-bg: rgba(255,249,243,0.09); --nav-text: rgba(255,249,243,0.8); --nav-active-text: #7a302b; --nav-active-bg: #ffffff;
-  --brand-bg: var(--primary-soft); --primary-action-bg: var(--primary); --primary-action-text: #3b2926; --focus-ring: 0 0 0 4px var(--primary-soft); --orange-glow: var(--focus-ring);
-  --modal-backdrop: rgba(20, 17, 15, 0.55); --tooltip-bg: #2b241e; --tooltip-border: var(--border-strong); --tooltip-text: var(--text-heading); --online-ring: rgba(111, 164, 119, 0.18); --inset-highlight: rgba(255, 255, 255, 0.035);
-  --receipt-bg: #f8f7f5; --receipt-text: #352c2a; --receipt-divider: #d5ceca; --login-grid-line: rgba(255, 255, 255, 0.08); --login-ambient: rgba(255, 255, 255, 0.16);
-  --card-shadow: 0 2px 8px rgba(10, 4, 3, 0.18); --card-shadow-hover: 0 6px 16px rgba(10, 4, 3, 0.25); --shadow: 0 16px 38px rgba(10, 4, 3, 0.34);
+  --primary: #8EB69B; --primary-strong: #235347; --primary-soft: rgba(142, 182, 155, 0.18); --primary-tint: rgba(142, 182, 155, 0.1); --primary-muted: #DAF1DE;
+  --brand-dark: #0B2B26; --brand-dark-strong: #051F20; --brand-dark-soft: rgba(142, 182, 155, 0.18);
+  --gold: #E5C98B; --green: #8EB69B; --red: #D9A6A6; --blue: #91ACB5; --violet: #B8ACCC; --orange: #D98F7C; --orange-strong: #E5C98B;
+  --app-bg: #051F20; --bg-primary: #051F20; --bg-secondary: #102823; --sidebar-bg: #051F20; --topbar-bg: #051F20;
+  --card-bg: #0B2B26; --card-bg-soft: #102823; --card-gradient: linear-gradient(180deg, #0B2B26, #102823); --surface-raised: #163832; --surface-inset: #102823; --surface-hover: #163832; --input-bg: #0B2B26;
+  --text-primary: #DAF1DE; --text-heading: #DAF1DE; --text-secondary: #B8D2BF; --text-soft: #B8D2BF; --text-label: #B8D2BF; --text-muted: #8EB69B; --money-text: #DAF1DE;
+  --border: #235347; --border-subtle: #163832; --border-strong: #47755F; --input-placeholder: #8EB69B; --table-heading-text: #DAF1DE; --secondary-action-text: #DAF1DE; --secondary-action-bg: #0B2B26; --secondary-action-hover: #163832; --nav-active-indicator: #8EB69B;
+  --status-warn-text: #F0E3BC; --status-warn-bg: rgba(229, 201, 139, 0.16); --status-success-text: #DAF1DE; --status-success-bg: rgba(197, 221, 211, 0.14); --status-danger-text: #F0C8C8; --status-danger-bg: rgba(217, 166, 166, 0.14);
+  --info-text: #D6E2EA; --info-bg: rgba(145, 172, 181, 0.16); --system-text: #B8D2BF; --system-bg: rgba(142, 182, 155, 0.16); --danger-bg: rgba(217, 166, 166, 0.14); --danger-text: #F0C8C8;
+  --success-border: rgba(197, 221, 211, 0.5); --warning-border: rgba(229, 201, 139, 0.5); --danger-border: rgba(217, 166, 166, 0.5); --system-border: rgba(164, 178, 170, 0.42);
+  --chart-series-1: #DAF1DE; --chart-series-2: #8EB69B; --chart-series-3: #E5C98B; --chart-series-4: #91ACB5; --chart-series-5: #75AAA0; --chart-series-6: #A5B88F; --chart-series-7: #D98F7C; --chart-series-8: #B8ACCC; --chart-grid: rgba(184, 210, 191, 0.16); --chart-point-fill: #FFFFFF; --chart-accent-shadow: rgba(142, 182, 155, 0.2);
+  --bar-fill: #8EB69B; --bar-shadow: 0 8px 20px rgba(142, 182, 155, 0.2);
+  --table-header-bg: var(--card-bg-soft); --row-hover: var(--surface-hover); --row-zebra: transparent; --nav-hover-bg: #163832; --nav-text: #FFFFFF; --nav-icon: #A4B2AA; --nav-active-text: #FFFFFF; --nav-active-bg: #235347;
+  --brand-bg: var(--primary-soft); --primary-action-bg: #163832; --primary-action-text: #FFFFFF; --secondary-action-bg: #0B2B26; --focus-ring: 0 0 0 4px var(--primary-soft); --orange-glow: var(--focus-ring);
+  --modal-backdrop: rgba(0, 0, 0, 0.76); --tooltip-bg: #0B2B26; --tooltip-border: var(--border-strong); --tooltip-text: #DAF1DE; --online-ring: rgba(142, 182, 155, 0.2); --inset-highlight: rgba(255, 255, 255, 0.035);
+  --receipt-bg: #FFFFFF; --receipt-text: #051F20; --receipt-divider: #E8EEEA; --login-grid-line: rgba(255, 255, 255, 0.08); --login-ambient: rgba(255, 255, 255, 0.16);
+  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); --card-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.28); --shadow: 0 16px 38px rgba(0, 0, 0, 0.38);
   --radius-sm: 7px; --radius-md: 9px; --radius-lg: 14px; --radius-pill: 999px; --radius: var(--radius-md);
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
   --sidebar-expanded: 264px; --sidebar-collapsed: 84px; --header-height: 68px;
@@ -25,23 +25,23 @@
 
 [data-theme="light"],
 .light-theme {
-  --primary: #e98a24; --primary-strong: #d77918; --primary-soft: rgba(233, 138, 36, 0.12); --primary-tint: rgba(233, 138, 36, 0.06); --primary-muted: #bd6a13;
-  --brand-dark: #7a302b; --brand-dark-strong: #692824; --brand-dark-soft: #f2e8e6;
-  --gold: #c98227; --green: #42845a; --red: #b94a42; --blue: #9b6048; --violet: #826b65; --orange: var(--primary); --orange-strong: var(--primary-strong);
-  --app-bg: #f4f3f1; --bg-primary: #f4f3f1; --bg-secondary: #f4f3f1; --sidebar-bg: #7a302b; --topbar-bg: rgba(255, 255, 255, 0.97);
-  --card-bg: #ffffff; --card-bg-soft: #f8f7f5; --card-gradient: linear-gradient(180deg, #ffffff, #fbfaf9); --surface-raised: #ffffff; --surface-inset: #f4f3f1; --surface-hover: #f2f0ed; --input-bg: #ffffff;
-  --text-primary: #352c2a; --text-heading: #352c2a; --text-secondary: #625754; --text-soft: #4c4340; --text-label: #625754; --text-muted: #756b67; --money-text: #9c5918;
-  --border: #e3deda; --border-subtle: #e3deda; --border-strong: #d5ceca; --input-placeholder: #786f6b; --table-heading-text: #514845; --secondary-action-text: #7a302b;
-  --status-warn-text: #8a5b18; --status-warn-bg: #fbf0de; --status-success-text: #356d49; --status-success-bg: #eaf4ed; --status-danger-text: #9f3f39; --status-danger-bg: #f8e8e6;
-  --info-text: #8f482b; --info-bg: #f8e9de; --system-text: #7d493d; --system-bg: #f4e5e2; --danger-bg: #fbe7e4; --danger-text: #a53f37;
-  --success-border: rgba(63, 122, 71, 0.35); --warning-border: rgba(201, 134, 44, 0.38); --danger-border: rgba(201, 68, 68, 0.4); --system-border: rgba(124, 95, 175, 0.38);
-  --chart-series-1: #e98a24; --chart-series-2: #7a302b; --chart-series-3: #42845a; --chart-series-4: #c98227; --chart-series-5: #75635e; --chart-grid: rgba(113, 102, 99, 0.12); --chart-point-fill: #ffffff; --chart-accent-shadow: rgba(233, 138, 36, 0.12);
-  --bar-fill: linear-gradient(180deg, #eda04a, #e98a24); --bar-shadow: 0 8px 20px rgba(233, 138, 36, 0.12);
-  --table-header-bg: #f8f7f5; --row-hover: #f5f3f0; --row-zebra: transparent; --nav-hover-bg: rgba(255,249,243,0.09); --nav-text: rgba(255,249,243,0.8); --nav-active-text: #7a302b; --nav-active-bg: #ffffff;
-  --brand-bg: var(--primary-soft); --primary-action-bg: var(--primary); --primary-action-text: #3b2926; --focus-ring: 0 0 0 4px var(--primary-soft); --orange-glow: var(--focus-ring);
-  --modal-backdrop: rgba(20, 17, 15, 0.55); --tooltip-bg: #241f1a; --tooltip-border: var(--border-strong); --tooltip-text: #ffffff; --online-ring: rgba(63, 122, 71, 0.14); --inset-highlight: rgba(255, 255, 255, 0.72);
-  --receipt-bg: #ffffff; --receipt-text: #352c2a; --receipt-divider: #d5ceca; --login-grid-line: rgba(255, 255, 255, 0.12); --login-ambient: rgba(255, 255, 255, 0.2);
-  --card-shadow: 0 2px 8px rgba(53, 44, 42, 0.035); --card-shadow-hover: 0 5px 14px rgba(53, 44, 42, 0.07); --shadow: 0 12px 30px rgba(53, 44, 42, 0.1);
+  --primary: #163832; --primary-strong: #235347; --primary-soft: #DAF1DE; --primary-tint: rgba(218, 241, 222, 0.6); --primary-muted: #235347;
+  --brand-dark: #051F20; --brand-dark-strong: #0B2B26; --brand-dark-soft: rgba(142, 182, 155, 0.18);
+  --gold: #C6A76A; --green: #163832; --red: #5C2929; --blue: #315863; --violet: #655D70; --orange: #985E50; --orange-strong: #75463B;
+  --app-bg: #F7FAF7; --bg-primary: #F7FAF7; --bg-secondary: #E8EEEA; --sidebar-bg: #051F20; --topbar-bg: #FFFFFF;
+  --card-bg: #FFFFFF; --card-bg-soft: #E8EEEA; --card-gradient: linear-gradient(180deg, #FFFFFF, #F7FAF7); --surface-raised: #FFFFFF; --surface-inset: #E8EEEA; --surface-hover: #F7FAF7; --input-bg: #FFFFFF;
+  --text-primary: #051F20; --text-heading: #051F20; --text-secondary: #52665C; --text-soft: #0B2B26; --text-label: #52665C; --text-muted: #52665C; --money-text: #163832;
+  --border: #E8EEEA; --border-subtle: #F0F4F1; --border-strong: #6F9278; --input-placeholder: #52665C; --table-heading-text: #051F20; --secondary-action-text: #163832; --secondary-action-bg: #FFFFFF; --secondary-action-hover: #DAF1DE; --nav-active-indicator: #8EB69B;
+  --status-warn-text: #40351F; --status-warn-bg: #E5C98B; --status-success-text: #163832; --status-success-bg: #C5DDD3; --status-danger-text: #5C2929; --status-danger-bg: #D9A6A6;
+  --info-text: #163832; --info-bg: #D6E2EA; --system-text: #405149; --system-bg: #E8EEEA; --danger-bg: #D9A6A6; --danger-text: #5C2929;
+  --success-border: rgba(22, 56, 50, 0.3); --warning-border: rgba(64, 53, 31, 0.3); --danger-border: rgba(92, 41, 41, 0.3); --system-border: rgba(82, 102, 92, 0.3);
+  --chart-series-1: #163832; --chart-series-2: #526F5C; --chart-series-3: #8D7440; --chart-series-4: #557783; --chart-series-5: #426D66; --chart-series-6: #536443; --chart-series-7: #9C5F51; --chart-series-8: #756985; --chart-grid: rgba(82, 102, 92, 0.16); --chart-point-fill: #FFFFFF; --chart-accent-shadow: rgba(22, 56, 50, 0.14);
+  --bar-fill: #163832; --bar-shadow: 0 8px 20px rgba(5, 31, 32, 0.14);
+  --table-header-bg: #F7FAF7; --row-hover: #F7FAF7; --row-zebra: transparent; --nav-hover-bg: #163832; --nav-text: #FFFFFF; --nav-icon: #A4B2AA; --nav-active-text: #FFFFFF; --nav-active-bg: #235347;
+  --brand-bg: var(--primary-soft); --primary-action-bg: #163832; --primary-action-text: #FFFFFF; --secondary-action-bg: #FFFFFF; --focus-ring: 0 0 0 4px rgba(142, 182, 155, 0.5); --orange-glow: var(--focus-ring);
+  --modal-backdrop: rgba(5, 31, 32, 0.48); --tooltip-bg: #051F20; --tooltip-border: #235347; --tooltip-text: #FFFFFF; --online-ring: rgba(142, 182, 155, 0.14); --inset-highlight: rgba(255, 255, 255, 0.72);
+  --receipt-bg: #FFFFFF; --receipt-text: #051F20; --receipt-divider: #E8EEEA; --login-grid-line: rgba(5, 31, 32, 0.08); --login-ambient: rgba(142, 182, 155, 0.12);
+  --card-shadow: 0 2px 8px rgba(5, 31, 32, 0.035); --card-shadow-hover: 0 5px 14px rgba(5, 31, 32, 0.07); --shadow: 0 12px 30px rgba(5, 31, 32, 0.1);
 }
 
 :root,
@@ -50,7 +50,7 @@
   --border-primary: var(--border); --border-secondary: var(--border-strong); --input-border: var(--border);
   --chart-secondary: var(--chart-series-4); --bg-app: var(--app-bg); --bg-sidebar: var(--sidebar-bg); --bg-header: var(--topbar-bg);
   --surface-1: var(--card-bg); --surface-2: var(--card-bg-soft); --surface-3: var(--surface-inset);
-  --accent: var(--primary); --accent-hover: var(--primary-strong); --accent-soft: var(--primary-soft); --accent-contrast: #3b2926;
+  --accent: var(--primary); --accent-hover: var(--primary-strong); --accent-soft: var(--primary-soft); --accent-contrast: var(--primary-action-text);
   --success: var(--green); --success-soft: var(--status-success-bg); --warning: var(--gold); --warning-soft: var(--status-warn-bg); --danger: var(--red); --danger-soft: var(--status-danger-bg); --info: var(--blue); --info-soft: var(--info-bg);
   --table-header: var(--table-header-bg); --table-row-hover: var(--row-hover); --shadow-sm: var(--card-shadow); --shadow-md: var(--shadow);
 }

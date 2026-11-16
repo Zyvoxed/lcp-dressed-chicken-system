@@ -1,5 +1,5 @@
 import { createContext, useEffect, useMemo, useState } from 'react'
-import { getCurrentUser, login as loginRequest } from '../services/authService.js'
+import { getCurrentUser, login as loginRequest, recordLogout } from '../services/authService.js'
 import { loginRoute } from '../utils/constants.js'
 
 /* eslint-disable react-refresh/only-export-components */
@@ -86,10 +86,17 @@ export function AuthProvider({ children }) {
     return authenticatedUser
   }
 
-  function logout() {
-    clearStoredSession()
-    setUser(null)
-    window.history.replaceState({}, '', loginRoute)
+  async function logout() {
+    const token = getStoredToken()
+    try {
+      if (token) await recordLogout(token)
+    } catch (error) {
+      console.error('Unable to record logout activity:', error.message)
+    } finally {
+      clearStoredSession()
+      setUser(null)
+      window.history.replaceState({}, '', loginRoute)
+    }
   }
 
   const value = useMemo(

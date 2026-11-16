@@ -29,7 +29,7 @@
   position: relative;
   overflow: hidden;
   border-radius: var(--radius-sm);
-  background: rgba(91, 80, 74, 0.11);
+  background: var(--surface-inset);
 }
 
 .page-skeleton-block::after {
@@ -239,13 +239,13 @@
   background: linear-gradient(
     158deg,
     transparent 0 21%,
-    rgba(233, 138, 36, 0.18) 21.5% 22.5%,
+    rgba(142, 182, 155, 0.18) 21.5% 22.5%,
     transparent 23% 38%,
-    rgba(233, 138, 36, 0.18) 38.5% 39.5%,
+    rgba(142, 182, 155, 0.18) 38.5% 39.5%,
     transparent 40% 59%,
-    rgba(233, 138, 36, 0.18) 59.5% 60.5%,
+    rgba(142, 182, 155, 0.18) 59.5% 60.5%,
     transparent 61% 76%,
-    rgba(233, 138, 36, 0.18) 76.5% 77.5%,
+    rgba(142, 182, 155, 0.18) 76.5% 77.5%,
     transparent 78%
   );
 }

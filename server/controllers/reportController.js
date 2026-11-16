@@ -221,6 +221,9 @@ export async function logReportGeneration(request, response) {
   if (!reportTypes.has(reportType)) {
     return response.status(400).json({ success: false, message: 'Invalid report type' })
   }
+  if (reportType === 'Inventory Valuation' && request.user?.role !== 'Admin') {
+    return response.status(403).json({ success: false, message: 'Access denied' })
+  }
 
   try {
     const [result] = await pool.execute(

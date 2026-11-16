@@ -5,6 +5,8 @@
 .app-shell {
   position: relative;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 100vh;
   margin: 0;
   overflow: visible;
@@ -17,9 +19,10 @@
 
 .content-area {
   min-width: 0;
+  max-width: 100%;
   margin-left: calc(var(--sidebar-expanded) + 28px);
   padding: clamp(28px, 2.2vw, 38px) 22px 32px 0;
-  min-height: calc(100vh - var(--header-height) - 14px);
+  min-height: calc(100vh - var(--header-height));
   transition: margin-left 0.25s ease, padding 0.25s ease;
 }
 
@@ -29,10 +32,13 @@
 
 .page-transition {
   min-width: 0;
+  max-width: 100%;
   min-height: calc(100vh - 146px);
 }
 
 .page-stack {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: clamp(14px, 1.35vw, 18px);
@@ -76,7 +82,7 @@
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--modal-backdrop);
     z-index: 35;
     backdrop-filter: blur(4px);
   }
