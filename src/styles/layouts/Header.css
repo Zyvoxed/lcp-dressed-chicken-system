@@ -96,54 +96,83 @@
   display: none;
 }
 
-/* — Theme toggle — */
-.theme-toggle {
+/* — User privilege card & dropdown — */
+.topbar-user-menu {
   position: relative;
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: var(--radius);
-  color: var(--text-secondary);
-  background: transparent;
 }
 
-.theme-toggle:hover {
-  border-color: var(--border-strong);
-  color: var(--text-heading);
-  background: var(--surface-hover);
-}
-
-/* — User privilege card — */
 .user-card,
 .privilege-card {
   min-width: 0;
-  min-height: 40px;
+  min-height: 42px;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 12px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
+  padding: 5px 12px 5px 6px;
+  border: 1px solid #9EC4A7;
+  border-radius: 10px;
+  background: #D5EBD9;
+  box-shadow: 0 1px 3px rgba(5, 31, 32, 0.08);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.privilege-card:hover {
+  background: #C4E2C9;
+  border-color: #6F9278;
+  box-shadow: 0 2px 6px rgba(5, 31, 32, 0.12);
+}
+
+.privilege-card.is-open {
+  background: #B4DAB9;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(35, 83, 71, 0.2);
+}
+
+.privilege-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] .privilege-card,
+.dark-theme .privilege-card {
+  background: #235347;
+  border-color: #8EB69B;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] .privilege-card:hover,
+.dark-theme .privilege-card:hover {
+  background: #2F6E5E;
+  border-color: #DAF1DE;
+}
+
+[data-theme="dark"] .privilege-card.is-open,
+.dark-theme .privilege-card.is-open {
+  background: #2F6E5E;
+  border-color: #DAF1DE;
+  box-shadow: 0 0 0 3px rgba(142, 182, 155, 0.35);
 }
 
 .user-card strong,
 .privilege-card strong {
   color: var(--text-heading);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   text-transform: capitalize;
 }
 
 .topbar-avatar {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  border-radius: 7px;
   color: #FFFFFF;
   background: var(--brand-dark);
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -162,14 +191,111 @@
 
 .topbar-user-copy {
   min-width: 0;
+  text-align: left;
 }
 
 .topbar-user-copy strong {
   display: block;
-  max-width: 180px;
+  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.topbar-chevron {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.topbar-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+/* — User Dropdown Menu — */
+.topbar-user-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12), 0 3px 8px rgba(0, 0, 0, 0.05);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  animation: userDropdownAnim 0.15s ease-out;
+}
+
+.dropdown-user-info {
+  padding: 8px 10px 6px;
+  text-align: left;
+}
+
+.dropdown-user-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-user-role {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  text-align: left;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.dropdown-item.logout {
+  color: var(--status-danger-text, #C53030);
+}
+
+.dropdown-item.logout:hover {
+  background: var(--danger-bg, rgba(197, 48, 48, 0.08));
+  color: var(--status-danger-text, #C53030);
+}
+
+@keyframes userDropdownAnim {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* — Command key / menu (preserved from original) — */
@@ -236,7 +362,9 @@
     display: none;
   }
 
-  .privilege-card { padding: 0; }
+  .privilege-card {
+    padding: 4px 8px 4px 5px;
+  }
 }
 
 @media (max-width: 900px) {

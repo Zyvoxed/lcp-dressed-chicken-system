@@ -41,16 +41,6 @@
   animation: page-skeleton-shimmer 1.6s ease-in-out infinite;
 }
 
-[data-theme="dark"] .page-skeleton-block,
-.dark-theme .page-skeleton-block {
-  background: rgba(255, 255, 255, 0.075);
-}
-
-[data-theme="dark"] .page-skeleton-block::after,
-.dark-theme .page-skeleton-block::after {
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-}
-
 .page-skeleton-line {
   height: 10px;
   border-radius: 999px;

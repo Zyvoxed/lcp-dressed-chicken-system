@@ -9,10 +9,8 @@ html {
   min-height: 100%;
   overflow-x: clip;
   background: var(--bg-primary);
+  color-scheme: light;
 }
-
-html[data-theme="dark"] { color-scheme: dark; }
-html[data-theme="light"] { color-scheme: light; }
 
 body {
   margin: 0;

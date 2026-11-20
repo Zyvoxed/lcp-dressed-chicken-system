@@ -472,15 +472,15 @@
 }
 
 .product-trends-gridline {
-  stroke: var(--border);
+  stroke: var(--chart-grid);
   stroke-width: 1;
-  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
 }
 
 .product-trends-axis-label {
   fill: var(--text-muted);
-  font-size: 10.5px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 400;
   font-family: inherit;
 }
 
@@ -493,59 +493,19 @@
 }
 
 .product-trends-point {
-  cursor: pointer;
-  transition: r 0.15s ease, stroke-width 0.15s ease;
   outline: none;
 }
 
-.product-trends-point:hover,
-.product-trends-point:focus-visible {
-  r: 6;
-  stroke-width: 2.5;
-}
-
 /* — Floating Tooltip — */
-.product-trends-tooltip {
-  position: fixed;
-  z-index: 1000;
-  pointer-events: none;
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
-  background: var(--tooltip-bg);
-  border: 1px solid var(--tooltip-border);
-  color: var(--tooltip-text);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
-  font-size: 12px;
-  min-width: 160px;
-  transform: translate(-50%, -100%);
-  margin-top: -12px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  animation: tooltip-fade 0.12s ease-out;
-}
-
-.product-trends-tooltip.below {
-  transform: translate(-50%, 14px);
-  margin-top: 0;
-}
-
-@keyframes tooltip-fade {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -90%);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -100%);
-  }
-}
-
 .product-trends-tooltip-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-weight: 700;
+  font-weight: 600;
+}
+
+.product-trends-tooltip-header strong {
+  color: var(--text-heading);
 }
 
 .product-trends-tooltip-dot {
@@ -557,7 +517,7 @@
 
 .product-trends-tooltip-period {
   font-size: 11px;
-  opacity: 0.82;
+  color: var(--text-muted);
 }
 
 .product-trends-tooltip-metric {
@@ -566,13 +526,8 @@
 }
 
 .product-trends-tooltip-metric strong {
-  font-weight: 700;
-}
-
-.product-trends-tooltip-pinned-hint {
-  font-size: 10px;
-  opacity: 0.65;
-  margin-top: 3px;
+  color: var(--text-heading);
+  font-weight: 600;
 }
 
 /* — Empty & Loading States — */

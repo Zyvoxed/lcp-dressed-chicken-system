@@ -9,6 +9,7 @@ import Modal from '../Shared/Modal.jsx'
 import PaymentForm from './PaymentForm.jsx'
 import { peso } from '../../utils/currency.js'
 import { formatActivityTimestamp } from '../../utils/activityDateTime.js'
+import { buildCustomerPaymentHistory } from './paymentHistory.js'
 
 const salesColumns = [
   'Sale ID',
@@ -53,6 +54,7 @@ function CustomerLedger({
   const [actionBusy, setActionBusy] = useState(false)
   const [actionError, setActionError] = useState('')
   const archived = customer.is_active === false || customer.is_active === 0
+  const paymentHistory = buildCustomerPaymentHistory(credits, payments)
 
   async function confirmStatusChange() {
     setActionBusy(true)
@@ -168,10 +170,7 @@ function CustomerLedger({
             <>
               {loading && <PageSkeleton variant="customer-ledger" label="customer ledger details" />}
               {!loading && error && <EmptyState>{error}</EmptyState>}
-              {!loading && !error && Number(customer.current_balance) <= 0 && (
-                <p className="payment-settled-note">No outstanding balance. This customer has fully settled their credit.</p>
-              )}
-              {!loading && !error && Number(customer.current_balance) > 0 && (
+              {!loading && !error && (
                 <PaymentForm
                   key={customer.customer_id}
                   customer={customer}
@@ -183,16 +182,25 @@ function CustomerLedger({
               {!loading && !error && (
                 <section className="customer-payment-history" aria-labelledby="customer-payment-history-heading">
                   <h3 id="customer-payment-history-heading">Payment History</h3>
-                  {payments.length ? (
+                  {paymentHistory.length ? (
                     <div className="customer-payment-history-list">
-                      {payments.map((payment) => (
-                        <article key={payment.payment_id}>
+                      {paymentHistory.map((payment) => (
+                        <article
+                          key={payment.history_id || `payment-${payment.payment_id}`}
+                          className={payment.history_type === 'initial-downpayment' ? 'initial-downpayment' : undefined}
+                        >
                           <div>
-                            <strong>PAY-{payment.payment_id}</strong>
+                            <strong>
+                              {payment.history_type === 'initial-downpayment'
+                                ? 'Initial Downpayment'
+                                : `PAY-${payment.payment_id}`}
+                            </strong>
                             <span>{peso.format(Number(payment.payment_amount))}</span>
                           </div>
                           <p>
-                            Applied to OR-{payment.sale_id}
+                            {payment.history_type === 'initial-downpayment'
+                              ? `Payment received during credit sale · OR-${payment.sale_id}`
+                              : `Applied to OR-${payment.sale_id}`}
                             {payment.payment_date
                               ? ` · ${formatActivityTimestamp(payment.payment_date).dateTime}`
                               : ''}

@@ -105,12 +105,12 @@ try {
   await waitForServer(api)
 
   const adminToken = jwt.sign(
-    { user_id: adminResult.insertId, role: 'Admin', auth_version: 0 },
+    { user_id: adminResult.insertId, role: 'Admin', auth_version: 0, mfa_verified: true },
     process.env.JWT_SECRET,
     { expiresIn: '10m' },
   )
   const staffToken = jwt.sign(
-    { user_id: staffResult.insertId, role: 'Staff', auth_version: 0 },
+    { user_id: staffResult.insertId, role: 'Staff', auth_version: 0, mfa_verified: true },
     process.env.JWT_SECRET,
     { expiresIn: '10m' },
   )

@@ -59,9 +59,9 @@ function UserForm({ mode, selectedUser, onCancel, onSubmit, busy, protectAdminRo
               <small>Used to sign in. Must be unique.</small>
             </label>
             <label>
-              Recovery Email (Optional)
-              <input type="email" autoComplete="email" maxLength={254} value={form.email} onChange={field('email')} placeholder="e.g. maria@example.com" disabled={busy} />
-              <small>A verification link will be sent before this email can be used for account recovery.</small>
+              Login Email
+              <input type="email" autoComplete="email" maxLength={254} value={form.email} onChange={field('email')} placeholder="e.g. maria@example.com" disabled={busy} required />
+              <small>Required for sign-in verification. The account must verify this address before signing in.</small>
             </label>
             <label>
               Contact Number (Optional)

@@ -4,6 +4,7 @@ import { BarChart3 } from 'lucide-react'
 import { peso } from '../../utils/currency.js'
 import { toTransactionCents } from '../../utils/transactionMoney.js'
 import { buildMonotonePath } from '../../utils/chartPaths.js'
+import { getMonthlyIndexesForYear } from '../../utils/monthlyChartPeriods.js'
 import EmptyState from '../Shared/EmptyState.jsx'
 import { getSalesReport } from '../../services/reportService.js'
 
@@ -115,7 +116,7 @@ function SalesChart() {
 
   const periodData = useMemo(() => {
     if (!sales) return null
-    const buckets = period === 'monthly' ? months.map((_, index) => index) : years
+    const buckets = period === 'monthly' ? getMonthlyIndexesForYear(selectedYear) : years
     const totals = new Map(buckets.map((bucket) => [bucket, 0n]))
 
     for (const sale of sales) {

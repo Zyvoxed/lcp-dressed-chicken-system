@@ -11,6 +11,12 @@ import {
 } from '../utils/idempotency.js'
 import { centsToAmount, lineTotalCents, toCents, toThousandths } from '../utils/money.js'
 import { resolveTransactionFailure } from '../utils/transactionFailure.js'
+import {
+  getBusinessCalendarDate,
+  getStockInCalendarDate,
+  STOCK_IN_FUTURE_DATE_MESSAGE,
+  STOCK_IN_INVALID_DATE_MESSAGE,
+} from '../../shared/stockInDate.js'
 
 class RequestError extends Error {
   constructor(status, message) {
@@ -64,11 +70,13 @@ export async function createStockIn(request, response) {
       decimalPlaces: 2,
       minimum: 0,
     })
-    const deliveryDate = new Date(request.body?.delivery_date)
-
-    if (!request.body?.delivery_date || Number.isNaN(deliveryDate.getTime())) {
-      throw new RequestError(400, 'Delivery date is invalid')
+    const submittedDeliveryDate = request.body?.delivery_date
+    const deliveryCalendarDate = getStockInCalendarDate(submittedDeliveryDate)
+    if (!deliveryCalendarDate) throw new RequestError(400, STOCK_IN_INVALID_DATE_MESSAGE)
+    if (deliveryCalendarDate > getBusinessCalendarDate()) {
+      throw new RequestError(400, STOCK_IN_FUTURE_DATE_MESSAGE)
     }
+    const deliveryDate = new Date(submittedDeliveryDate)
 
     const costPriceCents = toCents(costPrice)
     idempotency = {

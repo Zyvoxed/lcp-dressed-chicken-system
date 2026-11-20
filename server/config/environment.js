@@ -12,6 +12,8 @@ if (production) {
     'SMTP_USER',
     'SMTP_APP_PASSWORD',
     'SMTP_FROM_EMAIL',
+    'GMAIL_USER',
+    'GMAIL_APP_PASSWORD',
   )
 }
 
@@ -30,6 +32,21 @@ const smtpPortValue = process.env.SMTP_PORT?.trim()
 const smtpPort = smtpPortValue ? Number(smtpPortValue) : 465
 if (!Number.isInteger(smtpPort) || smtpPort <= 0 || smtpPort > 65535) {
   throw new Error('Invalid environment variable: SMTP_PORT')
+}
+
+const smtpHost = process.env.SMTP_HOST?.trim() || ''
+const smtpAppPasswordValue = process.env.SMTP_APP_PASSWORD || ''
+const smtpAppPassword = smtpHost.toLowerCase() === 'smtp.gmail.com'
+  ? smtpAppPasswordValue.replace(/\s/g, '')
+  : smtpAppPasswordValue.trim()
+
+const mfaExpiryMinutes = Number(process.env.MFA_OTP_EXPIRY_MINUTES || 5)
+const mfaOtpLength = Number(process.env.MFA_OTP_LENGTH || 6)
+if (!Number.isInteger(mfaExpiryMinutes) || mfaExpiryMinutes !== 5) {
+  throw new Error('MFA_OTP_EXPIRY_MINUTES must be 5')
+}
+if (mfaOtpLength !== 6) {
+  throw new Error('MFA_OTP_LENGTH must be 6')
 }
 
 const databaseSslValue = process.env.DB_SSL?.trim().toLowerCase()
@@ -58,11 +75,19 @@ export const environment = {
   frontendUrl: process.env.FRONTEND_URL?.trim() || 'http://localhost:5173',
   trustedProxies,
   smtp: {
-    host: process.env.SMTP_HOST?.trim() || '',
+    host: smtpHost,
     port: smtpPort,
     user: process.env.SMTP_USER?.trim() || '',
-    appPassword: process.env.SMTP_APP_PASSWORD?.trim() || '',
+    appPassword: smtpAppPassword,
     fromEmail: process.env.SMTP_FROM_EMAIL?.trim() || '',
+  },
+  gmail: {
+    user: process.env.GMAIL_USER?.trim() || '',
+    appPassword: process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, '') || '',
+  },
+  mfa: {
+    otpExpiryMinutes: mfaExpiryMinutes,
+    otpLength: mfaOtpLength,
   },
   database: {
     host: process.env.DB_HOST,

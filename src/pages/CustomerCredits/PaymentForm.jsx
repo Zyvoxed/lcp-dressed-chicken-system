@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import TransactionSuccessModal from '../Shared/TransactionSuccessModal.jsx'
 import PaymentConfirmationModal from './PaymentConfirmationModal.jsx'
+import FormattedNumberInput from '../Shared/FormattedNumberInput.jsx'
 import { recordPayment } from '../../services/paymentService.js'
 import { peso } from '../../utils/currency.js'
 import { formatActivityTimestamp } from '../../utils/activityDateTime.js'
@@ -16,9 +17,9 @@ import { toTransactionCents } from '../../utils/transactionMoney.js'
 import { useAuth } from '../../hooks/useAuth.js'
 import { useToast } from '../../context/ToastContext.jsx'
 
-function getInitialPaymentRecovery(userId) {
+function getInitialPaymentRecovery(userId, customerId) {
   try {
-    return { attempt: readPendingTransaction('payment', userId), error: '' }
+    return { attempt: readPendingTransaction('payment', userId, customerId), error: '' }
   } catch (error) {
     return { attempt: null, error: error.message }
   }
@@ -41,7 +42,7 @@ function PaymentForm({ customer, credits, onRecorded, onSelectCustomer }) {
 function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCustomer }) {
   const { showSuccess, showError, showWarning } = useToast()
   const openCredits = credits.filter((credit) => Number(credit.remaining_balance) > 0)
-  const [initialRecovery] = useState(() => getInitialPaymentRecovery(userId))
+  const [initialRecovery] = useState(() => getInitialPaymentRecovery(userId, customer.customer_id))
   const [saleId, setSaleId] = useState(() => initialRecovery.attempt ? String(initialRecovery.attempt.payload.sale_id) : '')
   const [amount, setAmount] = useState(() => initialRecovery.attempt ? String(initialRecovery.attempt.payload.payment_amount) : '')
   const [submitting, setSubmitting] = useState(false)
@@ -88,7 +89,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
             state: 'completed',
             response,
           }
-          savePendingTransaction('payment', userId, completedAttempt)
+          savePendingTransaction('payment', userId, completedAttempt, customer.customer_id)
           setPendingAttempt(completedAttempt)
           setSuccessResult(response)
           showSuccess('The payment was already recorded successfully.')
@@ -104,7 +105,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
 
     recoverPayment()
     return () => { active = false }
-  }, [pendingAttempt, pendingCustomerMatches, onRecorded, showSuccess, userId])
+  }, [pendingAttempt, pendingCustomerMatches, onRecorded, showSuccess, userId, customer.customer_id])
 
   function validatePayment() {
     const numericAmount = Number(amount)
@@ -178,7 +179,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
           },
         }
       }
-      savePendingTransaction('payment', userId, attempt)
+      savePendingTransaction('payment', userId, attempt, customer.customer_id)
       recoveryChecked.current = true
       setPendingAttempt(attempt)
       const result = await recordPayment(attempt.payload, attempt.key)
@@ -192,7 +193,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
       }
       const completedResult = { ...result, payment_date: recordedPayment?.payment_date }
       const completedAttempt = { ...attempt, state: 'completed', response: completedResult }
-      savePendingTransaction('payment', userId, completedAttempt)
+      savePendingTransaction('payment', userId, completedAttempt, customer.customer_id)
       setPendingAttempt(completedAttempt)
       setSuccessResult(completedResult)
       showSuccess('Payment recorded successfully.')
@@ -213,7 +214,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
           },
         }
         try {
-          savePendingTransaction('payment', userId, rejectedAttempt)
+          savePendingTransaction('payment', userId, rejectedAttempt, customer.customer_id)
           setPendingAttempt(rejectedAttempt)
           setRecoveryMessage('This payment was rejected and confirmed not committed. Edit or discard it before starting another payment.')
         } catch (storageError) {
@@ -250,7 +251,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
           state: 'completed',
           response: result,
         }
-        savePendingTransaction('payment', userId, completedAttempt)
+        savePendingTransaction('payment', userId, completedAttempt, customer.customer_id)
         setPendingAttempt(completedAttempt)
         setSuccessResult(result)
         showSuccess('The payment was already recorded successfully.')
@@ -267,7 +268,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
 
   function finishPayment() {
     try {
-      clearPendingTransaction('payment', userId)
+      clearPendingTransaction('payment', userId, customer.customer_id)
     } catch (storageError) {
       setError(storageError.message)
       return
@@ -285,7 +286,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
 
   function editRejectedPayment() {
     try {
-      clearPendingTransaction('payment', userId)
+      clearPendingTransaction('payment', userId, customer.customer_id)
     } catch (storageError) {
       setError(storageError.message)
       return
@@ -313,6 +314,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
         <h3>Record Customer Payment</h3>
         <p>Apply a payment to one of {customer.customer_name}&apos;s unpaid credit sales.</p>
       </div>
+      {(openCredits.length > 0 || pendingAttempt || successResult) && <>
       {pendingAttempt?.state === 'pending' && pendingCustomerMatches && (
         <div className="payment-feedback" role="status">
           <p>A payment is unresolved. Its original sale and amount are locked to prevent duplicate or changed submissions.</p>
@@ -358,7 +360,7 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
       </label>
       <label>
         <span>Payment Amount <b className="required-marker" aria-hidden="true">*</b></span>
-        <input type="number" inputMode="decimal" min="0.01" max={selectedCredit ? Number(selectedCredit.remaining_balance) : undefined} step="0.01" placeholder="0.00" value={amount} onChange={(event) => { setAmount(event.target.value); setError('') }} disabled={submitting || recoveryBlocked || Boolean(pendingAttempt) || !openCredits.length} />
+        <FormattedNumberInput placeholder="0.00" value={amount} onValueChange={(value) => { setAmount(value); setError('') }} disabled={submitting || recoveryBlocked || Boolean(pendingAttempt) || !openCredits.length} />
       </label>
       {selectedCredit && (
         <div className="payment-balance-preview">
@@ -371,6 +373,10 @@ function PaymentFormForUser({ userId, customer, credits, onRecorded, onSelectCus
       <button className="primary-action" type="button" onClick={handleReview} disabled={submitting || recoveryBlocked || (!pendingAttempt && !openCredits.length) || Boolean(successResult) || pendingAttempt?.state === 'completed' || pendingAttempt?.state === 'rejected'}>
         {pendingAttempt?.state === 'pending' ? 'Retry Pending Payment' : 'Review Payment'}
       </button>
+      </>}
+      {!openCredits.length && !pendingAttempt && !successResult && (
+        <p className="payment-settled-note">No outstanding balance. This customer has fully settled their credit.</p>
+      )}
       {reviewOpen && selectedCredit && (
         <PaymentConfirmationModal
           customer={customer}

@@ -5,6 +5,7 @@ import { peso } from '../../utils/currency.js'
 import Modal from '../Shared/Modal.jsx'
 import TransactionSuccessModal from '../Shared/TransactionSuccessModal.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
+import FormattedNumberInput from '../Shared/FormattedNumberInput.jsx'
 
 const initialForm = {
   product_name: '',
@@ -178,16 +179,11 @@ function ProductModal({ product, onClose, onSaved }) {
         )}
         <label htmlFor="product-selling-price">
           <span>Selling Price <b className="required-marker" aria-hidden="true">*</b></span>
-          <input
+          <FormattedNumberInput
             id="product-selling-price"
             name="selling_price"
-            type="number"
             value={form.selling_price}
-            onChange={handleChange}
-            min="0"
-            max="99999999.99"
-            step="0.01"
-            inputMode="decimal"
+            onValueChange={(value) => handleChange({ target: { name: 'selling_price', value } })}
             required
           />
         </label>

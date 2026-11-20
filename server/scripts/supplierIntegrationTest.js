@@ -82,8 +82,8 @@ try {
   })
   await waitForServer(api)
 
-  const adminToken = jwt.sign({ user_id: adminResult.insertId, role: 'Admin' }, process.env.JWT_SECRET, { expiresIn: '10m' })
-  const employeeToken = jwt.sign({ user_id: employeeResult.insertId, role: 'Staff' }, process.env.JWT_SECRET, { expiresIn: '10m' })
+  const adminToken = jwt.sign({ user_id: adminResult.insertId, role: 'Admin', mfa_verified: true }, process.env.JWT_SECRET, { expiresIn: '10m' })
+  const employeeToken = jwt.sign({ user_id: employeeResult.insertId, role: 'Staff', mfa_verified: true }, process.env.JWT_SECRET, { expiresIn: '10m' })
   const jsonHeaders = { 'Content-Type': 'application/json' }
 
   const unauthenticatedRead = await request('/suppliers')

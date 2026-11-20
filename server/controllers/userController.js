@@ -33,6 +33,7 @@ function userDetails(body) {
   const role = body?.role
   if (!fullname) throw new UserError(400, 'Full name is required')
   if (!username) throw new UserError(400, 'Username is required')
+  if (!email) throw new UserError(400, 'A verified email address is required for sign-in')
   validateRecoveryEmail(email)
   if (!['Admin', 'Staff'].includes(role)) throw new UserError(400, 'Role must be Admin or Staff')
   return { fullname, username, email, emailProvided, contactNumber: contactNumber || null, role }

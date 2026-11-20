@@ -8,7 +8,7 @@ import { hasRouteAccess } from '../utils/rolePermissions.js'
 import MainLayout from './MainLayout.jsx'
 
 function ProtectedLayout({ activeModule, onSelect, children }) {
-  const { authLoading, isAuthenticated, login, logout, role, user } = useAuth()
+  const { authLoading, isAuthenticated, login, logout, role, user, verifyLoginMfa, resendLoginMfa } = useAuth()
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated && window.location.pathname !== loginRoute) {
@@ -49,7 +49,7 @@ function ProtectedLayout({ activeModule, onSelect, children }) {
   if (!isAuthenticated) {
     return (
       <PageTransition>
-        <Login onLogin={login} />
+        <Login onLogin={login} onVerifyMfa={verifyLoginMfa} onResendMfa={resendLoginMfa} />
       </PageTransition>
     )
   }

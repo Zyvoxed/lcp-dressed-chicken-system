@@ -4,13 +4,12 @@ import {
   Banknote,
   CheckCircle2,
   CreditCard,
-  Minus,
-  Plus,
   ShoppingCart,
   Trash2,
   UserPlus,
 } from 'lucide-react'
 import EmptyState from '../Shared/EmptyState.jsx'
+import FormattedNumberInput from '../Shared/FormattedNumberInput.jsx'
 import TransactionSuccessModal from '../Shared/TransactionSuccessModal.jsx'
 import CustomerSelector from './CustomerSelector.jsx'
 import SaleConfirmationModal from './SaleConfirmationModal.jsx'
@@ -28,6 +27,7 @@ import {
   transactionTotalCents,
 } from '../../utils/transactionMoney.js'
 import { useToast } from '../../context/ToastContext.jsx'
+import { formatQuantityInput } from './quantityInput.js'
 
 const maximumTransactionCents = 999999999999n
 
@@ -38,7 +38,7 @@ function SalesBasket({
   customerId,
   onAddCustomer,
   onCustomerChange,
-  onQuantity,
+  onEditQuantity,
   onRemove,
   onClearCart,
   onProcess,
@@ -319,60 +319,46 @@ function SalesBasket({
           const lineCents = transactionLineCents(item.quantity, item.selling_price)
           return (
             <div className="basket-item" key={item.product_id}>
-              <div className="basket-item-heading">
-                <div className="basket-item-meta">
-                  <strong className="basket-item-name">{item.product_name}</strong>
-                  <span className="basket-item-rate">
-                    {peso.format(Number(item.selling_price))} / {item.unit || 'kg'}
-                  </span>
+              <button
+                className="basket-item-edit"
+                type="button"
+                disabled={submitting || lockPending}
+                onClick={() => onEditQuantity(item)}
+                aria-label={`Edit ${item.product_name} quantity`}
+              >
+                <div className="basket-item-heading">
+                  <div className="basket-item-meta">
+                    <strong className="basket-item-name">{item.product_name}</strong>
+                    <span className="basket-item-rate">
+                      {peso.format(Number(item.selling_price))} / {item.unit || 'kg'}
+                    </span>
+                  </div>
                 </div>
-                <button
-                  className="basket-remove-button"
-                  type="button"
-                  disabled={submitting || lockPending}
-                  onClick={() => onRemove(item.product_id)}
-                  aria-label={`Remove ${item.product_name}`}
-                  title={`Remove ${item.product_name}`}
-                >
-                  <Trash2 size={15} aria-hidden="true" />
-                </button>
-              </div>
+                <div className="basket-item-controls">
+                  <div className="basket-item-quantity">
+                    <span>Quantity</span>
+                    <strong>{formatQuantityInput(item.quantity)} {item.unit || 'kg'}</strong>
+                  </div>
+                  <div className="basket-item-subtotal">
+                    <span>Subtotal</span>
+                    <strong>{formatTransactionCents(lineCents, peso)}</strong>
+                  </div>
+                </div>
+              </button>
 
-              <div className="basket-item-controls">
-                <div className="quantity-stepper">
-                  <button
-                    type="button"
-                    disabled={submitting || lockPending || item.quantity <= 0.001}
-                    onClick={() => onQuantity(item.product_id, item.quantity - 1)}
-                    aria-label={`Decrease ${item.product_name} quantity`}
-                  >
-                    <Minus size={14} aria-hidden="true" />
-                  </button>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min="0.001"
-                    max={Number(item.stock_quantity)}
-                    step="0.001"
-                    value={item.quantity}
-                    disabled={submitting || lockPending}
-                    onChange={(event) => onQuantity(item.product_id, event.target.value)}
-                    aria-label={`${item.product_name} quantity`}
-                  />
-                  <button
-                    type="button"
-                    disabled={submitting || lockPending || atStockLimit}
-                    onClick={() => onQuantity(item.product_id, item.quantity + 1)}
-                    aria-label={`Increase ${item.product_name} quantity`}
-                  >
-                    <Plus size={14} aria-hidden="true" />
-                  </button>
-                </div>
-                <div className="basket-item-subtotal">
-                  <span>Subtotal</span>
-                  <strong>{formatTransactionCents(lineCents, peso)}</strong>
-                </div>
-              </div>
+              <button
+                className="basket-remove-button"
+                type="button"
+                disabled={submitting || lockPending}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onRemove(item.product_id)
+                }}
+                aria-label={`Remove ${item.product_name}`}
+                title={`Remove ${item.product_name}`}
+              >
+                <Trash2 size={15} aria-hidden="true" />
+              </button>
 
               {atStockLimit && (
                 <div className="stock-limit-note">
@@ -454,16 +440,11 @@ function SalesBasket({
               <span>{paymentType === 'Cash' ? 'Cash Received (Exact Amount)' : 'Amount Paid (Deposit)'}</span>
               <div className="pos-input-currency-wrap">
                 <span className="currency-prefix" aria-hidden="true">₱</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  max={Number(transactionCentsToAmount(totalCents)) || undefined}
-                  step="0.01"
+                <FormattedNumberInput
                   placeholder="0.00"
                   value={amountPaid}
                   disabled={submitting || lockPending}
-                  onChange={(event) => { setAmountPaid(event.target.value); setError('') }}
+                  onValueChange={(value) => { setAmountPaid(value); setError('') }}
                 />
               </div>
             </label>

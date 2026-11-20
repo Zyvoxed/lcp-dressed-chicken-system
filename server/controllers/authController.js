@@ -1,6 +1,17 @@
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import pool from '../config/database.js'
+import { environment } from '../config/environment.js'
+import { sendLoginMfaCode } from '../services/emailDeliveryService.js'
+import {
+  consumeLoginChallenge,
+  createLoginChallenge,
+  enforceLoginRateLimits,
+  invalidateLoginChallenge,
+  LoginMfaError,
+  resendLoginChallenge,
+} from '../services/loginMfaService.js'
+import { getRequestIp } from '../utils/requestIp.js'
 
 const invalidCredentials = {
   success: false,
@@ -16,8 +27,11 @@ export async function login(request, response) {
   }
 
   try {
+    response.set('Cache-Control', 'no-store')
+    await enforceLoginRateLimits({ username, ipAddress: getRequestIp(request) })
     const [users] = await pool.execute(
-      `SELECT user_id, fullname, username, password, role, is_active, auth_version
+      `SELECT user_id, fullname, username, password, role, is_active, auth_version,
+              email, email_verified_at
        FROM users
        WHERE username = ?
        LIMIT 1`,
@@ -42,19 +56,71 @@ export async function login(request, response) {
       return response.status(401).json(invalidCredentials)
     }
 
+    if (!user.email || !user.email_verified_at) {
+      return response.status(403).json({
+        success: false,
+        message: 'This account needs an active, verified email address. Contact an administrator.',
+      })
+    }
+
+    const challenge = await createLoginChallenge(user, getRequestIp(request))
+    try {
+      await sendLoginMfaCode({
+        email: user.email,
+        code: challenge.code,
+        expiryMinutes: environment.mfa.otpExpiryMinutes,
+      })
+    } catch {
+      await invalidateLoginChallenge(challenge.challengeId)
+      return response.status(503).json({
+        success: false,
+        message: 'Unable to send the verification code. Please try again later.',
+      })
+    }
+
+    return response.json({
+      success: true,
+      message: 'A verification code was sent to your registered email address.',
+      challengeId: challenge.challengeId,
+      expiresAt: challenge.expiresAt,
+      resendAvailableAt: challenge.resendAvailableAt,
+    })
+  } catch (error) {
+    if (error instanceof LoginMfaError) {
+      if (error.retryAfterSeconds) response.set('Retry-After', String(error.retryAfterSeconds))
+      return response.status(error.status).json({ success: false, message: error.message })
+    }
+    console.error('Unable to authenticate user:', error.message)
+    return response.status(500).json({
+      success: false,
+      message: 'Unable to complete login',
+    })
+  }
+}
+
+export async function verifyLoginMfa(request, response) {
+  response.set('Cache-Control', 'no-store')
+  try {
+    const user = await consumeLoginChallenge({
+      challengeId: request.body?.challengeId,
+      code: request.body?.code,
+      ipAddress: getRequestIp(request),
+    })
     const token = jwt.sign(
-      { user_id: user.user_id, role: user.role, auth_version: Number(user.auth_version || 0) },
+      {
+        user_id: user.user_id,
+        role: user.role,
+        auth_version: Number(user.auth_version || 0),
+        mfa_verified: true,
+      },
       process.env.JWT_SECRET,
       { expiresIn: '8h' },
     )
-
     pool.execute(
       `INSERT INTO activity_logs (user_id, action, description, created_at)
        VALUES (?, 'LOGIN', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
       [user.user_id, `${user.username} logged in`],
-    ).catch((error) => {
-      console.error('Unable to record login activity:', error.message)
-    })
+    ).catch((error) => console.error('Unable to record login activity:', error.message))
 
     return response.json({
       success: true,
@@ -68,11 +134,45 @@ export async function login(request, response) {
       },
     })
   } catch (error) {
-    console.error('Unable to authenticate user:', error.message)
-    return response.status(500).json({
-      success: false,
-      message: 'Unable to complete login',
+    if (error instanceof LoginMfaError) {
+      if (error.retryAfterSeconds) response.set('Retry-After', String(error.retryAfterSeconds))
+      return response.status(error.status).json({ success: false, message: error.message })
+    }
+    console.error('Unable to verify login code:', error.message)
+    return response.status(500).json({ success: false, message: 'Unable to verify the code. Please try again.' })
+  }
+}
+
+export async function resendLoginMfa(request, response) {
+  response.set('Cache-Control', 'no-store')
+  try {
+    const challenge = await resendLoginChallenge({
+      challengeId: request.body?.challengeId,
+      ipAddress: getRequestIp(request),
     })
+    try {
+      await sendLoginMfaCode({
+        email: challenge.email,
+        code: challenge.code,
+        expiryMinutes: environment.mfa.otpExpiryMinutes,
+      })
+    } catch {
+      await invalidateLoginChallenge(request.body?.challengeId)
+      return response.status(503).json({ success: false, message: 'Unable to send the verification code. Return to login and try again.' })
+    }
+    return response.json({
+      success: true,
+      message: 'A new verification code was sent.',
+      expiresAt: challenge.expiresAt,
+      resendAvailableAt: challenge.resendAvailableAt,
+    })
+  } catch (error) {
+    if (error instanceof LoginMfaError) {
+      if (error.retryAfterSeconds) response.set('Retry-After', String(error.retryAfterSeconds))
+      return response.status(error.status).json({ success: false, message: error.message })
+    }
+    console.error('Unable to resend login code:', error.message)
+    return response.status(500).json({ success: false, message: 'Unable to resend the code. Please try again.' })
   }
 }
 

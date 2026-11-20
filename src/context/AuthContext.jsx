@@ -1,5 +1,11 @@
 import { createContext, useEffect, useMemo, useState } from 'react'
-import { getCurrentUser, login as loginRequest, recordLogout } from '../services/authService.js'
+import {
+  getCurrentUser,
+  login as loginRequest,
+  recordLogout,
+  resendLoginMfa as resendLoginMfaRequest,
+  verifyLoginMfa as verifyLoginMfaRequest,
+} from '../services/authService.js'
 import { loginRoute } from '../utils/constants.js'
 
 /* eslint-disable react-refresh/only-export-components */
@@ -76,7 +82,11 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function login(username, password) {
-    const result = await loginRequest(username, password)
+    return loginRequest(username, password)
+  }
+
+  async function verifyLoginMfa(challengeId, code) {
+    const result = await verifyLoginMfaRequest(challengeId, code)
     const authenticatedUser = normalizeUser(result.user)
 
     localStorage.setItem(tokenStorageKey, result.token)
@@ -84,6 +94,10 @@ export function AuthProvider({ children }) {
     setUser(authenticatedUser)
 
     return authenticatedUser
+  }
+
+  async function resendLoginMfa(challengeId) {
+    return resendLoginMfaRequest(challengeId)
   }
 
   async function logout() {
@@ -104,6 +118,8 @@ export function AuthProvider({ children }) {
       user,
       currentUser: user,
       login,
+      verifyLoginMfa,
+      resendLoginMfa,
       logout,
       authLoading,
       role: user?.role || null,

@@ -6,20 +6,9 @@ function ProductCard({ product, onAdd }) {
   const available = stockQty > 0
   const isLowStock = available && stockQty <= 10
 
-  function addOnKeyboard(event) {
-    if (available && (event.key === 'Enter' || event.key === ' ')) {
-      event.preventDefault()
-      onAdd(product)
-    }
-  }
-
   return (
     <tr
       className={`product-card ${available ? 'is-available' : 'is-unavailable'}`}
-      tabIndex={available ? 0 : -1}
-      aria-disabled={!available}
-      onClick={() => available && onAdd(product)}
-      onKeyDown={addOnKeyboard}
     >
       <td className="pos-product-name-col">
         <div className="pos-prod-info">

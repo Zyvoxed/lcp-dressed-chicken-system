@@ -5,7 +5,6 @@ import {
   FileChartColumn,
   LayoutDashboard,
   History,
-  LogOut,
   ShoppingCart,
   Truck,
   Users,
@@ -136,20 +135,6 @@ function Sidebar({ activeModule, onSelect, onLogout, role, collapsed, mobileOpen
           );
         })}
       </nav>
-
-      <div className="sidebar-footer">
-        <div className="sidebar-utility">
-          <button
-            className="logout-button"
-            type="button"
-            onClick={onLogout}
-            title="Sign out"
-          >
-            <LogOut size={16} aria-hidden="true" />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </div>
     </aside>
   );
 }

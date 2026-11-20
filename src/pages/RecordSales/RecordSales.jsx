@@ -12,6 +12,7 @@ import CategoryFilter from './CategoryFilter.jsx'
 import ProductGrid from './ProductGrid.jsx'
 import SalesBasket from './SalesBasket.jsx'
 import CustomerModal from './CustomerModal.jsx'
+import QuantityModal from './QuantityModal.jsx'
 import { getCustomers } from '../../services/customerService.js'
 import { getProducts } from '../../services/productService.js'
 import { createSale } from '../../services/salesService.js'
@@ -19,6 +20,11 @@ import { getIdempotencyStatus } from '../../services/idempotencyService.js'
 import { readPendingTransaction, savePendingTransaction } from '../../utils/pendingTransaction.js'
 import { useAuth } from '../../hooks/useAuth.js'
 import { useToast } from '../../context/ToastContext.jsx'
+import {
+  applyCartQuantitySelection,
+  formatQuantityInput,
+  initialAddQuantity,
+} from './quantityInput.js'
 
 function getInitialSaleRecovery(userId) {
   try {
@@ -45,6 +51,7 @@ function RecordSalesForUser({ userId }) {
   const [customers, setCustomers] = useState([])
   const [selectedCustomerId, setSelectedCustomerId] = useState(() => initialRecovery.attempt?.display.customer_id || '')
   const [customerModal, setCustomerModal] = useState(false)
+  const [quantityModal, setQuantityModal] = useState(null)
   const [mobileView, setMobileView] = useState(() => initialRecovery.attempt ? 'order' : 'products')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -159,28 +166,38 @@ function RecordSalesForUser({ userId }) {
     })
   }, [products, category, normalizedQuery, inStockOnly, sortBy])
 
-  function addProduct(product) {
+  function openAddQuantity(product) {
     if (pendingSale || recoveryError || Number(product.stock_quantity) <= 0) return
 
-    setCart((current) => {
-      const existing = current.find((item) => item.product_id === product.product_id)
-      return existing
-        ? current.map((item) => item.product_id === product.product_id
-          ? { ...item, quantity: Math.min(Math.round((item.quantity + 1) * 1000) / 1000, Number(product.stock_quantity)) }
-          : item)
-        : [...current, { ...product, quantity: Math.min(1, Number(product.stock_quantity)) }]
+    const existing = cart.find((item) => item.product_id === product.product_id)
+    setQuantityModal({
+      product,
+      mode: 'add',
+      currentQuantity: existing?.quantity || 0,
+      initialValue: initialAddQuantity(product.stock_quantity, existing?.quantity || 0),
     })
   }
 
-  function updateQuantity(productId, quantity) {
+  function openEditQuantity(product) {
     if (pendingSale || recoveryError) return
-    const parsedQuantity = Number(quantity)
-    if (!Number.isFinite(parsedQuantity)) return
-    const roundedQuantity = Math.round(parsedQuantity * 1000) / 1000
+    setQuantityModal({
+      product,
+      mode: 'edit',
+      currentQuantity: product.quantity,
+      initialValue: formatQuantityInput(product.quantity),
+    })
+  }
 
-    setCart((current) => current.map((item) => item.product_id === productId
-      ? { ...item, quantity: Math.min(Math.max(roundedQuantity, 0.001), Number(item.stock_quantity)) }
-      : item))
+  function confirmQuantity(quantityThousandths) {
+    if (!quantityModal || pendingSale || recoveryError) return
+
+    setCart((current) => applyCartQuantitySelection(
+      current,
+      quantityModal.product,
+      quantityModal.mode,
+      quantityThousandths,
+    ))
+    setQuantityModal(null)
   }
 
   function removeProduct(productId) {
@@ -376,7 +393,7 @@ function RecordSalesForUser({ userId }) {
           {!loading && !error && visibleProducts.length > 0 && (
             <ProductGrid
               products={visibleProducts}
-              onAdd={addProduct}
+              onAdd={openAddQuantity}
               sortBy={sortBy}
               onSortChange={setSortBy}
             />
@@ -389,7 +406,7 @@ function RecordSalesForUser({ userId }) {
           cart={cart}
           customers={customers}
           onAddCustomer={() => setCustomerModal(true)}
-          onQuantity={updateQuantity}
+          onEditQuantity={openEditQuantity}
           onRemove={removeProduct}
           onClearCart={clearCart}
           onProcess={processSale}
@@ -406,6 +423,17 @@ function RecordSalesForUser({ userId }) {
 
       {customerModal && (
         <CustomerModal onClose={() => setCustomerModal(false)} onCreated={customerCreated} />
+      )}
+      {quantityModal && (
+        <QuantityModal
+          key={`${quantityModal.mode}-${quantityModal.product.product_id}`}
+          product={quantityModal.product}
+          mode={quantityModal.mode}
+          initialValue={quantityModal.initialValue}
+          currentQuantity={quantityModal.currentQuantity}
+          onClose={() => setQuantityModal(null)}
+          onConfirm={confirmQuantity}
+        />
       )}
     </section>
   )

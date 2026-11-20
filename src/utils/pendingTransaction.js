@@ -6,12 +6,18 @@ const quantityMaximum = 9999999999n
 const unitPriceMaximumCents = 9999999999n
 const moneyMaximumCents = 999999999999n
 
-function storageKey(operation, userId) {
+function storageKey(operation, userId, scopeId) {
   if (!supportedOperations.has(operation)) {
     throw new Error('Unsupported transaction type')
   }
   if (!Number.isSafeInteger(Number(userId)) || Number(userId) <= 0) {
     throw new Error('A valid authenticated user is required for transaction recovery')
+  }
+  if (scopeId !== undefined && scopeId !== null) {
+    if (operation !== 'payment' || !isPositiveId(scopeId)) {
+      throw new Error('A valid payment customer is required for transaction recovery')
+    }
+    return `${storagePrefix}.${Number(userId)}.${operation}.${Number(scopeId)}`
   }
   return `${storagePrefix}.${Number(userId)}.${operation}`
 }
@@ -201,11 +207,26 @@ export function validatePaymentResponse(attempt, response) {
   }
 }
 
-export function readPendingTransaction(operation, userId) {
+export function readPendingTransaction(operation, userId, scopeId) {
   try {
-    const key = storageKey(operation, userId)
+    const key = storageKey(operation, userId, scopeId)
     const stored = sessionStorage.getItem(key)
     if (!stored) {
+      if (scopeId !== undefined && scopeId !== null) {
+        const legacyKey = storageKey(operation, userId)
+        const legacyStored = sessionStorage.getItem(legacyKey)
+        if (legacyStored) {
+          const legacyRecord = JSON.parse(legacyStored)
+          if (Number(legacyRecord?.userId) !== Number(userId)) {
+            throw new Error('The saved transaction belongs to a different authenticated user')
+          }
+          validateAttempt(operation, legacyRecord.attempt)
+          if (Number(legacyRecord.attempt.display?.customer_id) !== Number(scopeId)) return null
+          sessionStorage.setItem(key, legacyStored)
+          sessionStorage.removeItem(legacyKey)
+          return legacyRecord.attempt
+        }
+      }
       if (sessionStorage.getItem(`${legacyStoragePrefix}.${operation}`)) {
         throw new Error('An unscoped legacy transaction exists and cannot safely be assigned to this user. Have an administrator verify its outcome before starting a replacement.')
       }
@@ -223,9 +244,9 @@ export function readPendingTransaction(operation, userId) {
   }
 }
 
-export function savePendingTransaction(operation, userId, attempt) {
+export function savePendingTransaction(operation, userId, attempt, scopeId) {
   try {
-    const key = storageKey(operation, userId)
+    const key = storageKey(operation, userId, scopeId)
     validateAttempt(operation, attempt)
     sessionStorage.setItem(key, JSON.stringify({ userId: Number(userId), attempt }))
   } catch (error) {
@@ -233,9 +254,9 @@ export function savePendingTransaction(operation, userId, attempt) {
   }
 }
 
-export function clearPendingTransaction(operation, userId) {
+export function clearPendingTransaction(operation, userId, scopeId) {
   try {
-    sessionStorage.removeItem(storageKey(operation, userId))
+    sessionStorage.removeItem(storageKey(operation, userId, scopeId))
   } catch (error) {
     throw storageError(error)
   }

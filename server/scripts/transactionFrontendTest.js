@@ -105,7 +105,6 @@ try {
   await writeFile(join(temporaryRoot, 'harness.jsx'), `
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { ThemeProvider } from '/@fs/${sourceRoot}/src/context/ThemeContext.jsx'
 import { AuthContext } from '/@fs/${sourceRoot}/src/context/AuthContext.jsx'
 import { ToastProvider } from '/@fs/${sourceRoot}/src/context/ToastContext.jsx'
 import MainLayout from '/@fs/${sourceRoot}/src/layouts/MainLayout.jsx'
@@ -131,12 +130,17 @@ const products = [
 ]
 const customers = [
   { customer_id: 7, customer_name: 'Maria Santos', contact_number: '09171234567', address: 'Quezon City', current_balance: '300.00', created_at: '2026-10-01T08:00:00+08:00', is_active: true },
-  { customer_id: 8, customer_name: 'Juan Cash Customer', contact_number: null, address: '', current_balance: '0.00', created_at: '2026-10-02T08:00:00+08:00', is_active: true },
-  ...Array.from({ length: 6 }, (_, index) => ({ customer_id: 20 + index, customer_name: 'Fixture Customer ' + (index + 1), contact_number: '0900000000' + index, address: 'Test Address', current_balance: '0.00', created_at: '2026-10-03T08:00:00+08:00', is_active: true })),
+  { customer_id: 8, customer_name: 'Justine', contact_number: null, address: '', current_balance: '300.00', created_at: '2026-10-02T08:00:00+08:00', is_active: true },
+  ...Array.from({ length: 7 }, (_, index) => ({ customer_id: 20 + index, customer_name: 'Fixture Customer ' + (index + 1), contact_number: '0900000000' + index, address: 'Test Address', current_balance: '0.00', created_at: '2026-10-03T08:00:00+08:00', is_active: true })),
 ]
 const credits = [{ sale_id: 700, sale_date: '2026-10-20T09:30:00+08:00', total_amount: '500.00', amount_paid: '200.00', remaining_balance: '300.00', status: 'Partially Paid', recorded_by: 'Transaction Test Admin' }]
-const payments = [{ payment_id: 900, sale_id: 700, payment_amount: '200.00', remaining_balance: '300.00', payment_date: '2026-10-20T10:15:00+08:00', recorded_by: 'Transaction Test Admin' }]
+const justineCredits = [{ sale_id: 701, sale_date: '2026-10-20T11:30:00+08:00', total_amount: '300.00', amount_paid: '0.00', remaining_balance: '300.00', status: 'Unpaid', recorded_by: 'Transaction Test Admin' }]
+const payments = [{ payment_id: 900, sale_id: 700, payment_amount: '100.00', remaining_balance: '300.00', payment_date: '2026-10-20T10:15:00+08:00', recorded_by: 'Transaction Test Admin' }]
+const justinePayments = []
 globalThis.testCredits = credits
+globalThis.testJustineCredits = justineCredits
+globalThis.testJustinePayments = justinePayments
+globalThis.testPayments = payments
 globalThis.testCustomers = customers
 globalThis.salesRequests = []
 globalThis.saleIdempotencyKeys = []
@@ -187,11 +191,15 @@ globalThis.fetch = async (url, options = {}) => {
   }
   if (pathParts.length === 4 && pathParts[1] === 'customers' && pathParts[3] === 'credits' && method === 'GET') {
     globalThis.ledgerRefreshCustomerIds.push(customerId)
-    return new Response(JSON.stringify({ success: true, data: customerId === 7 ? credits : [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ success: true, data: customerId === 7 ? credits : customerId === 8 ? justineCredits : [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   if (pathParts.length === 4 && pathParts[1] === 'customers' && pathParts[3] === 'payments' && method === 'GET') {
     globalThis.ledgerRefreshCustomerIds.push(customerId)
-    return new Response(JSON.stringify({ success: true, data: customerId === 7 ? payments : [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ success: true, data: customerId === 7 ? payments : customerId === 8 ? justinePayments : [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
+  if (pathParts.length === 4 && pathParts[1] === 'customers' && pathParts[3] === 'sales' && method === 'GET') {
+    globalThis.ledgerRefreshCustomerIds.push(customerId)
+    return new Response(JSON.stringify({ success: true, data: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   if (path.endsWith('/customers') && method === 'GET') {
     return new Response(JSON.stringify({ success: true, data: customers }), { status: 200, headers: { 'Content-Type': 'application/json' } })
@@ -247,26 +255,31 @@ globalThis.fetch = async (url, options = {}) => {
       globalThis.paymentShouldReject = false
       return new Response(JSON.stringify({ success: false, code: 'TRANSACTION_REJECTED', transaction_outcome: 'not_committed', message: 'Confirmed payment rejection' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
     }
-    const remainingBalance = (Number(credits[0].remaining_balance) - Number(body.payment_amount)).toFixed(2)
-    credits[0].amount_paid = (Number(credits[0].amount_paid) + Number(body.payment_amount)).toFixed(2)
-    credits[0].remaining_balance = remainingBalance
-    credits[0].status = Number(remainingBalance) === 0 ? 'Paid' : 'Partially Paid'
-    customers[0].current_balance = remainingBalance
+    const credit = [...credits, ...justineCredits].find((item) => item.sale_id === Number(body.sale_id))
+    if (!credit || Number(body.payment_amount) > Number(credit.remaining_balance)) {
+      return new Response(JSON.stringify({ success: false, message: 'Payment exceeds the outstanding balance' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+    }
+    const paymentCustomerId = credit.sale_id === 701 ? 8 : 7
+    const paymentCustomer = customers.find((item) => item.customer_id === paymentCustomerId)
+    const remainingBalance = (Number(credit.remaining_balance) - Number(body.payment_amount)).toFixed(2)
+    credit.amount_paid = (Number(credit.amount_paid) + Number(body.payment_amount)).toFixed(2)
+    credit.remaining_balance = remainingBalance
+    credit.status = Number(remainingBalance) === 0 ? 'Paid' : 'Partially Paid'
+    paymentCustomer.current_balance = (Number(paymentCustomer.current_balance) - Number(body.payment_amount)).toFixed(2)
     const paymentId = 900 + globalThis.paymentRequests.length
-    payments.unshift({ payment_id: paymentId, sale_id: Number(body.sale_id), payment_amount: Number(body.payment_amount).toFixed(2), remaining_balance: remainingBalance, payment_date: '2026-10-21T14:45:00+08:00', recorded_by: 'Transaction Test Admin' })
-    return new Response(JSON.stringify({ success: true, data: { payment_id: paymentId, sale_id: Number(body.sale_id), payment_amount: Number(body.payment_amount).toFixed(2), remaining_balance: remainingBalance, status: credits[0].status } }), { status: 201, headers: { 'Content-Type': 'application/json' } })
+    const customerPayments = paymentCustomerId === 8 ? justinePayments : payments
+    customerPayments.unshift({ payment_id: paymentId, sale_id: Number(body.sale_id), customer_id: paymentCustomerId, payment_amount: Number(body.payment_amount).toFixed(2), remaining_balance: remainingBalance, payment_date: '2026-10-21T14:45:00+08:00', recorded_by: 'Transaction Test Admin' })
+    return new Response(JSON.stringify({ success: true, data: { payment_id: paymentId, sale_id: Number(body.sale_id), payment_amount: Number(body.payment_amount).toFixed(2), remaining_balance: remainingBalance, status: credit.status } }), { status: 201, headers: { 'Content-Type': 'application/json' } })
   }
   return new Response(JSON.stringify({ success: false, message: 'Unexpected test request' }), { status: 404, headers: { 'Content-Type': 'application/json' } })
 }
 
 function Harness() {
   return <AuthContext.Provider value={{ user: { user_id: 1, fullname: 'Transaction Test Admin', role: 'admin' } }}>
-    <ThemeProvider>
-      <MainLayout activeModule="Record Sales" role="admin" user={{ fullname: 'Transaction Test Admin' }} onSelect={() => {}} onLogout={() => {}}>
-        <section id="record-sales-test"><RecordSales /></section>
-        <section id="customer-credits-test"><CustomerCredits /></section>
-      </MainLayout>
-    </ThemeProvider>
+    <MainLayout activeModule="Record Sales" role="admin" user={{ fullname: 'Transaction Test Admin' }} onSelect={() => {}} onLogout={() => {}}>
+      <section id="record-sales-test"><RecordSales /></section>
+      <section id="customer-credits-test"><CustomerCredits /></section>
+    </MainLayout>
   </AuthContext.Provider>
 }
 
@@ -313,7 +326,7 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
       if (await evaluate(expression)) return
       await delay(50)
     }
-    const pageText = await evaluate("({ sales: document.querySelector('#record-sales-test')?.innerText, requests: salesRequests.length, keys: saleIdempotencyKeys.length, rejectFlag: saleShouldReject })")
+    const pageText = await evaluate("({ sales: document.querySelector('#record-sales-test')?.innerText, credits: document.querySelector('#customer-credits-test')?.innerText, requests: salesRequests.length, paymentRequests: paymentRequests.length, paymentError: document.querySelector('#customer-credits-test .payment-feedback.error')?.textContent, reviewError: document.querySelector('.payment-confirmation-modal .payment-feedback.error')?.textContent, keys: saleIdempotencyKeys.length, rejectFlag: saleShouldReject })")
     throw new Error(`${message}; page: ${JSON.stringify(pageText)}`)
   }
 
@@ -321,6 +334,14 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
     const clicked = await evaluate(`(() => { const element = ${expression}; if (!element) return false; element.click(); return true })()`)
     assert(clicked, `Could not click ${expression}`)
     await delay(50)
+  }
+
+  async function selectProduct(expression, quantity = '1') {
+    await click(`${expression}.querySelector('.pos-add-product')`)
+    await waitFor("Boolean(document.querySelector('[role=dialog][aria-label=\"Add Product Quantity\"]'))", 'Product selection did not open the quantity modal')
+    await setInput("document.querySelector('#pos-quantity-entry')", quantity)
+    await click("document.querySelector('[role=dialog][aria-label=\"Add Product Quantity\"] .primary-action')")
+    await waitFor("!document.querySelector('[role=dialog][aria-label=\"Add Product Quantity\"]')", 'Adding a product did not close the quantity modal')
   }
 
   async function setInput(expression, value) {
@@ -388,25 +409,62 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   await mkdir(screenshotRoot, { recursive: true })
   await capture('desktop-record-sales.png', 1440, "document.querySelector('#record-sales-test')")
 
-  await setInput("document.querySelector('#record-sales-test .search-field input')", 'Liver')
+  await setInput("document.querySelector('#record-sales-test .pos-search-input')", 'Liver')
   assert(await evaluate("document.querySelectorAll('#record-sales-test .product-card').length") === 1, 'Product search did not filter the catalog')
-  await setInput("document.querySelector('#record-sales-test .search-field input')", '')
+  await setInput("document.querySelector('#record-sales-test .pos-search-input')", '')
   await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Sold Out Wings'))")
   assert(await evaluate("document.querySelectorAll('#record-sales-test .basket-item').length") === 0, 'Out-of-stock product was selectable')
 
   await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken'))")
-  await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Chicken Liver'))")
+  assert(!await evaluate("document.querySelector('[role=dialog]')"), 'Clicking a product row opened quantity selection')
+  await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken')) .querySelector('.pos-add-product')")
+  await waitFor("Boolean(document.querySelector('[role=dialog][aria-label=\"Add Product Quantity\"]'))", 'Product click did not open quantity selection')
+  assert(await evaluate("document.querySelectorAll('#record-sales-test .basket-item').length") === 0, 'Product was added before quantity confirmation')
+  await setInput("document.querySelector('#pos-quantity-entry')", '0.001')
+  await click("document.querySelector('[role=dialog][aria-label=\"Add Product Quantity\"] .primary-action')")
+  await waitFor("document.querySelectorAll('#record-sales-test .basket-item').length === 1", 'Confirmed product quantity was not added')
+  assert(await evaluate("document.querySelector('#record-sales-test .basket-item-quantity strong').textContent.includes('0.001 kg')"), 'Product selection did not preserve a 0.001 quantity')
+  assert(await evaluate("document.querySelector('#record-sales-test .basket-item-subtotal strong').textContent.includes('0.12')"), 'Decimal product subtotal was incorrect')
+
+  await click("document.querySelector('#record-sales-test .basket-item-edit')")
+  await waitFor("Boolean(document.querySelector('[role=dialog][aria-label=\"Edit Cart Quantity\"]'))", 'Cart item click did not open the edit modal')
+  assert(await evaluate("document.querySelector('#pos-quantity-entry').value === '0.001'"), 'Edit modal did not preload the current quantity')
+  await setInput("document.querySelector('#pos-quantity-entry')", '0.00')
+  assert(await evaluate("document.querySelector('#pos-quantity-entry').value === '0.00'"), 'Deleting the last digit from 0.001 restored the previous value')
+  await setInput("document.querySelector('#pos-quantity-entry')", '')
+  assert(await evaluate("document.querySelector('#pos-quantity-entry').value === ''"), 'Clearing quantity did not leave the input empty')
+  await setInput("document.querySelector('#pos-quantity-entry')", '0.')
+  assert(await evaluate("document.querySelector('#pos-quantity-entry').value === '0.'"), 'Trailing decimal state was not preserved while editing')
+  await setInput("document.querySelector('#pos-quantity-entry')", '0.5')
+  assert(await evaluate("document.querySelector('#pos-quantity-entry').value === '0.5'"), 'Entering a new value after clearing failed')
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  assert(await evaluate("document.querySelector('#record-sales-test .basket-item-quantity strong').textContent.includes('0.5 kg')"), 'Saving a decimal edit did not update the cart quantity')
+
+  await click("document.querySelector('#record-sales-test .basket-item-edit')")
+  await setInput("document.querySelector('#pos-quantity-entry')", '0.01')
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  assert(await evaluate("document.querySelector('#record-sales-test .basket-item-quantity strong').textContent.includes('0.01 kg')"), 'Saving 0.01 did not preserve its precision')
+  await click("document.querySelector('#record-sales-test .basket-item-edit')")
+  await setInput("document.querySelector('#pos-quantity-entry')", '1.3')
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  assert(await evaluate("document.querySelector('#record-sales-test .basket-item-quantity strong').textContent.includes('1.3 kg')"), 'Fractional cart quantity update was incorrect')
+
+  await selectProduct("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Chicken Liver'))")
   assert(await evaluate("document.querySelectorAll('#record-sales-test .basket-item').length") === 2, 'Multiple products were not added')
-  await click("document.querySelector('#record-sales-test .basket-item .quantity-stepper button:last-child')")
-  assert(await evaluate("document.querySelector('#record-sales-test .basket-item input').value") === '2', 'Quantity increase did not update immediately')
-  await setInput("document.querySelector('#record-sales-test .basket-item input')", '1.3')
-  await click("document.querySelector('#record-sales-test .basket-item .quantity-stepper button:first-child')")
-  assert(await evaluate("document.querySelector('#record-sales-test .basket-item input').value") === '0.3', 'Fractional quantity adjustment introduced unsupported floating-point precision')
-  await setInput("document.querySelector('#record-sales-test .basket-item input')", '-2')
-  assert(await evaluate("Number(document.querySelector('#record-sales-test .basket-item input').value)") === 0.001, 'Negative quantity was not prevented')
   await click("document.querySelectorAll('#record-sales-test .basket-remove-button')[1]")
   assert(await evaluate("document.querySelectorAll('#record-sales-test .basket-item').length") === 1, 'Remove-item action did not work')
-  await setInput("document.querySelector('#record-sales-test .basket-item input')", '1')
+  assert(!await evaluate("document.querySelector('[role=dialog]')"), 'Trash action opened the quantity modal')
+
+  await click("document.querySelector('#record-sales-test .basket-item-edit')")
+  await setInput("document.querySelector('#pos-quantity-entry')", '-2')
+  await click("document.querySelector('[role=dialog] .primary-action')")
+  assert(await evaluate("Boolean(document.querySelector('[role=dialog] [role=alert]')) && document.querySelector('#pos-quantity-entry').getAttribute('aria-invalid') === 'true'"), 'Negative quantity was not rejected on save')
+  assert(await evaluate("document.querySelector('#record-sales-test .basket-item-quantity strong').textContent.includes('1.3 kg')"), 'Invalid quantity changed the existing cart item')
+  await click("document.querySelector('[role=dialog] .secondary-action')")
+  assert(await evaluate("document.querySelector('#record-sales-test .basket-item-quantity strong').textContent.includes('1.3 kg')"), 'Canceling quantity edit changed the original quantity')
+  await click("document.querySelector('#record-sales-test .basket-item-edit')")
+  await setInput("document.querySelector('#pos-quantity-entry')", '1')
+  await click("document.querySelector('[role=dialog] .primary-action')")
   await capture('desktop-populated-cart.png', 1440, "document.querySelector('#record-sales-test .basket-panel')")
   await capture('desktop-payment-section.png', 1440, "document.querySelector('#record-sales-test .basket-section')")
 
@@ -450,14 +508,14 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   assert(await evaluate("document.querySelectorAll('#record-sales-test .basket-item').length") === 0, 'Done did not reset the successful sale')
   assert(await evaluate('productLoads >= 2'), 'Done did not refresh product stock')
 
-  await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken'))")
+  await selectProduct("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken'))")
   await setInput("document.querySelector('#record-sales-test .basket-section input')", '120')
   await setSelect("document.querySelector('#record-sales-test .basket-section select')", '7')
   await setSelect("document.querySelector('#record-sales-test .basket-section select')", '8')
   assert(await evaluate("document.querySelector('#record-sales-test .basket-section select').value") === '8', 'Switching walk-in customers did not retain the latest selection')
   await evaluate('saleShouldFail = true')
   await click("document.querySelector('#record-sales-test .basket-panel > .primary-action')")
-  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('Walk-in') && document.querySelector('[role=dialog]').textContent.includes('Juan Cash Customer')"), 'Existing walk-in customer was not shown')
+  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('Customer Information') && document.querySelector('[role=dialog]').textContent.includes('Justine')"), 'Selected customer was not shown in the sale confirmation')
   assert(!await evaluate("document.querySelector('[role=dialog]').textContent.includes('Contact number') || document.querySelector('[role=dialog]').textContent.includes('Address')"), 'Missing optional walk-in fields were not omitted')
   await evaluate("(() => { const button = document.querySelector('[role=dialog] .primary-action'); button.click(); button.click() })()")
   await waitFor("Boolean(document.querySelector('[role=dialog] .sales-feedback.error'))", 'Failed sale did not show an error')
@@ -477,7 +535,7 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   assert(retriedSaleKeys.length === 2 && retriedSaleKeys[0] === retriedSaleKeys[1], 'Sale retry did not retain the original idempotency key')
   await click("document.querySelector('[role=dialog] .transaction-done-button')")
 
-  await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken'))")
+  await selectProduct("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken'))")
   await setInput("document.querySelector('#record-sales-test .basket-section input')", '120')
   await evaluate('saleShouldReject = true')
   await click("document.querySelector('#record-sales-test .basket-panel > .primary-action')")
@@ -494,7 +552,7 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   assert(rejectedSaleKeys.length === 2 && rejectedSaleKeys[0] !== rejectedSaleKeys[1], 'Edited rejected sale did not receive a new idempotency key')
   await click("document.querySelector('[role=dialog] .transaction-done-button')")
 
-  await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken'))")
+  await selectProduct("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken'))")
   await setInput("document.querySelector('#record-sales-test .basket-section input')", '120')
   await evaluate('saleNetworkFail = true')
   await click("document.querySelector('#record-sales-test .basket-panel > .primary-action')")
@@ -509,7 +567,7 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   assert(uncertainSaleAfterRetry.key === uncertainSaleBeforeRetry.key, 'Network retry changed the original idempotency key')
   await click("document.querySelector('[role=dialog] .transaction-done-button')")
 
-  await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken'))")
+  await selectProduct("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Premium Whole Chicken'))")
   await click("[...document.querySelectorAll('#record-sales-test .payment-methods button')].find((button) => button.textContent.includes('Credit'))")
   await setSelect("document.querySelector('#record-sales-test .basket-section select')", '7')
   await setInput("document.querySelector('#record-sales-test .basket-section input')", '20')
@@ -532,7 +590,7 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   await waitFor("!document.querySelector('[role=dialog]')", 'Add Customer Done did not close the modal')
   await waitFor("document.querySelector('#record-sales-test .basket-section select').value === '9'", 'New customer was not selected immediately')
   assert(await evaluate('customerRequests.length') === 1, 'New walk-in customer was submitted more than once')
-  await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Chicken Liver'))")
+  await selectProduct("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Chicken Liver'))")
   await setInput("document.querySelector('#record-sales-test .basket-section input')", '80')
   await click("document.querySelector('#record-sales-test .basket-panel > .primary-action')")
   assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('New Walk-in Buyer') && document.querySelector('[role=dialog]').textContent.includes('09998887777') && document.querySelector('[role=dialog]').textContent.includes('Pasig City')"), 'New walk-in customer details were not shown without reloading')
@@ -542,53 +600,31 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('New Walk-in Buyer')"), 'New walk-in customer was not retained in sale success')
   await click("document.querySelector('[role=dialog] .transaction-done-button')")
 
-  await waitFor("document.querySelectorAll('#customer-credits-test .debtor-row').length === 6", 'Customer Credits list did not load its first page')
-  assert(await evaluate("document.querySelector('#customer-credits-test').textContent.includes('Customer Information') && document.querySelector('#customer-credits-test').textContent.includes('Sales History') && document.querySelector('#customer-credits-test').textContent.includes('Payment History')"), 'Customer details sections were incomplete')
-  assert(await evaluate("document.querySelector('#customer-credits-test').textContent.includes('Credit Customer') && document.querySelector('#customer-credits-test').textContent.includes('09171234567') && document.querySelector('#customer-credits-test').textContent.includes('Quezon City')"), 'Customer type and contact details were incomplete')
-  assert(await evaluate("document.querySelector('#customer-credits-test').textContent.includes('Partially Paid') && document.querySelector('#customer-credits-test').textContent.includes('\\u20b1300.00')"), 'Credit status or outstanding balance was inaccurate')
+  await waitFor("document.querySelectorAll('#customer-credits-test .customer-selection-row').length === 8", 'Customer Credits list did not load its first page')
+  await click("[...document.querySelectorAll('#customer-credits-test .customer-selection-row')].find((row) => row.textContent.includes('Maria Santos'))")
+  await waitFor("document.querySelector('#customer-drawer-title')?.textContent === 'Maria Santos'", 'Customer detail drawer did not open')
+  assert(await evaluate("document.querySelector('[aria-label=\"Customer information\"]') && [...document.querySelectorAll('#customer-credits-test .customer-drawer-tabs button')].some((button) => button.textContent.trim() === 'Sales History') && document.querySelector('#customer-payment-history-heading')?.textContent === 'Payment History'"), 'Customer information, sales history navigation, or payment history section was missing')
+  assert(await evaluate("document.querySelectorAll('#customer-credits-test .customer-payment-history-list .initial-downpayment').length") === 1, 'Initial downpayment was missing or duplicated in payment history')
+  assert(await evaluate("document.querySelector('#customer-credits-test .customer-payment-history-list').textContent.includes('Initial Downpayment') && document.querySelector('#customer-credits-test .customer-payment-history-list').textContent.includes('100.00') && document.querySelector('#customer-credits-test .customer-payment-history-list').textContent.includes('PAY-900')"), 'Initial downpayment and subsequent payment were not displayed separately')
+  assert(await evaluate("document.querySelector('#customer-drawer-title')?.textContent === 'Maria Santos' && document.querySelector('[aria-label=\"Customer information\"]')?.textContent.includes('09171234567') && document.querySelector('[aria-label=\"Customer information\"]')?.textContent.includes('Quezon City')"), 'Customer identity and contact details were incomplete')
+  await click("[...document.querySelectorAll('#customer-credits-test .customer-drawer-tabs button')].find((button) => button.textContent.trim() === 'Sales History')")
+  assert(await evaluate("document.querySelector('[aria-label=\"Customer balance summary\"] .outstanding strong').textContent.includes('300.00')"), 'Customer outstanding balance was inaccurate')
+  await click("[...document.querySelectorAll('#customer-credits-test .customer-drawer-tabs button')].find((button) => button.textContent.trim() === 'Record Payment')")
+  await waitFor("Boolean(document.querySelector('#customer-credits-test .payment-form select option[value=\"700\"]'))", 'Unpaid credit sale was not available in the payment form')
   await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Maria')
   await setSelect("document.querySelector('#customer-credits-test .customer-list-controls select')", 'Outstanding')
-  await click("document.querySelector('#customer-credits-test .edit-customer-action')")
-  assert(await evaluate("document.querySelector('[role=dialog] h2').textContent") === 'Edit Customer', 'Edit Customer modal did not open')
-  assert(await evaluate("document.querySelector('[role=dialog] input[name=customer_name]').value") === 'Maria Santos', 'Edit Customer did not prefill the customer name')
-  assert(await evaluate("document.querySelector('[role=dialog] input[name=contact_number]').value") === '09171234567', 'Edit Customer did not prefill the contact number')
-  assert(await evaluate("document.querySelector('[role=dialog] textarea[name=address]').value") === 'Quezon City', 'Edit Customer did not prefill the address')
-  await setInput("document.querySelector('[role=dialog] input[name=customer_name]')", '')
-  await click("document.querySelector('[role=dialog] .primary-action')")
-  assert(await evaluate("document.querySelector('[role=dialog] [role=alert]').textContent.trim()") === 'Customer name is required.', 'Edit Customer required-name validation did not run')
-  assert(await evaluate('customerUpdateRequests.length') === 0, 'Invalid customer edit submitted a request')
-  await setInput("document.querySelector('[role=dialog] input[name=customer_name]')", 'Maria Santos Updated')
-  await setInput("document.querySelector('[role=dialog] input[name=contact_number]')", '09990001111')
-  await setInput("document.querySelector('[role=dialog] textarea[name=address]')", 'Pasig City')
-  await capture('mobile-edit-customer.png', 390, "document.querySelector('[role=dialog]')")
-  assert(await evaluate("document.querySelector('[role=dialog]').scrollWidth <= document.querySelector('[role=dialog]').clientWidth"), 'Edit Customer modal overflowed horizontally on mobile')
-  await evaluate('customerUpdateShouldFail = true')
-  await evaluate("(() => { const button = document.querySelector('[role=dialog] .primary-action'); button.click(); button.click() })()")
-  await waitFor("document.querySelector('[role=dialog] [role=alert]')?.textContent.includes('Controlled customer update failure')", 'Failed customer update did not show its API error')
-  assert(await evaluate('customerUpdateRequests.length') === 1, 'Failed customer update was submitted more than once')
-  assert(await evaluate("document.querySelector('[role=dialog] input[name=customer_name]').value") === 'Maria Santos Updated', 'Failed customer update did not preserve the customer name')
-  assert(await evaluate("document.querySelector('[role=dialog] input[name=contact_number]').value") === '09990001111', 'Failed customer update did not preserve the contact number')
-  assert(await evaluate("document.querySelector('[role=dialog] textarea[name=address]').value") === 'Pasig City', 'Failed customer update did not preserve the address')
-  await evaluate('customerUpdateShouldFail = false')
-  await evaluate("(() => { const button = document.querySelector('[role=dialog] .primary-action'); button.click(); button.click() })()")
-  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Customer Updated Successfully!'", 'Customer edit did not show backend-confirmed success')
-  assert(await evaluate('customerUpdateRequests.length') === 2, 'Successful customer update was submitted more than once')
-  assert(await evaluate("Object.keys(customerUpdateRequests.at(-1)).sort().join(',')") === 'address,contact_number,customer_id,customer_name', 'Customer edit submitted unsupported fields')
-  await click("document.querySelector('[role=dialog] .transaction-done-button')")
-  await waitFor("document.querySelector('#customer-credits-test .ledger-heading h2')?.textContent === 'Maria Santos Updated'", 'Updated customer details did not refresh')
-  assert(await evaluate("document.querySelector('#customer-credits-test .customer-list-controls input').value") === 'Maria', 'Customer search was reset after editing')
-  assert(await evaluate("document.querySelector('#customer-credits-test .customer-list-controls select').value") === 'Outstanding', 'Customer balance filter was reset after editing')
-  assert(await evaluate("document.querySelector('#customer-credits-test .balance-display').textContent.includes('\\u20b1300.00')"), 'Customer edit changed the credit balance')
-  assert(await evaluate("document.querySelector('#customer-credits-test').textContent.includes('OR-700') && document.querySelector('#customer-credits-test').textContent.includes('PAY-900')"), 'Customer edit changed transaction history')
+  assert(await evaluate("document.querySelectorAll('#customer-credits-test .customer-selection-row').length") === 1, 'Customer search and outstanding-balance filter did not isolate Maria')
+  assert(await evaluate("document.querySelector('#customer-credits-test').textContent.includes('OR-700') && document.querySelector('#customer-credits-test').textContent.includes('PAY-900')"), 'Customer sale and payment history were not preserved while filtering')
   await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", '')
   await setSelect("document.querySelector('#customer-credits-test .customer-list-controls select')", 'All')
-  await click("document.querySelector('#customer-credits-test [aria-label=\"Next customer page\"]')")
-  assert(await evaluate("document.querySelectorAll('#customer-credits-test .debtor-row').length") === 3, 'Customer pagination did not include the refreshed customer list')
+  await click("document.querySelector('#customer-credits-test [aria-label=\"Next page\"]')")
+  const paginationState = await evaluate("({ rows: document.querySelectorAll('#customer-credits-test .customer-selection-row').length, page: document.querySelector('#customer-credits-test .table-pagination strong')?.textContent, summary: document.querySelector('#customer-credits-test .table-pagination span')?.textContent })")
+  assert(paginationState.rows > 0 && paginationState.page?.startsWith('2 /'), `Customer pagination did not advance to its second page: ${JSON.stringify(paginationState)}`)
   await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Maria')
-  assert(await evaluate("document.querySelectorAll('#customer-credits-test .debtor-row').length") === 1, 'Customer search did not filter across all customers')
+  assert(await evaluate("document.querySelectorAll('#customer-credits-test .customer-selection-row').length") === 1, 'Customer search did not filter across all customers')
   await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", '')
   await setSelect("document.querySelector('#customer-credits-test .customer-list-controls select')", 'Outstanding')
-  assert(await evaluate("document.querySelectorAll('#customer-credits-test .debtor-row').length") === 1, 'Outstanding-balance filter was inaccurate')
+  assert(await evaluate("document.querySelectorAll('#customer-credits-test .customer-selection-row').length") === 2, 'Outstanding-balance filter was inaccurate')
   await setSelect("document.querySelector('#customer-credits-test .customer-list-controls select')", 'All')
   await capture('desktop-customer-credits.png', 1440, "document.querySelector('#customer-credits-test')")
 
@@ -596,43 +632,44 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   await setInput("document.querySelector('#customer-credits-test .payment-form input')", '50')
   await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
   assert(await evaluate('paymentRequests.length') === 0, 'Opening Review Payment submitted the payment')
-  assert(await evaluate("document.querySelector('[role=dialog] h2').textContent === 'Review Payment' && document.querySelector('[role=dialog]').textContent.includes('Maria Santos') && document.querySelector('[role=dialog]').textContent.includes('OR-700')"), 'Review Payment omitted customer or credit details')
+  assert(await evaluate("document.querySelector('[role=dialog][aria-label=\"Review Payment\"]')?.textContent.includes('Maria Santos') && document.querySelector('[role=dialog][aria-label=\"Review Payment\"]')?.textContent.includes('OR-700')"), 'Review Payment omitted customer or credit details')
   await assertFullViewportBackdrop('Payment review backdrop')
   await capture('desktop-payment-review.png', 1440, "document.querySelector('[role=dialog]')")
-  await evaluate("(() => { const button = document.querySelector('[role=dialog] .primary-action'); button.click(); button.click() })()")
-  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Payment Recorded Successfully!'", 'Payment success modal did not open')
+  await evaluate("(() => { const button = document.querySelector('[role=dialog][aria-label=\"Review Payment\"] .primary-action'); button.click(); button.click() })()")
+  await waitFor("Boolean(document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]'))", 'Payment success modal did not open')
   await assertFullViewportBackdrop('Payment success backdrop')
   assert(await evaluate('paymentRequests.length') === 1, 'Repeated payment activation created duplicate requests')
-  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('PAY-901') && document.querySelector('[role=dialog]').textContent.includes('\\u20b150.00') && document.querySelector('[role=dialog]').textContent.includes('\\u20b1250.00')"), 'Payment success modal omitted actual API values')
-  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('Oct 21, 2026') && document.querySelector('[role=dialog]').textContent.includes('2:45 PM')"), 'Payment success did not show the refreshed Manila timestamp')
-  await capture('desktop-payment-success.png', 1440, "document.querySelector('[role=dialog]')")
-  await click("document.querySelector('[role=dialog] .transaction-done-button')")
+  assert(await evaluate("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]').textContent.includes('PAY-901') && document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]').textContent.includes('\\u20b150.00') && document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]').textContent.includes('\\u20b1250.00')"), 'Payment success modal omitted actual API values')
+  const paymentTimestampText = await evaluate("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]').textContent")
+  assert(paymentTimestampText.includes('Oct 21, 2026') && paymentTimestampText.includes('2:45 PM'), `Payment success did not show the refreshed Manila timestamp: ${paymentTimestampText}`)
+  await capture('desktop-payment-success.png', 1440, "document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]')")
+  await click("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"] .transaction-done-button')")
   assert(await evaluate('paymentRequests.length') === 1, 'Payment Done action resubmitted the payment')
-  assert(await evaluate("document.querySelector('#customer-credits-test .balance-display').textContent.includes('\\u20b1250.00')"), 'Successful payment did not refresh the customer balance')
-  assert(await evaluate("document.querySelector('#customer-credits-test .credit-stats').textContent.includes('\\u20b1250.00')"), 'Credit statistics did not remain consistent with the refreshed customer balance')
+  assert(await evaluate("document.querySelector('[aria-label=\"Customer balance summary\"] .outstanding strong').textContent.includes('250.00')"), 'Successful payment did not refresh the customer balance')
+  assert(await evaluate("document.querySelector('#customer-credits-test .credit-stats').textContent.includes('550.00')"), 'Credit statistics did not remain consistent with both outstanding customer balances')
 
   await setSelect("document.querySelector('#customer-credits-test .payment-form select')", '700')
   await setInput("document.querySelector('#customer-credits-test .payment-form input')", '60')
   await evaluate('paymentShouldFail = true')
   await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
-  await click("document.querySelector('[role=dialog] .primary-action')")
+  await click("document.querySelector('[role=dialog][aria-label=\"Review Payment\"] .primary-action')")
   await waitFor("Boolean(document.querySelector('.payment-confirmation-modal .payment-feedback.error'))", 'Failed payment did not show an error in review')
-  assert(await evaluate("document.querySelector('[role=dialog] h2').textContent") === 'Review Payment', 'Failed payment incorrectly opened success')
+  assert(await evaluate("Boolean(document.querySelector('[role=dialog][aria-label=\"Review Payment\"]'))"), 'Failed payment incorrectly opened success')
   assert(await evaluate("document.querySelector('#customer-credits-test .payment-form input').value") === '60', 'Failed payment did not preserve the entered amount')
   await evaluate('paymentShouldFail = false')
   await click("document.querySelector('.payment-confirmation-modal .secondary-action')")
   await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
-  await click("document.querySelector('[role=dialog] .primary-action')")
-  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Payment Recorded Successfully!'", 'Failed payment did not retry with its saved request')
+  await click("document.querySelector('[role=dialog][aria-label=\"Review Payment\"] .primary-action')")
+  await waitFor("Boolean(document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]'))", 'Failed payment did not retry with its saved request')
   assert(await evaluate('paymentRequests.at(-1).payment_amount') === '60', 'Payment retry changed the original amount')
   assert(await evaluate('paymentIdempotencyKeys[1] === paymentIdempotencyKeys[2]'), 'Payment retry did not retain the original idempotency key')
-  await click("document.querySelector('[role=dialog] .transaction-done-button')")
+  await click("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"] .transaction-done-button')")
 
   await setSelect("document.querySelector('#customer-credits-test .payment-form select')", '700')
   await setInput("document.querySelector('#customer-credits-test .payment-form input')", '10')
   await evaluate('paymentShouldReject = true')
   await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
-  await click("document.querySelector('[role=dialog] .primary-action')")
+  await click("document.querySelector('[role=dialog][aria-label=\"Review Payment\"] .primary-action')")
   await waitFor("document.querySelector('#customer-credits-test .payment-feedback.error')?.textContent.includes('confirmed not committed')", 'Confirmed payment rejection did not expose the correction action')
   await click("[...document.querySelectorAll('#customer-credits-test .payment-feedback button')].find((button) => button.textContent.includes('Edit Rejected Payment'))")
   assert(await evaluate("document.querySelector('#customer-credits-test .payment-form input').disabled"), 'Rejected payment unlocked before confirmation')
@@ -640,32 +677,30 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   assert(!await evaluate("document.querySelector('#customer-credits-test .payment-form input').disabled"), 'Confirmed rejected payment did not unlock for editing')
   await setInput("document.querySelector('#customer-credits-test .payment-form input')", '20')
   await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
-  await click("document.querySelector('[role=dialog] .primary-action')")
-  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Payment Recorded Successfully!'", 'Edited rejected payment did not submit')
+  await click("document.querySelector('[role=dialog][aria-label=\"Review Payment\"] .primary-action')")
+  await waitFor("Boolean(document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]'))", 'Edited rejected payment did not submit')
   const rejectedPaymentKeys = await evaluate('paymentIdempotencyKeys.slice(-2)')
   assert(rejectedPaymentKeys.length === 2 && rejectedPaymentKeys[0] !== rejectedPaymentKeys[1], 'Edited rejected payment did not receive a new idempotency key')
-  await click("document.querySelector('[role=dialog] .transaction-done-button')")
+  await click("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"] .transaction-done-button')")
 
   await setSelect("document.querySelector('#customer-credits-test .payment-form select')", '700')
   await setInput("document.querySelector('#customer-credits-test .payment-form input')", '170')
   await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
-  await click("document.querySelector('[role=dialog] .primary-action')")
-  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Payment Recorded Successfully!'", 'Full payment success modal did not open')
-  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('PAY-906') && document.querySelector('[role=dialog]').textContent.includes('\\u20b10.00')"), 'Full payment success details were inaccurate')
-  await click("document.querySelector('[role=dialog] .transaction-done-button')")
-  assert(await evaluate("document.querySelector('#customer-credits-test .payment-settled-note').textContent.includes('no unpaid credit sales')"), 'Full payment did not settle the selected credit sale')
-  assert(await evaluate("document.querySelector('#customer-credits-test').textContent.includes('Paid') && document.querySelector('#customer-credits-test .balance-display').textContent.includes('\\u20b10.00')"), 'Full payment did not refresh paid status and zero customer balance')
+  await click("document.querySelector('[role=dialog][aria-label=\"Review Payment\"] .primary-action')")
+  await waitFor("Boolean(document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]'))", 'Full payment success modal did not open')
+  assert(await evaluate("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]').textContent.includes('PAY-906') && document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]').textContent.includes('\\u20b10.00')"), 'Full payment success details were inaccurate')
+  await click("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"] .transaction-done-button')")
+  assert(await evaluate("document.querySelector('#customer-credits-test .payment-settled-note').textContent.includes('fully settled their credit')"), 'Full payment did not settle the selected credit sale')
+  assert(await evaluate("document.querySelector('[aria-label=\"Customer balance summary\"] .outstanding strong').textContent.includes('0.00')"), 'Full payment did not refresh the zero customer balance')
 
   await click("document.querySelector('#customer-credits-test .customer-list-heading .primary-action')")
-  await click("document.querySelector('[role=dialog] .primary-action')")
+  await click("document.querySelector('[role=dialog][aria-label=\"Add Customer\"] .primary-action')")
   assert(await evaluate("document.querySelector('[role=dialog] [role=alert]').textContent.trim()") === 'Customer name is required.', 'Add Customer required-name validation did not run')
   assert(await evaluate('customerRequests.length') === 1, 'Invalid customer form submitted a request')
   await setInput("document.querySelector('[role=dialog] input[name=customer_name]')", 'Ledger Customer')
   await evaluate("(() => { const button = document.querySelector('[role=dialog] .primary-action'); button.click(); button.click() })()")
-  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Customer Added Successfully!'", 'Customer Credits Add Customer did not show success')
+  await waitFor("document.querySelector('#customer-drawer-title')?.textContent === 'Ledger Customer'", 'Customer Credits Add Customer did not select the saved customer')
   assert(await evaluate('customerRequests.length') === 2, 'Customer Credits Add Customer submitted more than once')
-  await click("document.querySelector('[role=dialog] .transaction-done-button')")
-  await waitFor("document.querySelector('#customer-credits-test .ledger-heading h2')?.textContent === 'Ledger Customer'", 'New customer did not appear without a page reload')
 
   await evaluate(`(() => {
     const attempt = {
@@ -675,73 +710,105 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
       display: {
         customer_id: 7,
         customer_name: 'Maria Santos',
-        credit: { sale_id: 700, sale_date: '2026-10-20T09:30:00+08:00', total_amount: '500.00', amount_paid: '200.00', remaining_balance: '300.00', status: 'Partially Paid' },
+        credit: { sale_id: 700, sale_date: '2026-10-20T09:30:00+08:00', total_amount: '500.00', amount_paid: '480.00', remaining_balance: '20.00', status: 'Partially Paid' },
       },
     }
     sessionStorage.setItem('lcp.pending-transaction.v2.1.payment', JSON.stringify({ userId: 1, attempt }))
     sessionStorage.setItem('test-idempotency-status', JSON.stringify({ state: 'not_found' }))
   })()`)
   await browserConnection.command('Page.navigate', { url: pageUrl })
-  await waitFor("document.querySelector('#customer-credits-test .payment-feedback')?.textContent.includes('No completed result was found')", 'Pending payment recovery did not remain unresolved on reload')
-  await waitFor("[...document.querySelectorAll('#customer-credits-test .debtor-row')].some((row) => row.textContent.includes('Maria Santos'))", 'Original customer was not listed after reload')
-  await evaluate('ledgerRefreshCustomerIds = []')
-  await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Juan Cash Customer')
-  await click("[...document.querySelectorAll('#customer-credits-test .debtor-row')].find((row) => row.textContent.includes('Juan Cash Customer'))")
-  await waitFor("document.querySelector('#customer-credits-test .ledger-heading h2')?.textContent === 'Juan Cash Customer'", 'Customer switch did not open the selected ledger')
-  assert(await evaluate("document.querySelector('#customer-credits-test .payment-feedback.error')?.textContent.includes('Maria Santos')"), 'Pending payment for Maria was not identified in Juan ledger')
-  assert(!await evaluate("document.querySelector('[role=dialog] h2')?.textContent.includes('Payment Recorded Successfully')"), 'Payment for Maria was shown as successful under Juan')
-  await evaluate(`idempotencyStatus = {
-    state: 'completed',
-    status: 201,
-    response: { success: true, data: { payment_id: 999, sale_id: 700, payment_amount: '15.00', remaining_balance: '285.00', status: 'Partially Paid' } },
-  }`)
-  await click("[...document.querySelectorAll('#customer-credits-test .payment-feedback button')].find((button) => button.textContent.includes(\"Open Maria Santos's ledger\"))")
-  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Payment Recorded Successfully!'", 'Payment did not recover under its original customer')
-  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('Maria Santos')"), 'Recovered payment success used the wrong customer name')
-  assert(await evaluate("ledgerRefreshCustomerIds.slice(-2).every((customerId) => customerId === 7)"), 'Payment recovery refreshed a different customer ledger')
-  await click("document.querySelector('[role=dialog] .transaction-done-button')")
-
+  await waitFor("[...document.querySelectorAll('#customer-credits-test .customer-selection-row')].some((row) => row.textContent.includes('Maria Santos'))", 'Original customer was not listed after reload')
   await evaluate(`(() => {
     testCredits[0].remaining_balance = '20.00'
     testCredits[0].amount_paid = '480.00'
     testCredits[0].status = 'Partially Paid'
     testCustomers.find((item) => item.customer_id === 7).current_balance = '20.00'
   })()`)
-  await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Juan Cash Customer')
-  await click("[...document.querySelectorAll('#customer-credits-test .debtor-row')].find((row) => row.textContent.includes('Juan Cash Customer'))")
-  await waitFor("document.querySelector('#customer-credits-test .ledger-heading h2')?.textContent === 'Juan Cash Customer'", 'Customer ledger did not switch before in-flight payment')
   await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Maria Santos')
-  await click("[...document.querySelectorAll('#customer-credits-test .debtor-row')].find((row) => row.textContent.includes('Maria Santos'))")
+  await click("[...document.querySelectorAll('#customer-credits-test .customer-selection-row')].find((row) => row.textContent.includes('Maria Santos'))")
+  await waitFor("document.querySelector('#customer-drawer-title')?.textContent === 'Maria Santos' && document.querySelector('#customer-credits-test .payment-feedback')?.textContent.includes('No completed result was found')", 'Customer A pending payment did not remain unresolved after reload')
+  await evaluate('ledgerRefreshCustomerIds = []')
+  await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Justine')
+  await click("[...document.querySelectorAll('#customer-credits-test .customer-selection-row')].find((row) => row.textContent.includes('Justine'))")
+  await waitFor("document.querySelector('#customer-drawer-title')?.textContent === 'Justine'", 'Customer switch did not open the selected ledger')
+  assert(!await evaluate("document.querySelector('#customer-credits-test .payment-feedback')?.textContent.includes('Maria Santos')"), 'Maria payment recovery appeared under Justine')
+  assert(await evaluate("Boolean(document.querySelector('#customer-credits-test .payment-form select option[value=\"701\"]')) && !document.querySelector('#customer-credits-test .payment-form select').disabled"), 'Justine unpaid credit sale was unavailable while Maria had a pending payment')
+  assert(!await evaluate("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]')"), 'Maria payment was shown as successful under Justine')
+  await setSelect("document.querySelector('#customer-credits-test .payment-form select')", '701')
+  await setInput("document.querySelector('#customer-credits-test .payment-form input')", '25')
+  await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
+  await click("document.querySelector('[role=dialog][aria-label=\"Review Payment\"] .primary-action')")
+  await waitFor("Boolean(document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]'))", 'Justine payment did not complete while Maria had a pending payment')
+  assert(await evaluate("paymentRequests.at(-1).sale_id === 701 && paymentRequests.at(-1).payment_amount === '25'"), 'Justine payment request used the wrong credit sale or amount')
+  assert(await evaluate("testJustinePayments[0]?.customer_id === 8 && testJustinePayments[0]?.sale_id === 701 && testJustinePayments[0]?.payment_amount === '25.00'"), 'Justine payment was not associated with her customer and selected credit sale')
+  assert(await evaluate("testJustineCredits[0].remaining_balance === '275.00' && testCustomers.find((customer) => customer.customer_id === 8).current_balance === '275.00'"), 'Justine balance did not update after payment')
+  await click("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"] .transaction-done-button')")
+  await evaluate(`(() => {
+    const attempt = {
+      key: 'justine-independent-payment',
+      state: 'pending',
+      payload: { sale_id: 701, payment_amount: '10.00' },
+      display: { customer_id: 8, customer_name: 'Justine', credit: { sale_id: 701 } },
+    }
+    sessionStorage.setItem('lcp.pending-transaction.v2.1.payment.8', JSON.stringify({ userId: 1, attempt }))
+  })()`)
+  await evaluate(`(() => {
+    idempotencyStatus = {
+    state: 'completed',
+    status: 201,
+    response: { success: true, data: { payment_id: 999, sale_id: 700, payment_amount: '15.00', remaining_balance: '5.00', status: 'Partially Paid' } },
+    }
+    testCredits[0].amount_paid = '495.00'
+    testCredits[0].remaining_balance = '5.00'
+    testCustomers.find((item) => item.customer_id === 7).current_balance = '5.00'
+    testPayments.unshift({ payment_id: 999, sale_id: 700, customer_id: 7, payment_amount: '15.00', remaining_balance: '5.00', payment_date: '2026-10-21T15:00:00+08:00', recorded_by: 'Transaction Test Admin' })
+  })()`)
+  await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Maria Santos')
+  await click("[...document.querySelectorAll('#customer-credits-test .customer-selection-row')].find((row) => row.textContent.includes('Maria Santos'))")
+  await waitFor("document.querySelector('#customer-drawer-title')?.textContent === 'Maria Santos'", 'Customer switch did not return to Maria ledger for payment recovery')
+  await waitFor("Boolean(document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]'))", 'Payment did not recover under its original customer')
+  assert(await evaluate("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]').textContent.includes('Maria Santos')"), 'Recovered payment success used the wrong customer name')
+  assert(await evaluate("ledgerRefreshCustomerIds.slice(-2).every((customerId) => customerId === 7)"), 'Payment recovery refreshed a different customer ledger')
+  await click("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"] .transaction-done-button')")
+  assert(await evaluate("sessionStorage.getItem('lcp.pending-transaction.v2.1.payment.7') === null"), 'Finishing Maria recovery did not clear her scoped attempt')
+  assert(await evaluate("JSON.parse(sessionStorage.getItem('lcp.pending-transaction.v2.1.payment.8') || 'null')?.attempt?.key === 'justine-independent-payment'"), 'Clearing Maria recovery also cleared Justine’s independent attempt')
+  await evaluate("sessionStorage.removeItem('lcp.pending-transaction.v2.1.payment.8')")
+  await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Justine')
+  await click("[...document.querySelectorAll('#customer-credits-test .customer-selection-row')].find((row) => row.textContent.includes('Justine'))")
+  await waitFor("document.querySelector('#customer-drawer-title')?.textContent === 'Justine'", 'Customer ledger did not switch before in-flight payment')
+  await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Maria Santos')
+  await click("[...document.querySelectorAll('#customer-credits-test .customer-selection-row')].find((row) => row.textContent.includes('Maria Santos'))")
   await waitFor("Boolean(document.querySelector('#customer-credits-test .payment-form select')?.querySelector('option[value=\"700\"]'))", 'Maria ledger did not reload an open credit for the in-flight switch test')
   await setSelect("document.querySelector('#customer-credits-test .payment-form select')", '700')
   await setInput("document.querySelector('#customer-credits-test .payment-form input')", '5')
   await click("document.querySelector('#customer-credits-test .payment-form > .primary-action')")
-  await click("document.querySelector('[role=dialog] .primary-action')")
+  await click("document.querySelector('[role=dialog][aria-label=\"Review Payment\"] .primary-action')")
   await evaluate(`(() => {
     const search = document.querySelector('#customer-credits-test .customer-list-controls input')
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
-    setter.call(search, 'Juan Cash Customer')
+    setter.call(search, 'Justine')
     search.dispatchEvent(new Event('input', { bubbles: true }))
-    const row = [...document.querySelectorAll('#customer-credits-test .debtor-row')].find((item) => item.textContent.includes('Juan Cash Customer'))
+    const row = [...document.querySelectorAll('#customer-credits-test .customer-selection-row')].find((item) => item.textContent.includes('Justine'))
     row?.click()
   })()`)
-  await waitFor("document.querySelector('#customer-credits-test .ledger-heading h2')?.textContent === 'Juan Cash Customer'", 'Customer switching during payment did not select the new customer')
+  await waitFor("document.querySelector('#customer-drawer-title')?.textContent === 'Justine'", 'Customer switching during payment did not select the new customer')
   await waitFor("ledgerRefreshCustomerIds.slice(-2).every((customerId) => customerId === 7)", 'In-flight payment did not refresh its original customer ledger')
-  assert(!await evaluate("document.querySelector('[role=dialog] h2')?.textContent.includes('Payment Recorded Successfully')"), 'In-flight payment result was displayed under the newly selected customer')
+  assert(!await evaluate("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]')"), 'In-flight payment result was displayed under the newly selected customer')
 
   await capture('mobile-customer-credits.png', 390, "document.querySelector('#customer-credits-test')")
-  assert(await evaluate("document.querySelector('#customer-credits-test').scrollWidth <= document.querySelector('#customer-credits-test').clientWidth"), 'Customer Credits overflowed horizontally on mobile')
+  assert(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Customer Credits caused page-level horizontal overflow on mobile')
 
   await capture('mobile-record-sales.png', 390, "document.querySelector('#record-sales-test')")
   assert(await evaluate("document.querySelector('#record-sales-test').scrollWidth <= document.querySelector('#record-sales-test').clientWidth"), 'Record Sales overflowed horizontally on mobile')
-  await click("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Chicken Liver'))")
+  await click("[...document.querySelectorAll('#record-sales-test [role=tablist] button')].find((button) => button.textContent.includes('Products'))")
+  await selectProduct("[...document.querySelectorAll('#record-sales-test .product-card')].find((card) => card.textContent.includes('Chicken Liver'))")
   await setInput("document.querySelector('#record-sales-test .basket-section input')", '80')
   await click("document.querySelector('#record-sales-test .basket-panel > .primary-action')")
-  await click("document.querySelector('[role=dialog] .primary-action')")
-  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Sale Recorded Successfully!'", 'Mobile sale success modal did not open')
-  assert(await evaluate("document.querySelector('[role=dialog]').scrollWidth <= document.querySelector('[role=dialog]').clientWidth"), 'Success modal overflowed horizontally on mobile')
-  await capture('mobile-sale-success.png', 390, "document.querySelector('[role=dialog]')")
-  await click("document.querySelector('[role=dialog] .transaction-done-button')")
+  await click("document.querySelector('[role=dialog][aria-label=\"Confirm Sales Transaction\"] .primary-action')")
+  await waitFor("Boolean(document.querySelector('[role=dialog][aria-label=\"Sale Recorded Successfully!\"]'))", 'Mobile sale success modal did not open')
+  assert(await evaluate("document.querySelector('[role=dialog][aria-label=\"Sale Recorded Successfully!\"]').scrollWidth <= document.querySelector('[role=dialog][aria-label=\"Sale Recorded Successfully!\"]').clientWidth"), 'Success modal overflowed horizontally on mobile')
+  await capture('mobile-sale-success.png', 390, "document.querySelector('[role=dialog][aria-label=\"Sale Recorded Successfully!\"]')")
+  await click("document.querySelector('[role=dialog][aria-label=\"Sale Recorded Successfully!\"] .transaction-done-button')")
 
   await evaluate(`(() => {
     const attempt = {
@@ -783,10 +850,10 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
     }))
   })()`)
   await browserConnection.command('Page.navigate', { url: pageUrl })
-  await waitFor("document.querySelector('[role=dialog] h2')?.textContent === 'Sale Recorded Successfully!'", 'Reload did not recover a completed sale')
-  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('OR-777') && document.querySelectorAll('#record-sales-test .basket-item').length === 1"), 'Reloaded sale recovery omitted the saved transaction')
+  await waitFor("Boolean(document.querySelector('[role=dialog][aria-label=\"Sale Recorded Successfully!\"]'))", 'Reload did not recover a completed sale')
+  assert(await evaluate("document.querySelector('[role=dialog][aria-label=\"Sale Recorded Successfully!\"]').textContent.includes('OR-777') && document.querySelectorAll('#record-sales-test .basket-item').length === 1"), 'Reloaded sale recovery omitted the saved transaction')
   assert(await evaluate('salesRequests.length') === 0, 'Recovered sale was submitted as a new transaction')
-  await click("document.querySelector('[role=dialog] .transaction-done-button')")
+  await click("document.querySelector('[role=dialog][aria-label=\"Sale Recorded Successfully!\"] .transaction-done-button')")
   assert(await evaluate("sessionStorage.getItem('lcp.pending-transaction.v2.1.sale') === null"), 'Acknowledging a recovered sale did not clear its saved attempt')
 
   console.log('PASS product search, availability, cart quantity, removal, summaries, and responsive layout')

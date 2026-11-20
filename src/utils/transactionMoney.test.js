@@ -126,6 +126,50 @@ test('pending transaction recovery is scoped by authenticated user and operation
   }
 })
 
+test('payment recovery is isolated by customer and migrates only the matching legacy attempt', () => {
+  const originalStorage = globalThis.sessionStorage
+  const values = new Map()
+  globalThis.sessionStorage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  }
+  try {
+    const paymentA = {
+      key: 'customer-a-payment',
+      state: 'pending',
+      payload: { sale_id: 31, payment_amount: '20.00' },
+      display: { customer_id: 2, customer_name: 'Customer A', credit: { sale_id: 31 } },
+    }
+    const paymentB = {
+      key: 'customer-b-payment',
+      state: 'pending',
+      payload: { sale_id: 48, payment_amount: '10.00' },
+      display: { customer_id: 7, customer_name: 'Justine', credit: { sale_id: 48 } },
+    }
+
+    savePendingTransaction('payment', 5, paymentA, 2)
+    assert.equal(readPendingTransaction('payment', 5, 7), null)
+    savePendingTransaction('payment', 5, paymentB, 7)
+    assert.deepEqual(readPendingTransaction('payment', 5, 2), paymentA)
+    assert.deepEqual(readPendingTransaction('payment', 5, 7), paymentB)
+
+    values.set('lcp.pending-transaction.v2.11.payment', JSON.stringify({ userId: 11, attempt: paymentA }))
+    assert.equal(readPendingTransaction('payment', 11, 7), null)
+    assert.equal(values.has('lcp.pending-transaction.v2.11.payment'), true)
+    assert.deepEqual(readPendingTransaction('payment', 11, 2), paymentA)
+    assert.equal(values.has('lcp.pending-transaction.v2.11.payment'), false)
+    assert.equal(values.has('lcp.pending-transaction.v2.11.payment.2'), true)
+
+    clearPendingTransaction('payment', 5, 7)
+    assert.deepEqual(readPendingTransaction('payment', 5, 2), paymentA)
+    assert.equal(readPendingTransaction('payment', 5, 7), null)
+  } finally {
+    if (originalStorage === undefined) delete globalThis.sessionStorage
+    else globalThis.sessionStorage = originalStorage
+  }
+})
+
 test('logout and in-flight account switching preserve recovery only for the original user', async () => {
   const originalStorage = globalThis.sessionStorage
   const values = new Map()

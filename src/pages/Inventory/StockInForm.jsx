@@ -14,14 +14,16 @@ import {
 } from '../../utils/pendingTransaction.js'
 import { transactionLineCents } from '../../utils/transactionMoney.js'
 import StockInConfirmationModal from './StockInConfirmationModal.jsx'
+import FormattedNumberInput from '../Shared/FormattedNumberInput.jsx'
 import { useAuth } from '../../hooks/useAuth.js'
 import { useToast } from '../../context/ToastContext.jsx'
-
-function getLocalDateTime() {
-  const now = new Date()
-  const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-  return localTime.toISOString().slice(0, 16)
-}
+import {
+  getBusinessCalendarDate,
+  getBusinessDateTimeLocal,
+  getStockInCalendarDate,
+  STOCK_IN_FUTURE_DATE_MESSAGE,
+  STOCK_IN_INVALID_DATE_MESSAGE,
+} from '../../../shared/stockInDate.js'
 
 function createInitialForm() {
   return {
@@ -29,7 +31,7 @@ function createInitialForm() {
     product_id: '',
     quantity_received: '',
     cost_price: '',
-    delivery_date: getLocalDateTime(),
+    delivery_date: getBusinessDateTimeLocal(),
   }
 }
 
@@ -55,9 +57,9 @@ function validateStockIn(form, product, supplier) {
     return 'Total cost cannot exceed ₱9,999,999,999.99.'
   }
 
-  if (!form.delivery_date || Number.isNaN(new Date(form.delivery_date).getTime())) {
-    return 'Enter a valid delivery date and time.'
-  }
+  const deliveryCalendarDate = getStockInCalendarDate(form.delivery_date)
+  if (!deliveryCalendarDate) return STOCK_IN_INVALID_DATE_MESSAGE
+  if (deliveryCalendarDate > getBusinessCalendarDate()) return STOCK_IN_FUTURE_DATE_MESSAGE
 
   return ''
 }
@@ -108,6 +110,7 @@ function StockInFormForUser({ userId, onCreated }) {
   const selectedSupplier = suppliers.find((supplier) => String(supplier.supplier_id) === String(form.supplier_id))
     || pendingAttempt?.display?.supplier
   const recoveryBlocked = Boolean(recoveryMessage && !pendingAttempt)
+  const maxDeliveryDateTime = `${getBusinessCalendarDate()}T23:59`
 
   useEffect(() => {
     const controller = new AbortController()
@@ -179,6 +182,17 @@ function StockInFormForUser({ userId, onCreated }) {
   function handleReview(event) {
     event.preventDefault()
     if (recoveryBlocked) return
+    const deliveryCalendarDate = getStockInCalendarDate(form.delivery_date)
+    if (!deliveryCalendarDate) {
+      setError(STOCK_IN_INVALID_DATE_MESSAGE)
+      showError(STOCK_IN_INVALID_DATE_MESSAGE)
+      return
+    }
+    if (deliveryCalendarDate > getBusinessCalendarDate()) {
+      setError(STOCK_IN_FUTURE_DATE_MESSAGE)
+      showError(STOCK_IN_FUTURE_DATE_MESSAGE)
+      return
+    }
     if (pendingAttempt) {
       if (pendingAttempt.state === 'rejected') return
       setError('')
@@ -205,6 +219,10 @@ function StockInFormForUser({ userId, onCreated }) {
     let attempt = pendingAttempt
     try {
       if (attempt?.state === 'rejected') return
+      const deliveryDate = attempt?.payload?.delivery_date || form.delivery_date
+      const deliveryCalendarDate = getStockInCalendarDate(deliveryDate)
+      if (!deliveryCalendarDate) throw new Error(STOCK_IN_INVALID_DATE_MESSAGE)
+      if (deliveryCalendarDate > getBusinessCalendarDate()) throw new Error(STOCK_IN_FUTURE_DATE_MESSAGE)
       if (!attempt) {
         attempt = {
           key: createIdempotencyKey(),
@@ -424,12 +442,12 @@ function StockInFormForUser({ userId, onCreated }) {
         </label>
         <label>
           <span>Cost per Unit <b className="required-marker" aria-hidden="true">*</b></span>
-          <input name="cost_price" type="number" inputMode="decimal" min="0" max="99999999.99" step="0.01" placeholder="0.00" value={form.cost_price} onChange={handleChange} required disabled={loading || submitting || Boolean(pendingAttempt) || recoveryBlocked} />
+          <FormattedNumberInput name="cost_price" placeholder="0.00" value={form.cost_price} onValueChange={(value) => handleChange({ target: { name: 'cost_price', value } })} required disabled={loading || submitting || Boolean(pendingAttempt) || recoveryBlocked} />
         </label>
       </div>
       <label>
         <span>Delivery Date and Time <b className="required-marker" aria-hidden="true">*</b></span>
-        <input name="delivery_date" type="datetime-local" value={form.delivery_date} onChange={handleChange} required disabled={loading || submitting || Boolean(pendingAttempt) || recoveryBlocked} />
+        <input name="delivery_date" type="datetime-local" max={maxDeliveryDateTime} value={form.delivery_date} onChange={handleChange} required disabled={loading || submitting || Boolean(pendingAttempt) || recoveryBlocked} />
       </label>
       {error && !confirmationOpen && <p className="inventory-feedback error" role="alert">{error}</p>}
       <button className="primary-action" type="submit" disabled={loading || submitting || recoveryBlocked || Boolean(successResult) || pendingAttempt?.state === 'completed' || pendingAttempt?.state === 'rejected'}>

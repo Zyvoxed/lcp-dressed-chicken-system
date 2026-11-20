@@ -51,6 +51,7 @@ function MainLayout({
         mobileOpen={mobileOpen}
         onToggleSidebar={toggleCollapse}
         onToggleMobile={toggleMobile}
+        onLogout={onLogout}
       />
       <main className="content-area">{children}</main>
     </div>

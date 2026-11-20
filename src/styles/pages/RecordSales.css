@@ -466,7 +466,6 @@
 
 /* Table Rows */
 .product-card {
-  cursor: pointer;
   transition: background-color 0.12s ease;
 }
 
@@ -476,13 +475,7 @@
 
 .product-card.is-unavailable {
   background: var(--surface-inset);
-  cursor: not-allowed;
   opacity: 0.7;
-}
-
-.product-card:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
 }
 
 .pos-prod-info {
@@ -736,6 +729,7 @@
 }
 
 .basket-item {
+  position: relative;
   flex-shrink: 0;
   min-width: 0;
   display: grid;
@@ -746,6 +740,30 @@
   background: var(--card-bg);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   transition: border-color 0.12s ease;
+}
+
+.basket-item-edit {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 0 28px 0 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.basket-item-edit:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.basket-item-edit:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .basket-item:hover {
@@ -781,6 +799,9 @@
 }
 
 .basket-remove-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   width: 24px;
   height: 24px;
   display: grid;
@@ -808,52 +829,23 @@
   gap: 8px;
 }
 
-/* Quantity Stepper */
-.quantity-stepper {
-  display: grid;
-  grid-template-columns: 24px minmax(46px, 58px) 24px;
+.basket-item-quantity {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
 }
 
-.quantity-stepper button,
-.quantity-stepper input {
-  min-height: 24px;
-  border-radius: 0;
+.basket-item-quantity span {
+  color: var(--text-muted);
+  font-size: 9.5px;
+  text-transform: uppercase;
 }
 
-.quantity-stepper button {
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  background: var(--surface-inset);
-  cursor: pointer;
-  transition: background-color 0.12s ease;
-}
-
-.quantity-stepper button:hover:not(:disabled) {
-  background: var(--surface-hover);
-  color: var(--primary);
-}
-
-.quantity-stepper button:first-child {
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-}
-
-.quantity-stepper button:last-child {
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.quantity-stepper input {
-  padding: 1px 3px;
-  border: 1px solid var(--border);
-  border-inline: 0;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  font-size: 11.5px;
-  font-weight: 600;
-  background: var(--card-bg);
+.basket-item-quantity strong {
   color: var(--text-heading);
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .basket-item-subtotal {
@@ -873,6 +865,56 @@
   font-size: 12.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.quantity-entry-form {
+  display: grid;
+  gap: 14px;
+}
+
+.quantity-entry-product {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
+.quantity-entry-product strong {
+  color: var(--text-heading);
+  font-size: 15px;
+}
+
+.quantity-entry-product span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.quantity-entry-field {
+  display: grid;
+  gap: 6px;
+  color: var(--text-label);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.quantity-entry-field input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  background: var(--input-bg);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.quantity-entry-error {
+  margin: 0;
+  color: var(--status-danger-text);
+  font-size: 12px;
 }
 
 .stock-limit-note {

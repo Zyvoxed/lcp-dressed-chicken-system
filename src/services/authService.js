@@ -28,14 +28,37 @@ export async function login(username, password) {
   })
   const result = await parseResponse(response, 'Unable to log in')
 
-  if (!result.token || !result.user) {
+  if (!result.challengeId || !result.expiresAt || !result.resendAvailableAt) {
     throw new Error('The authentication API returned an invalid response')
   }
 
   return {
-    token: result.token,
-    user: result.user,
+    challengeId: result.challengeId,
+    expiresAt: result.expiresAt,
+    resendAvailableAt: result.resendAvailableAt,
   }
+}
+
+export async function verifyLoginMfa(challengeId, code) {
+  const response = await apiFetch('/auth/login/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ challengeId, code }),
+  })
+  const result = await parseResponse(response, 'Unable to verify the login code')
+  if (!result.token || !result.user) {
+    throw new Error('The authentication API returned an invalid response')
+  }
+  return { token: result.token, user: result.user }
+}
+
+export async function resendLoginMfa(challengeId) {
+  const response = await apiFetch('/auth/login/resend', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ challengeId }),
+  })
+  return parseResponse(response, 'Unable to resend the login code')
 }
 
 export async function getCurrentUser(token) {

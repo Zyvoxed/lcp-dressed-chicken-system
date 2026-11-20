@@ -13,6 +13,14 @@ import {
 import EmptyState from '../Shared/EmptyState.jsx'
 import { getSalesReport, getSalesReportDetail } from '../../services/reportService.js'
 import { buildMonotonePath } from '../../utils/chartPaths.js'
+import {
+  getCurrentReportingYear,
+  getMonthlyIndexesForYear,
+} from '../../utils/monthlyChartPeriods.js'
+import {
+  SALES_CHART_LAYOUT,
+  SALES_CHART_STYLE,
+} from '../../utils/salesChartPresentation.js'
 
 const PRODUCT_COLORS = [
   '#235347', // Forest Green
@@ -28,7 +36,7 @@ const monthNames = [
 ]
 const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-const chartSize = { width: 700, height: 310, left: 68, right: 24, top: 24, bottom: 46 }
+const chartSize = SALES_CHART_LAYOUT
 
 function yearInManila(value) {
   const date = new Date(value)
@@ -106,9 +114,10 @@ function ProductSalesPerformanceChart({ products = [] }) {
 
         if (!records.length) {
           if (isActive) {
+            const currentYear = getCurrentReportingYear()
             setSalesItems([])
-            setAvailableYears([new Date().getFullYear()])
-            setSelectedYear(new Date().getFullYear())
+            setAvailableYears([currentYear])
+            setSelectedYear(currentYear)
             setLoadingSales(false)
           }
           return
@@ -119,7 +128,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
           new Set(records.map((r) => yearInManila(r.sale_date)).filter(Boolean)),
         ).sort((a, b) => b - a)
 
-        const defaultYear = extractedYears.length ? extractedYears[0] : new Date().getFullYear()
+        const defaultYear = extractedYears.length ? extractedYears[0] : getCurrentReportingYear()
 
         if (isActive) {
           setAvailableYears(extractedYears.length ? extractedYears : [defaultYear])
@@ -250,10 +259,14 @@ function ProductSalesPerformanceChart({ products = [] }) {
 
     let labels = []
     let fullLabels = []
+    const monthlyIndexes = periodMode === 'monthly'
+      ? getMonthlyIndexesForYear(selectedYear)
+      : []
+    if (periodMode === 'monthly' && monthlyIndexes.length === 0) return null
 
     if (periodMode === 'monthly') {
-      labels = shortMonths
-      fullLabels = monthNames.map((m) => `${m} ${selectedYear}`)
+      labels = monthlyIndexes.map((monthIndex) => shortMonths[monthIndex])
+      fullLabels = monthlyIndexes.map((monthIndex) => `${monthNames[monthIndex]} ${selectedYear}`)
     } else {
       const sortedYears = [...availableYears].sort((a, b) => a - b)
       labels = sortedYears.map(String)
@@ -269,7 +282,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
       if (periodMode === 'monthly') {
         const targetYear = selectedYear
         for (const item of salesItems) {
-          if (item.productId === String(product.product_id) && item.year === targetYear && item.month >= 0 && item.month <= 11) {
+          if (item.productId === String(product.product_id) && item.year === targetYear && item.month >= 0 && item.month < monthlyIndexes.length) {
             values[item.month] += item.quantity
           }
         }
@@ -348,7 +361,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
   }, [selectedProducts, salesItems, periodMode, selectedYear, availableYears])
 
   // Tooltip handler
-  function showPointTooltip(point, event, pinned = false) {
+  function showPointTooltip(point, event) {
     const bounds = event.currentTarget.getBoundingClientRect()
     const x = Number.isFinite(event.clientX) && event.clientX ? event.clientX : bounds.left + bounds.width / 2
     const y = Number.isFinite(event.clientY) && event.clientY ? event.clientY : bounds.top
@@ -359,31 +372,11 @@ function ProductSalesPerformanceChart({ products = [] }) {
       x: Math.max(12 + halfWidth, Math.min(x, window.innerWidth - 12 - halfWidth)),
       y,
       above: y > 150,
-      pinned,
     })
   }
 
   function hidePointTooltip() {
-    setTooltip((current) => (current?.pinned ? current : null))
-  }
-
-  function togglePinnedTooltip(point, event) {
-    setTooltip((current) => {
-      if (current?.pinned && current.point.name === point.name && current.point.label === point.label) {
-        return null
-      }
-      const bounds = event.currentTarget.getBoundingClientRect()
-      const x = Number.isFinite(event.clientX) && event.clientX ? event.clientX : bounds.left + bounds.width / 2
-      const y = Number.isFinite(event.clientY) && event.clientY ? event.clientY : bounds.top
-      const halfWidth = Math.min(140, (window.innerWidth - 24) / 2)
-      return {
-        point,
-        x: Math.max(12 + halfWidth, Math.min(x, window.innerWidth - 12 - halfWidth)),
-        y,
-        above: y > 150,
-        pinned: true,
-      }
-    })
+    setTooltip(null)
   }
 
   return (
@@ -597,7 +590,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
       ) : (
         <div className="product-trends-canvas-wrapper">
           <svg
-            className="product-trends-svg"
+            className="product-trends-svg sales-product-chart"
             viewBox={`0 0 ${chartSize.width} ${chartSize.height}`}
             preserveAspectRatio="none"
             role="img"
@@ -607,14 +600,14 @@ function ProductSalesPerformanceChart({ products = [] }) {
             {chartModel.ticks.map((tick) => (
               <g key={tick.value}>
                 <line
-                  className="product-trends-gridline"
+                  className="product-trends-gridline sales-product-chart-gridline"
                   x1={chartSize.left}
                   x2={chartSize.width - chartSize.right}
                   y1={tick.y}
                   y2={tick.y}
                 />
                 <text
-                  className="product-trends-axis-label"
+                  className="product-trends-axis-label sales-product-chart-axis-label"
                   x={chartSize.left - 8}
                   y={tick.y + 4}
                   textAnchor="end"
@@ -624,51 +617,34 @@ function ProductSalesPerformanceChart({ products = [] }) {
               </g>
             ))}
 
-            {/* Straight connecting lines and circular markers for each product */}
+            {/* Smooth product lines and circular markers */}
             {chartModel.series.map((series) => (
               <g key={series.id} className="product-trends-series-group">
                 <path
                   d={series.pathD}
                   fill="none"
                   stroke={series.color}
-                  strokeWidth="2.5"
+                  strokeWidth={SALES_CHART_STYLE.lineWidth}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="product-trends-line"
+                  className="product-trends-line sales-product-chart-line"
                 />
-                {series.points.map((point, ptIdx) => {
-                  const isHovered =
-                    tooltip?.point?.name === point.name &&
-                    tooltip?.point?.label === point.label
-
-                  return (
-                    <circle
-                      key={`${series.id}-${ptIdx}`}
-                      cx={point.x}
-                      cy={point.y}
-                      r={isHovered ? 5.5 : 4}
-                      fill={series.color}
-                      stroke="#FFFFFF"
-                      strokeWidth={isHovered ? 2.5 : 1.5}
-                      className="product-trends-point"
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`${point.name}, ${point.fullPeriod}, ${formatKgValue(point.value)}`}
-                      onPointerEnter={(e) => showPointTooltip(point, e)}
-                      onPointerMove={(e) => showPointTooltip(point, e, tooltip?.pinned)}
-                      onPointerLeave={hidePointTooltip}
-                      onClick={(e) => togglePinnedTooltip(point, e)}
-                      onFocus={(e) => showPointTooltip(point, e)}
-                      onBlur={hidePointTooltip}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          togglePinnedTooltip(point, e)
-                        }
-                      }}
-                    />
-                  )
-                })}
+                {series.points.map((point, ptIdx) => (
+                  <circle
+                    key={`${series.id}-${ptIdx}`}
+                    cx={point.x}
+                    cy={point.y}
+                    r={SALES_CHART_STYLE.pointRadius}
+                    fill={series.color}
+                    stroke="var(--card-bg)"
+                    strokeWidth={SALES_CHART_STYLE.markerStrokeWidth}
+                    className="product-trends-point sales-product-chart-point"
+                    aria-label={`${point.name}, ${point.fullPeriod}, ${formatKgValue(point.value)}`}
+                    onPointerEnter={(e) => showPointTooltip(point, e)}
+                    onPointerMove={(e) => showPointTooltip(point, e)}
+                    onPointerLeave={hidePointTooltip}
+                  />
+                ))}
               </g>
             ))}
 
@@ -676,7 +652,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
             {chartModel.xLabels.map((item) => (
               <text
                 key={item.label}
-                className="product-trends-axis-label x-axis"
+                className="product-trends-axis-label x-axis sales-product-chart-axis-label"
                 x={item.x}
                 y={item.y}
                 textAnchor="middle"
@@ -692,7 +668,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
       {tooltip &&
         createPortal(
           <div
-            className={`product-trends-tooltip ${tooltip.above ? 'above' : 'below'}`}
+            className={`product-trends-tooltip sales-product-tooltip ${tooltip.above ? 'above' : 'below'}`}
             role="tooltip"
             style={{
               left: `${tooltip.x}px`,
@@ -713,11 +689,6 @@ function ProductSalesPerformanceChart({ products = [] }) {
             <div className="product-trends-tooltip-metric">
               Quantity Sold: <strong>{formatKgValue(tooltip.point.value)}</strong>
             </div>
-            {tooltip.pinned && (
-              <small className="product-trends-tooltip-pinned-hint">
-                Click point to unpin
-              </small>
-            )}
           </div>,
           document.body,
         )}

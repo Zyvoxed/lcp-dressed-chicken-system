@@ -1,8 +1,8 @@
+import { useEffect, useRef, useState } from "react";
 import {
-  BarChart3, Boxes, FileChartColumn, History, LayoutDashboard, Menu,
-  Moon, ShoppingCart, Sun, Truck, Users, WalletCards,
+  BarChart3, Boxes, ChevronDown, FileChartColumn, History, LayoutDashboard,
+  LogOut, Menu, ShoppingCart, Truck, Users, WalletCards,
 } from "lucide-react";
-import { useTheme } from "../hooks/useTheme.js";
 
 const modulePresentation = {
   "Main Dashboard": { title: "Dashboard", Icon: LayoutDashboard },
@@ -16,13 +16,52 @@ const modulePresentation = {
   "User Accounts": { title: "User Accounts", Icon: Users },
 };
 
-function Header({ role, user, activeModule, sidebarCollapsed, mobileOpen, onToggleSidebar, onToggleMobile }) {
-  const { theme, toggleTheme } = useTheme();
-  const nextThemeLabel =
-    theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
+function Header({
+  role,
+  user,
+  activeModule,
+  sidebarCollapsed,
+  mobileOpen,
+  onToggleSidebar,
+  onToggleMobile,
+  onLogout,
+}) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const userMenuRef = useRef(null);
+
   const displayName = user?.fullname || user?.username || "Operator";
-  const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-  const { title, Icon } = modulePresentation[activeModule] || modulePresentation["Main Dashboard"];
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+  const { title, Icon } =
+    modulePresentation[activeModule] || modulePresentation["Main Dashboard"];
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setDropdownOpen(false);
+      }
+    }
+
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [dropdownOpen]);
 
   return (
     <header className="topbar">
@@ -56,26 +95,45 @@ function Header({ role, user, activeModule, sidebarCollapsed, mobileOpen, onTogg
       </div>
 
       <div className="topbar-right">
-        <button
-          className="theme-toggle"
-          type="button"
-          onClick={toggleTheme}
-          aria-label={nextThemeLabel}
-          title={nextThemeLabel}
-        >
-          {theme === "dark" ? (
-            <Sun size={17} aria-hidden="true" />
-          ) : (
-            <Moon size={17} aria-hidden="true" />
-          )}
-        </button>
+        <div className="topbar-user-menu" ref={userMenuRef}>
+          <button
+            type="button"
+            className={`privilege-card ${dropdownOpen ? "is-open" : ""}`}
+            onClick={() => setDropdownOpen((prev) => !prev)}
+            aria-expanded={dropdownOpen}
+            aria-haspopup="menu"
+            aria-label={`${displayName}, ${role === "admin" ? "Admin" : "Staff"}. Click to open user menu`}
+            title={`${displayName} (${role === "admin" ? "Admin" : "Staff"})`}
+          >
+            <span className="topbar-avatar" aria-hidden="true">{initials}</span>
+            <div className="topbar-user-copy">
+              <strong>{displayName}</strong>
+              <p>{role === "admin" ? "Admin" : "Staff"}</p>
+            </div>
+            <ChevronDown size={14} className={`topbar-chevron ${dropdownOpen ? "rotated" : ""}`} aria-hidden="true" />
+          </button>
 
-        <div className="privilege-card" role="group" aria-label={`${displayName}, ${role === "admin" ? "Admin" : "Staff"}`} title={`${displayName} (${role === "admin" ? "Admin" : "Staff"})`}>
-          <span className="topbar-avatar" aria-hidden="true">{initials}</span>
-          <div className="topbar-user-copy">
-            <strong>{displayName}</strong>
-            <p>{role === "admin" ? "Admin" : "Staff"}</p>
-          </div>
+          {dropdownOpen && (
+            <div className="topbar-user-dropdown" role="menu">
+              <div className="dropdown-user-info">
+                <strong className="dropdown-user-name">{displayName}</strong>
+                <span className="dropdown-user-role">{role === "admin" ? "Administrator" : "Staff Member"}</span>
+              </div>
+              <div className="dropdown-divider" />
+              <button
+                type="button"
+                role="menuitem"
+                className="dropdown-item logout"
+                onClick={() => {
+                  setDropdownOpen(false);
+                  if (onLogout) onLogout();
+                }}
+              >
+                <LogOut size={15} aria-hidden="true" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

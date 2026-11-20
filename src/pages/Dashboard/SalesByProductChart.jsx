@@ -4,8 +4,13 @@ import EmptyState from '../Shared/EmptyState.jsx'
 import { peso } from '../../utils/currency.js'
 import { getSalesReport, getSalesReportDetail } from '../../services/reportService.js'
 import { buildMonotonePath } from '../../utils/chartPaths.js'
+import { getMonthlyIndexesForYear } from '../../utils/monthlyChartPeriods.js'
+import {
+  SALES_CHART_LAYOUT,
+  SALES_CHART_STYLE,
+} from '../../utils/salesChartPresentation.js'
 
-const chartSize = { width: 680, height: 300, left: 64, right: 18, top: 20, bottom: 48 }
+const chartSize = SALES_CHART_LAYOUT
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const seriesColors = ['#235347', '#8EB69B', '#91ACB5', '#C6A76A', '#D98F7C']
@@ -58,9 +63,15 @@ function SalesByProductChart({ products = [] }) {
           return
         }
 
+        const monthIndexes = getMonthlyIndexesForYear(year)
+        if (!monthIndexes.length) {
+          if (isActive) setSalesByProduct([])
+          return
+        }
+
         const yearRecords = records.filter((record) => yearInManila(record.sale_date) === year)
         const productIds = new Set(topProducts.map((product) => String(product.product_id)))
-        const totals = new Map(topProducts.map((product) => [String(product.product_id), Array(12).fill(0)]))
+        const totals = new Map(topProducts.map((product) => [String(product.product_id), Array(monthIndexes.length).fill(0)]))
         let nextRecord = 0
         const workerCount = Math.min(yearRecords.length, 6)
 
@@ -73,12 +84,12 @@ function SalesByProductChart({ products = [] }) {
             const saleMonth = Number(new Intl.DateTimeFormat('en-PH', {
               timeZone: 'Asia/Manila', month: 'numeric',
             }).format(new Date(saleDate))) - 1
-            if (saleMonth < 0 || saleMonth > 11) continue
+            if (saleMonth < 0 || saleMonth >= monthIndexes.length) continue
 
             for (const item of detail.items || []) {
               const productTotal = totals.get(String(item.product_id))
               const revenue = Number(item.subtotal)
-              if (productIds.has(String(item.product_id)) && Number.isFinite(revenue)) {
+              if (productTotal && productIds.has(String(item.product_id)) && Number.isFinite(revenue)) {
                 productTotal[saleMonth] += revenue
               }
             }
@@ -90,6 +101,7 @@ function SalesByProductChart({ products = [] }) {
           id: product.product_id,
           name: product.product_name,
           values: totals.get(String(product.product_id)),
+          monthIndexes,
         })))
       } catch (requestError) {
         if (isActive && requestError.name !== 'AbortError') setError(requestError.message)
@@ -115,20 +127,28 @@ function SalesByProductChart({ products = [] }) {
       return { value, y: bottom - plotHeight * index / 4 }
     })
     const series = salesByProduct.map((source, seriesIndex) => {
-      const points = source.values.map((value, monthIndex) => ({
-        x: chartSize.left + plotWidth * monthIndex / 11,
+      const points = source.values.map((value, monthPosition) => ({
+        x: source.values.length === 1
+          ? chartSize.left + plotWidth / 2
+          : chartSize.left + plotWidth * monthPosition / (source.values.length - 1),
         y: bottom - (value / maximum) * plotHeight,
-        monthIndex,
+        monthIndex: source.monthIndexes[monthPosition],
         value,
         name: source.name,
         color: seriesColors[seriesIndex],
       }))
-      return { ...source, color: seriesColors[seriesIndex], points, path: buildMonotonePath(points) }
+      const path = buildMonotonePath(points)
+      return {
+        ...source,
+        color: seriesColors[seriesIndex],
+        points,
+        path,
+      }
     })
     return { bottom, ticks, series }
   }, [salesByProduct])
 
-  function showPoint(point, event, pinned = false) {
+  function showPoint(point, event) {
     const bounds = event.currentTarget.getBoundingClientRect()
     const x = Number.isFinite(event.clientX) && event.clientX ? event.clientX : bounds.left + bounds.width / 2
     const y = Number.isFinite(event.clientY) && event.clientY ? event.clientY : bounds.top
@@ -138,29 +158,11 @@ function SalesByProductChart({ products = [] }) {
       x: Math.max(12 + halfTooltipWidth, Math.min(x, window.innerWidth - 12 - halfTooltipWidth)),
       y,
       above: y > 150,
-      pinned,
     })
   }
 
   function hideHoverTooltip() {
-    setTooltip((current) => current?.pinned ? current : null)
-  }
-
-  function togglePinnedPoint(point, event) {
-    setTooltip((current) => {
-      if (current?.pinned && current.point.name === point.name && current.point.monthIndex === point.monthIndex) return null
-      const bounds = event.currentTarget.getBoundingClientRect()
-      const x = Number.isFinite(event.clientX) && event.clientX ? event.clientX : bounds.left + bounds.width / 2
-      const y = Number.isFinite(event.clientY) && event.clientY ? event.clientY : bounds.top
-      const halfTooltipWidth = Math.min(150, (window.innerWidth - 24) / 2)
-      return {
-        point,
-        x: Math.max(12 + halfTooltipWidth, Math.min(x, window.innerWidth - 12 - halfTooltipWidth)),
-        y,
-        above: y > 150,
-        pinned: true,
-      }
-    })
+    setTooltip(null)
   }
 
   return (
@@ -184,44 +186,36 @@ function SalesByProductChart({ products = [] }) {
           : !salesByProduct.length || !model ? <EmptyState>No product sales recorded.</EmptyState>
             : (
               <div className="dashboard-product-sales-canvas">
-                <svg className="dashboard-product-sales-chart" viewBox={`0 0 ${chartSize.width} ${chartSize.height}`} preserveAspectRatio="none" role="img" aria-label={`Monthly product sales revenue for ${selectedYear}`}>
+                <svg className="dashboard-product-sales-chart sales-product-chart" viewBox={`0 0 ${chartSize.width} ${chartSize.height}`} preserveAspectRatio="none" role="img" aria-label={`Monthly product sales revenue for ${selectedYear}`}>
                   {model.ticks.map((tick) => (
                     <g key={tick.value}>
-                      <line className="dashboard-product-sales-gridline" x1={chartSize.left} x2={chartSize.width - chartSize.right} y1={tick.y} y2={tick.y} />
-                      <text className="dashboard-product-sales-axis-label" x={chartSize.left - 8} y={tick.y + 4} textAnchor="end">{compactPeso(tick.value)}</text>
+                      <line className="dashboard-product-sales-gridline sales-product-chart-gridline" x1={chartSize.left} x2={chartSize.width - chartSize.right} y1={tick.y} y2={tick.y} />
+                      <text className="dashboard-product-sales-axis-label sales-product-chart-axis-label" x={chartSize.left - 9} y={tick.y + 4} textAnchor="end">{compactPeso(tick.value)}</text>
                     </g>
                   ))}
                   {model.series.map((series) => (
                     <g key={series.id}>
-                      <path d={series.path} fill="none" stroke={series.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d={series.path} fill="none" stroke={series.color} strokeWidth={SALES_CHART_STYLE.lineWidth} strokeLinecap="round" strokeLinejoin="round" className="sales-product-chart-line" />
                       {series.points.map((point) => (
                         <circle
                           key={`${series.id}-${point.monthIndex}`}
                           cx={point.x}
                           cy={point.y}
-                          r="4"
+                          r={SALES_CHART_STYLE.pointRadius}
                           fill={series.color}
+                          stroke="var(--card-bg)"
+                          strokeWidth={SALES_CHART_STYLE.markerStrokeWidth}
+                          className="sales-product-chart-point"
                           onPointerEnter={(event) => showPoint(point, event)}
-                          onPointerMove={(event) => showPoint(point, event, tooltip?.pinned)}
+                          onPointerMove={(event) => showPoint(point, event)}
                           onPointerLeave={hideHoverTooltip}
-                          onClick={(event) => togglePinnedPoint(point, event)}
-                          onFocus={(event) => showPoint(point, event)}
-                          onBlur={hideHoverTooltip}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault()
-                              togglePinnedPoint(point, event)
-                            }
-                          }}
-                          tabIndex="0"
-                          role="button"
                           aria-label={`${series.name}, ${monthNames[point.monthIndex]} ${selectedYear}, ${peso.format(point.value)} revenue`}
                         />
                       ))}
                     </g>
                   ))}
-                  {months.map((month, index) => (
-                    <text key={month} className="dashboard-product-sales-axis-label" x={chartSize.left + (chartSize.width - chartSize.left - chartSize.right) * index / 11} y={chartSize.height - 17} textAnchor="middle">{month}</text>
+                  {model.series[0].monthIndexes.map((monthIndex, monthPosition) => (
+                    <text key={monthIndex} className="dashboard-product-sales-axis-label sales-product-chart-axis-label" x={chartSize.left + (chartSize.width - chartSize.left - chartSize.right) * (model.series[0].monthIndexes.length === 1 ? 0.5 : monthPosition / (model.series[0].monthIndexes.length - 1))} y={chartSize.height - 18} textAnchor="middle">{months[monthIndex]}</text>
                   ))}
                 </svg>
               </div>
@@ -234,7 +228,6 @@ function SalesByProductChart({ products = [] }) {
         >
           <strong>{tooltip.point.name}</strong>
           <span>{monthNames[tooltip.point.monthIndex]} {selectedYear}: {peso.format(tooltip.point.value)}</span>
-          {tooltip.pinned && <small>Click the point again to close</small>}
         </div>,
         document.body,
       )}

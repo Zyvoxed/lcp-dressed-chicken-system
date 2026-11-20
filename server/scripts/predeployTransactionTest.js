@@ -125,8 +125,8 @@ try {
     windowsHide: true,
   })
   await waitForServer(api)
-  const token = jwt.sign({ user_id: adminId, role: 'Admin' }, process.env.JWT_SECRET, { expiresIn: '10m' })
-  const employeeToken = jwt.sign({ user_id: employeeResult.insertId, role: 'Staff' }, process.env.JWT_SECRET, { expiresIn: '10m' })
+  const token = jwt.sign({ user_id: adminId, role: 'Admin', mfa_verified: true }, process.env.JWT_SECRET, { expiresIn: '10m' })
+  const employeeToken = jwt.sign({ user_id: employeeResult.insertId, role: 'Staff', mfa_verified: true }, process.env.JWT_SECRET, { expiresIn: '10m' })
 
   const original = await snapshot(admin, productId, customerId)
   await admin.query("CREATE TRIGGER fail_sale_allocation BEFORE INSERT ON sale_batch_allocations FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'controlled sale failure'")
