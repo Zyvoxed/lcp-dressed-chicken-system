@@ -57,27 +57,19 @@ export function createSmtpTransportOptions(smtp) {
   }
 }
 
-export function resolveMfaSmtpConfig({ gmail, smtp }) {
-  if (gmail.user && gmail.appPassword) {
-    return {
-      host: 'smtp.gmail.com',
-      port: 465,
-      user: gmail.user,
-      appPassword: gmail.appPassword,
-    }
-  }
-
-  // Reuse the existing delivery credentials only when they are explicitly Gmail.
+export function resolveMfaSmtpConfig(smtp) {
   if (
     smtp.host?.trim().toLowerCase() === 'smtp.gmail.com' &&
     smtp.user &&
-    smtp.appPassword
+    smtp.appPassword &&
+    smtp.fromEmail
   ) {
     return {
       host: 'smtp.gmail.com',
       port: smtp.port,
       user: smtp.user,
       appPassword: smtp.appPassword.replace(/\s/g, ''),
+      fromEmail: smtp.fromEmail,
     }
   }
 
@@ -175,11 +167,11 @@ let mfaEmailDelivery
 function getMfaEmailDelivery() {
   if (!mfaEmailDelivery) {
     try {
-      const gmailSmtp = resolveMfaSmtpConfig({ gmail: environment.gmail, smtp: environment.smtp })
+      const gmailSmtp = resolveMfaSmtpConfig(environment.smtp)
       mfaEmailDelivery = createEmailDelivery({
         transporter: nodemailer.createTransport(createSmtpTransportOptions(gmailSmtp)),
         frontendUrl: environment.frontendUrl,
-        fromEmail: gmailSmtp.user,
+        fromEmail: gmailSmtp.fromEmail,
       })
     } catch (error) {
       logEmailDeliveryFailure(console, error, 'login_mfa_setup')

@@ -12,8 +12,6 @@ if (production) {
     'SMTP_USER',
     'SMTP_APP_PASSWORD',
     'SMTP_FROM_EMAIL',
-    'GMAIL_USER',
-    'GMAIL_APP_PASSWORD',
   )
 }
 
@@ -80,10 +78,6 @@ export const environment = {
     user: process.env.SMTP_USER?.trim() || '',
     appPassword: smtpAppPassword,
     fromEmail: process.env.SMTP_FROM_EMAIL?.trim() || '',
-  },
-  gmail: {
-    user: process.env.GMAIL_USER?.trim() || '',
-    appPassword: process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, '') || '',
   },
   mfa: {
     otpExpiryMinutes: mfaExpiryMinutes,

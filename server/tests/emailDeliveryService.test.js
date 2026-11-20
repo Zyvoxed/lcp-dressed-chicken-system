@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import test from 'node:test'
 
 process.env.NODE_ENV = 'test'
@@ -31,6 +32,38 @@ function mockDelivery(logger = { error() {} }) {
   return { delivery, messages }
 }
 
+test('production config loads with existing SMTP variables and no Gmail aliases', () => {
+  const env = {
+    ...process.env,
+    NODE_ENV: 'production',
+    DB_HOST: '127.0.0.1',
+    DB_PORT: '3306',
+    DB_USER: 'mock-user',
+    DB_PASSWORD: 'mock-database-password',
+    DB_NAME: 'mock-database',
+    DB_SSL: 'false',
+    JWT_SECRET: 'mock-jwt-secret-long-enough-for-production-test',
+    FRONTEND_URL: 'https://lcp.example.test',
+    SMTP_HOST: 'smtp.gmail.com',
+    SMTP_PORT: '587',
+    SMTP_USER: 'mock-sender@gmail.com',
+    SMTP_APP_PASSWORD: 'mock-smtp-app-password',
+    SMTP_FROM_EMAIL: 'mock-sender@gmail.com',
+  }
+  delete env.GMAIL_USER
+  delete env.GMAIL_APP_PASSWORD
+
+  const result = spawnSync(process.execPath, [
+    '--input-type=module',
+    '-e',
+    'import(process.argv[1]).then(() => process.stdout.write("loaded"))',
+    new URL('../config/environment.js', import.meta.url).href,
+  ], { cwd: process.cwd(), env, encoding: 'utf8' })
+
+  assert.equal(result.status, 0, 'production configuration should load without Gmail alias variables')
+  assert.equal(result.stdout, 'loaded')
+})
+
 test('Gmail SMTP port 465 uses immediate TLS with TLS 1.2 or newer', () => {
   const options = createSmtpTransportOptions({
     host: 'smtp.gmail.com',
@@ -57,41 +90,33 @@ test('SMTP port 587 requires a STARTTLS upgrade', () => {
   assert.equal(options.requireTLS, true)
 })
 
-test('MFA prefers dedicated Gmail credentials when configured', () => {
+test('MFA uses existing SMTP credentials and sender only when SMTP host is Gmail', () => {
   const config = resolveMfaSmtpConfig({
-    gmail: { user: 'mfa@gmail.com', appPassword: 'mfa-app-password' },
-    smtp: { host: 'smtp.other-provider.test', port: 587, user: 'recovery@example.test', appPassword: 'recovery-password' },
+    host: ' SMTP.GMAIL.COM ',
+    port: 587,
+    user: 'mock-sender@gmail.com',
+    appPassword: 'mock app password',
+    fromEmail: 'verified-sender@gmail.com',
   })
 
   assert.deepEqual(config, {
     host: 'smtp.gmail.com',
-    port: 465,
-    user: 'mfa@gmail.com',
-    appPassword: 'mfa-app-password',
+    port: 587,
+    user: 'mock-sender@gmail.com',
+    appPassword: 'mockapppassword',
+    fromEmail: 'verified-sender@gmail.com',
   })
 })
 
-test('MFA reuses existing delivery credentials only when the configured SMTP host is Gmail', () => {
-  const config = resolveMfaSmtpConfig({
-    gmail: { user: '', appPassword: '' },
-    smtp: { host: ' SMTP.GMAIL.COM ', port: 465, user: 'sender@gmail.com', appPassword: 'abcd efgh ijkl mnop' },
-  })
-
-  assert.deepEqual(config, {
-    host: 'smtp.gmail.com',
-    port: 465,
-    user: 'sender@gmail.com',
-    appPassword: 'abcdefghijklmnop',
-  })
-})
-
-test('MFA does not use non-Gmail recovery SMTP credentials', () => {
+test('MFA does not use non-Gmail SMTP credentials', () => {
   assert.throws(() => resolveMfaSmtpConfig({
-    gmail: { user: '', appPassword: '' },
-    smtp: { host: 'smtp.other-provider.test', port: 587, user: 'sender@example.test', appPassword: 'smtp-app-password' },
+    host: 'smtp.other-provider.test',
+    port: 587,
+    user: 'mock-user',
+    appPassword: 'mock-smtp-app-password',
+    fromEmail: 'mock-sender@example.test',
   }), { message: 'Gmail MFA delivery is not configured' })
 })
-
 test('verification email uses the existing URL and expiry without network access', async () => {
   const { delivery, messages } = mockDelivery()
   await delivery.sendEmailVerification({ email: 'owner@example.com', token: 'verification-token' })
