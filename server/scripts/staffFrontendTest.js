@@ -25,6 +25,7 @@ const safeTempRoot = `${resolve(tmpdir())}${sep}`
 const browserPath = findBrowser()
 let browserSession
 let vite
+const browserConsoleEvents = []
 
 try {
   assert(resolve(temporaryRoot).startsWith(safeTempRoot), 'Unsafe temporary Staff UI directory')
@@ -155,12 +156,36 @@ createRoot(document.getElementById('root')).render(<App />)
   await browserSession.connect()
   console.log(`[BROWSER] ${browserSession.version.Browser}; process started, DevTools discovered, WebSocket connected`)
   const browser = browserSession.connection
+  browser.socket.addEventListener('message', (event) => {
+    try {
+      const message = JSON.parse(event.data)
+      if (message.method === 'Runtime.exceptionThrown') browserConsoleEvents.push({ method: message.method, params: message.params })
+      if (message.method === 'Runtime.consoleAPICalled' && ['error', 'warning'].includes(message.params.type)) browserConsoleEvents.push({
+        method: message.method,
+        type: message.params.type,
+        args: message.params.args?.map((argument) => argument.value ?? argument.description),
+        stackTrace: message.params.stackTrace,
+      })
+      if (message.method === 'Log.entryAdded' && ['error', 'warning'].includes(message.params.entry.level)) browserConsoleEvents.push({ method: message.method, entry: message.params.entry })
+    } catch (error) {
+      browserConsoleEvents.push({ method: 'devtools-message-parse-error', message: error.message })
+    }
+  })
   await browser.command('Runtime.enable')
+  await browser.command('Log.enable')
   await browser.command('Page.enable')
 
   async function evaluate(expression) {
     const result = await browser.command('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })
-    if (result.exceptionDetails) throw new Error(result.exceptionDetails.text)
+    if (result.exceptionDetails) {
+      const details = result.exceptionDetails
+      throw new Error(JSON.stringify({
+        expression,
+        text: details.text,
+        description: details.exception?.description,
+        stackTrace: details.stackTrace,
+      }))
+    }
     return result.result.value
   }
   async function waitFor(expression, timeout = 10000) {
@@ -170,6 +195,30 @@ createRoot(document.getElementById('root')).render(<App />)
       await delay(100)
     }
     throw new Error(`Timed out waiting for Staff UI condition: ${expression}`)
+  }
+  async function waitForStaffDashboard(timeout = 10000) {
+    const started = Date.now()
+    let stableSamples = 0
+    let state
+    while (Date.now() - started < timeout) {
+      state = await evaluate(`(() => {
+        const dashboards = [...document.querySelectorAll('.staff-dashboard')].filter((node) => node.isConnected)
+        const dashboard = dashboards.at(-1)
+        return {
+          pathname: location.pathname,
+          dashboardCount: dashboards.length,
+          dashboardText: dashboard?.textContent || '',
+          adminAnalyticsRendered: Boolean(document.querySelector('.business-analytics-page')),
+        }
+      })()`)
+      const ready = state.pathname === '/dashboard'
+        && state.dashboardText.includes('Sales transactions today')
+        && !state.adminAnalyticsRendered
+      stableSamples = ready ? stableSamples + 1 : 0
+      if (stableSamples >= 3) return state
+      await delay(100)
+    }
+    throw new Error(`Staff Dashboard did not reach a stable loaded state: ${JSON.stringify(state)}`)
   }
   async function clickByText(text) {
     await evaluate(`(() => { const button = [...document.querySelectorAll('#primary-sidebar button')].find((item) => item.textContent.trim() === ${JSON.stringify(text)}); if (!button) throw new Error('Missing navigation: ' + ${JSON.stringify(text)}); button.click() })()`)
@@ -254,13 +303,33 @@ createRoot(document.getElementById('root')).render(<App />)
   assert(await evaluate("!document.querySelector('.staff-reports tbody').textContent.includes('Total Amount') && !document.querySelector('.staff-reports tbody').textContent.includes('Profit')"), 'Sales operational report or export workflow exposed financial performance fields')
 
   await browser.command('Page.navigate', { url: `${pageUrl}business-analytics` })
-  await waitFor("location.pathname === '/dashboard' && document.querySelector('.staff-dashboard')")
-  assert(await evaluate("document.querySelector('.staff-dashboard').textContent.includes('Sales transactions today') && !document.body.textContent.includes('Business Analytics')"), 'Direct navigation did not return Staff to the operational dashboard')
+  const restrictedNavigation = await waitForStaffDashboard()
+  assert(restrictedNavigation.pathname === '/dashboard' && restrictedNavigation.dashboardText.includes('Sales transactions today') && !restrictedNavigation.adminAnalyticsRendered, `Direct navigation to Admin analytics did not return Staff to the fully loaded operational dashboard: ${JSON.stringify(restrictedNavigation)}`)
+
+  await browser.command('Page.navigate', { url: `${pageUrl}dashboard` })
+  const directDashboard = await waitForStaffDashboard()
+  assert(directDashboard.pathname === '/dashboard' && directDashboard.dashboardText.includes('Sales transactions today') && !directDashboard.adminAnalyticsRendered, `Direct Staff Dashboard navigation did not load the operational dashboard: ${JSON.stringify(directDashboard)}`)
+
+  await browser.command('Page.reload', { ignoreCache: true })
+  const refreshedDashboard = await waitForStaffDashboard()
+  assert(refreshedDashboard.pathname === '/dashboard' && refreshedDashboard.dashboardText.includes('Sales transactions today') && !refreshedDashboard.adminAnalyticsRendered, `Refreshing the Staff Dashboard did not restore the authorized operational dashboard: ${JSON.stringify(refreshedDashboard)}`)
   console.log('PASS Staff seven-module navigation and Admin-only link exclusion')
   console.log('PASS operational dashboard, read-only inventory, Stock-In options, suppliers, customer credits, and operational reports')
-  console.log('PASS restricted direct URL redirects to the operational dashboard')
+  console.log('PASS restricted URL redirects to Staff, direct dashboard navigation, and dashboard refresh')
   console.log(`STAFF_SCREENSHOTS ${screenshotRoot}`)
 } catch (error) {
+  if (browserSession?.connection?.socket.readyState === WebSocket.OPEN) {
+    try {
+      const snapshot = await browserSession.connection.command('Runtime.evaluate', {
+        expression: `JSON.stringify({ href: location.href, pathname: location.pathname, title: document.title, readyState: document.readyState, bodyText: document.body?.innerText?.slice(0, 4000), staffDashboards: [...document.querySelectorAll('.staff-dashboard')].map((node) => ({ text: node.innerText.slice(0, 500), connected: node.isConnected, rect: (() => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height } })(), opacity: getComputedStyle(node).opacity, parent: node.parentElement?.outerHTML.slice(0, 700) })) })`,
+        returnByValue: true,
+      })
+      console.error(`BROWSER_FAILURE_STATE ${snapshot.result?.value || snapshot.exceptionDetails?.text || 'unavailable'}`)
+    } catch (snapshotError) {
+      console.error(`BROWSER_FAILURE_STATE_CAPTURE_ERROR ${snapshotError.stack || snapshotError.message}`)
+    }
+  }
+  console.error(`BROWSER_CONSOLE_EVENTS ${JSON.stringify(browserConsoleEvents)}`)
   reportBrowserDiagnostics(browserSession)
   throw error
 } finally {
