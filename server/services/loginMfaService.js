@@ -39,6 +39,8 @@ async function consumeLimit(connection, action, kind, value, maximum, windowSeco
        LIMIT 500`,
     )
   }
+  // Store keyed hashes of account/IP identifiers rather than their raw values; the
+  // unique scope and time bucket let concurrent requests increment one counter row.
   const hash = hashMfaRateIdentifier(kind, value || '<unknown>', secret())
   const bucketStart = dateBucket(windowSeconds)
   await connection.execute(
@@ -90,6 +92,8 @@ export async function createLoginChallenge(user, ipAddress) {
   const code = newCode()
   const otpHash = hashMfaOtp(idHash, code, secret())
   await withTransaction(async (connection) => {
+    // Consume request limits and replace any outstanding challenge atomically, while
+    // persisting only hashes of the bearer ID, OTP, and email.
     await consumeLimit(connection, 'challenge', 'ip', ipAddress, 30, 60 * 60)
     await consumeLimit(connection, 'challenge', 'account', String(user.user_id), 5, 60 * 60)
     await connection.execute(
@@ -126,6 +130,8 @@ export async function consumeLoginChallenge({ challengeId, code, ipAddress }) {
   const result = await withTransaction(async (connection) => {
     await consumeLimit(connection, 'verify', 'ip', ipAddress, 60, 15 * 60)
     await consumeLimit(connection, 'verify', 'challenge', idHash.toString('hex'), 15, 15 * 60)
+    // Lock this challenge while checking attempts and consuming it so concurrent
+    // verifications cannot both turn one OTP into separate authenticated sessions.
     const [challenges] = await connection.execute(
       `SELECT challenge_id, user_id, auth_version, email_hash, otp_hash, expires_at, attempts, consumed_at,
               expires_at <= UTC_TIMESTAMP(3) AS expired
@@ -160,6 +166,8 @@ export async function consumeLoginChallenge({ challengeId, code, ipAddress }) {
       return { failure: new LoginMfaError(400, 'The verification code is incorrect.') }
     }
 
+    // Re-read account state at verification time so deactivation, role/email changes,
+    // or a credential-version increment invalidate an already-issued code.
     const [users] = await connection.execute(
       `SELECT user_id, fullname, username, role, is_active, email, email_verified_at, auth_version
        FROM users WHERE user_id = ? LIMIT 1 FOR UPDATE`,
@@ -205,6 +213,8 @@ export async function resendLoginChallenge({ challengeId, ipAddress }) {
   const result = await withTransaction(async (connection) => {
     await consumeLimit(connection, 'resend', 'ip', ipAddress, 30, 60 * 60)
     await consumeLimit(connection, 'resend', 'challenge', idHash.toString('hex'), 10, 60 * 60)
+    // Serialize resend requests on the challenge row and enforce the stored cooldown
+    // before rotating the OTP hash and expiry.
     const [challenges] = await connection.execute(
       `SELECT challenge_id, user_id, email_hash, expires_at, resend_available_at, consumed_at,
               expires_at <= UTC_TIMESTAMP(3) AS expired,

@@ -709,6 +709,21 @@
   animation: dashboard-performance-enter 180ms ease-out;
 }
 
+.dashboard-performance-unit-group + .dashboard-performance-unit-group {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.dashboard-performance-unit-group h3,
+.analytics-unit-group h3 {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .dashboard-performance-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

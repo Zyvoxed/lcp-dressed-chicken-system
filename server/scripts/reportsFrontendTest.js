@@ -1,102 +1,41 @@
-import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import net from 'node:net'
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { createServer } from 'vite'
+import {
+  cleanupBrowserSession,
+  closeViteServer,
+  createAssertionTracker,
+  createScreenshotRunDirectory,
+  findBrowser,
+  reportBrowserDiagnostics,
+  removeTemporaryRoot,
+  startBrowser,
+} from './browserTestUtils.js'
 
+const assertionTracker = createAssertionTracker()
 function assert(condition, message) {
-  if (!condition) throw new Error(message)
+  assertionTracker.check(condition, message)
 }
 
 function delay(milliseconds) {
   return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds))
 }
 
-async function getFreePort() {
-  return new Promise((resolvePort, reject) => {
-    const server = net.createServer()
-    server.unref()
-    server.on('error', reject)
-    server.listen(0, '127.0.0.1', () => {
-      const { port } = server.address()
-      server.close(() => resolvePort(port))
-    })
-  })
-}
-
-async function waitForDebugger(port, pageUrl) {
-  for (let attempt = 0; attempt < 80; attempt += 1) {
-    try {
-      const response = await fetch(`http://127.0.0.1:${port}/json/list`)
-      const pages = await response.json()
-      const page = pages.find((candidate) => candidate.url.startsWith(pageUrl))
-      if (page?.webSocketDebuggerUrl) return page.webSocketDebuggerUrl
-    } catch {
-      // The browser is still starting.
-    }
-    await delay(250)
-  }
-  throw new Error('Timed out waiting for the reports browser test')
-}
-
-function connectToBrowser(webSocketUrl) {
-  const socket = new WebSocket(webSocketUrl)
-  const pending = new Map()
-  let commandId = 0
-
-  socket.addEventListener('message', (event) => {
-    const message = JSON.parse(event.data)
-    if (!message.id || !pending.has(message.id)) return
-    const { resolveCommand, rejectCommand } = pending.get(message.id)
-    pending.delete(message.id)
-    if (message.error) rejectCommand(new Error(message.error.message))
-    else resolveCommand(message.result)
-  })
-
-  const ready = new Promise((resolveReady, rejectReady) => {
-    socket.addEventListener('open', resolveReady, { once: true })
-    socket.addEventListener('error', rejectReady, { once: true })
-  })
-
-  return {
-    socket,
-    ready,
-    command(method, params = {}) {
-      commandId += 1
-      socket.send(JSON.stringify({ id: commandId, method, params }))
-      return new Promise((resolveCommand, rejectCommand) => pending.set(commandId, { resolveCommand, rejectCommand }))
-    },
-  }
-}
-
-function findChrome() {
-  return [
-    process.env.CHROME_PATH,
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-    '/usr/bin/google-chrome',
-    '/usr/bin/chromium',
-  ].filter(Boolean).find((candidate) => existsSync(candidate))
-}
-
 const projectRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
-const screenshotRoot = join(projectRoot, 'test-results', 'reports-phase7')
+const screenshotRunRoot = await createScreenshotRunDirectory(projectRoot, 'reports-ui')
+const screenshotRoot = join(screenshotRunRoot, 'reports-phase7')
 const temporaryRoot = await mkdtemp(join(tmpdir(), 'lcp-reports-ui-'))
 const safeTempRoot = `${resolve(tmpdir())}${sep}`
-const browserPort = await getFreePort()
-const vitePort = await getFreePort()
-const chromePath = findChrome()
-let browser
+const browserPath = findBrowser()
+let browserSession
 let vite
-let browserConnection
-
+let vitePort
 try {
   assert(resolve(temporaryRoot).startsWith(safeTempRoot), 'Unsafe temporary test directory')
-  assert(chromePath, 'Chrome or Edge is required for the reports UI test')
+  assert(browserPath, 'Chrome is required for the reports UI test; set CHROME_PATH to override it')
   const sourceRoot = projectRoot.replaceAll('\\', '/')
 
   await writeFile(join(temporaryRoot, 'index.html'), '<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body><div id="root"></div><script type="module" src="/harness.jsx"></script></body></html>')
@@ -162,14 +101,16 @@ createRoot(document.getElementById('root')).render(<main className="content-area
         { find: /^react\/jsx-runtime$/, replacement: join(projectRoot, 'node_modules/react/jsx-runtime.js') },
       ],
     },
-    server: { host: '127.0.0.1', port: vitePort, strictPort: true, fs: { allow: [projectRoot, temporaryRoot] } },
+    server: { host: '127.0.0.1', port: 0, fs: { allow: [projectRoot, temporaryRoot] } },
     logLevel: 'error',
   })
   await vite.listen()
+  vitePort = vite.httpServer.address().port
   const pageUrl = `http://127.0.0.1:${vitePort}/`
-  browser = spawn(chromePath, [`--remote-debugging-port=${browserPort}`, `--user-data-dir=${join(temporaryRoot, 'browser')}`, '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--window-size=1440,1000', pageUrl], { stdio: 'ignore', windowsHide: true })
-  browserConnection = connectToBrowser(await waitForDebugger(browserPort, pageUrl))
-  await browserConnection.ready
+  browserSession = await startBrowser({ browserPath, temporaryRoot, pageUrl })
+  await browserSession.connect()
+  console.log(`[BROWSER] ${browserSession.version.Browser}; process started, DevTools discovered, WebSocket connected`)
+  const browserConnection = browserSession.connection
   await browserConnection.command('Runtime.enable')
   await browserConnection.command('Page.enable')
 
@@ -270,12 +211,26 @@ createRoot(document.getElementById('root')).render(<main className="content-area
   console.log('PASS product-level valuation reconciliation, stable colors, keyboard details, hover/focus tooltips, and zero-value handling')
   console.log('PASS inventory and receivables tabs, PHP formatting, and mobile containment')
   console.log(`REPORT_SCREENSHOTS ${screenshotRoot}`)
+  console.log(`SCREENSHOT_RUN_DIRECTORY ${screenshotRunRoot}`)
+} catch (error) {
+  reportBrowserDiagnostics(browserSession)
+  throw error
 } finally {
-  browserConnection?.socket.close()
-  if (browser && browser.exitCode === null) {
-    browser.kill()
-    await Promise.race([new Promise((resolveExit) => browser.once('exit', resolveExit)), delay(3000)])
+  const counts = assertionTracker.counts
+  console.log(`ASSERTIONS passed=${counts.passed} failed=${counts.failed}`)
+  console.log(`SCREENSHOT_RUN_DIRECTORY ${screenshotRunRoot}`)
+  const cleanupErrors = []
+  try { console.log(`BROWSER_SHUTDOWN ${await cleanupBrowserSession(browserSession)}`) } catch (error) { cleanupErrors.push(error) }
+  let viteStopped = !vite
+  try { console.log(`VITE_SHUTDOWN ${await closeViteServer(vite)}`); viteStopped = true } catch (error) { cleanupErrors.push(error) }
+  const browserStopped = !browserSession || browserSession.process.exitCode !== null || browserSession.process.signalCode !== null
+  if (browserStopped && viteStopped) {
+    try { await removeTemporaryRoot(temporaryRoot, safeTempRoot) } catch (error) { cleanupErrors.push(error) }
+  } else {
+    cleanupErrors.push(new Error(`Preserved temporary root because browser/Vite shutdown was not confirmed: ${temporaryRoot}`))
   }
-  if (vite) await vite.close()
-  if (resolve(temporaryRoot).startsWith(safeTempRoot)) await rm(temporaryRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+  if (cleanupErrors.length) {
+    for (const error of cleanupErrors) console.error(`CLEANUP_ERROR ${error.stack || error.message}`)
+    process.exitCode = 1
+  }
 }

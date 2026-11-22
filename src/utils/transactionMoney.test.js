@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
   formatTransactionCents,
@@ -12,6 +13,47 @@ import {
   readPendingTransaction,
   savePendingTransaction,
 } from './pendingTransaction.js'
+
+test('cash tender is displayed separately while the sale payment remains the sale total', async () => {
+  const salesBasket = await readFile(new URL('../pages/RecordSales/SalesBasket.jsx', import.meta.url), 'utf8')
+  assert.match(salesBasket, /const cashChangeCents = amountPaidCents !== null && amountPaidCents > totalCents\s*\? amountPaidCents - totalCents\s*: 0n/)
+  assert.match(salesBasket, /amount_paid: paymentType === 'Cash' \? transactionCentsToAmount\(totalCents\) : amountPaid/)
+  assert.match(salesBasket, /amount_received: paymentType === 'Cash' \? amountPaid : null/)
+
+  const cart = [{ quantity: '1', selling_price: '185.50' }]
+  const totalCents = transactionTotalCents(cart)
+  const tenderCents = toTransactionCents('200.00')
+  const changeCents = tenderCents > totalCents ? tenderCents - totalCents : 0n
+
+  assert.equal(transactionCentsToAmount(totalCents), '185.50')
+  assert.equal(transactionCentsToAmount(tenderCents), '200.00')
+  assert.equal(transactionCentsToAmount(changeCents), '14.50')
+  assert.equal(transactionCentsToAmount(totalCents), '185.50', 'change must not be added to recorded sale revenue')
+})
+
+test('POS order summary displays quantity totals separately by configured unit', async () => {
+  const salesBasket = await readFile(new URL('../pages/RecordSales/SalesBasket.jsx', import.meta.url), 'utf8')
+  assert.match(salesBasket, /sumQuantitiesByUnit\(cart, \(item\) => item\.quantity\)/)
+  assert.match(salesBasket, /formatQuantityWithUnit\(quantity, unit, 1\)/)
+  assert.match(salesBasket, /quantitySummary/)
+  assert.doesNotMatch(salesBasket, /totalQuantity\.toLocaleString\([^\n]*kg/)
+})
+
+test('cash exact tender has zero change and multi-line cent totals retain per-line rounding', () => {
+  const exactCashTotal = transactionTotalCents([{ quantity: '1', selling_price: '185.50' }])
+  const exactTender = toTransactionCents('185.50')
+  assert.equal(exactTender - exactCashTotal, 0n)
+
+  const lines = [
+    { quantity: '0.3', selling_price: '0.05' },
+    { quantity: '0.3', selling_price: '0.05' },
+  ]
+  const totalCents = transactionTotalCents(lines)
+  const tenderCents = toTransactionCents('0.06')
+  assert.equal(totalCents, 4n)
+  assert.equal(tenderCents - totalCents, 2n)
+  assert.equal(transactionCentsToAmount(totalCents), '0.04')
+})
 
 test('POS line and transaction totals round every line half-up before summing', () => {
   const lines = [

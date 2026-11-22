@@ -63,12 +63,12 @@ function SalesDetails({ dashboard }) {
             value: peso.format(Number(summary.average_sale_value)),
           },
           {
-            label: "Best-Selling Product",
+            label: "Top Product by Unit",
             value: summary.best_seller || "No sales recorded",
           },
         ]}
       />
-      <DetailSection title="Top-Selling Products">
+      <DetailSection title="Top Products Within Each Unit">
         {!products.length ? (
           <EmptyState>No product sales recorded.</EmptyState>
         ) : (

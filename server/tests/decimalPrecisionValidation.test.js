@@ -6,7 +6,7 @@ import { recordPayment } from '../controllers/paymentController.js'
 import { createSale } from '../controllers/salesController.js'
 import { createStockIn } from '../controllers/stockInController.js'
 import { decimalLimits, parseDecimal } from '../utils/decimalValidation.js'
-import { centsToAmount, lineTotalCents, toCents } from '../utils/money.js'
+import { centsToAmount, lineTotalCents, toCents, toThousandths } from '../utils/money.js'
 
 let requestKey = 0
 
@@ -46,6 +46,19 @@ test('money helpers round each line half-up to cents and sum using integer cents
   assert.equal(centsToAmount(lineTotalCents('1.25', '0.10')), '0.13')
   assert.equal(centsToAmount(lineTotalCents('0.300', '0.05') * 2n), '0.04')
   assert.equal(centsToAmount(toCents('9999999999.99')), '9999999999.99')
+})
+
+test('money scaling helpers retain BigInt results and reject unsafe scaled integers', () => {
+  assert.equal(toCents('1.25'), 125n)
+  assert.equal(toThousandths('1.125'), 1125n)
+  assert.throws(() => toCents('90071992547410'), {
+    name: 'RangeError',
+    message: 'Monetary value exceeds safe integer precision',
+  })
+  assert.throws(() => toThousandths('9007199254741'), {
+    name: 'RangeError',
+    message: 'Quantity exceeds safe integer precision',
+  })
 })
 
 test('decimal parser accepts supported quantity and money values', () => {

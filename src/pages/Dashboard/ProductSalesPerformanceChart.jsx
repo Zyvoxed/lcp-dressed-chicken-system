@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import {
   Boxes,
   Check,
@@ -15,10 +14,9 @@ import {
   getCurrentReportingYear,
   getMonthlyIndexesForYear,
 } from '../../utils/monthlyChartPeriods.js'
-import {
-  SALES_CHART_LAYOUT,
-  SALES_CHART_STYLE,
-} from '../../utils/salesChartPresentation.js'
+import { SALES_CHART_LAYOUT } from '../../utils/salesChartPresentation.js'
+import ProductSalesTrendPlot from './ProductSalesTrendPlot.jsx'
+import { groupByUnit, scaleSeriesByUnit } from '../../utils/unitAwareMetrics.js'
 
 const PRODUCT_COLORS = [
   '#235347', // Forest Green
@@ -36,24 +34,12 @@ const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 
 const chartSize = SALES_CHART_LAYOUT
 
-function formatKgAxis(value) {
-  const num = Number(value) || 0
-  if (num >= 1000) {
-    return `${(num / 1000).toLocaleString('en-PH', { maximumFractionDigits: 1 })}k kg`
-  }
-  return `${num.toLocaleString('en-PH', { maximumFractionDigits: 1 })} kg`
-}
-
-function formatKgValue(value) {
-  const num = Number(value) || 0
-  return `${num.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} kg`
-}
-
 function ProductSalesPerformanceChart({ products = [] }) {
   const [selectedProductIds, setSelectedProductIds] = useState(null)
+  const topProductsByUnit = useMemo(() => groupByUnit(products).map(({ items }) => items[0]).filter(Boolean), [products])
   const activeProductIds = useMemo(
-    () => selectedProductIds ?? products.slice(0, 5).map((product) => String(product.product_id)),
-    [products, selectedProductIds],
+    () => selectedProductIds ?? topProductsByUnit.slice(0, 5).map((product) => String(product.product_id)),
+    [topProductsByUnit, selectedProductIds],
   )
 
   const [periodMode, setPeriodMode] = useState('monthly')
@@ -64,7 +50,6 @@ function ProductSalesPerformanceChart({ products = [] }) {
   const [salesError, setSalesError] = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [tooltip, setTooltip] = useState(null)
 
   const dropdownRef = useRef(null)
 
@@ -185,7 +170,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
 
   // Quick select Top 5
   function handleSelectTop5() {
-    const top5 = products.slice(0, 5).map((p) => String(p.product_id))
+    const top5 = topProductsByUnit.slice(0, 5).map((product) => String(product.product_id))
     setSelectedProductIds(top5)
     setDropdownOpen(false)
   }
@@ -248,83 +233,45 @@ function ProductSalesPerformanceChart({ products = [] }) {
       return {
         id: product.product_id,
         name: product.product_name,
+        unit: product.unit || 'Unspecified unit',
         color: product.color,
         values,
       }
     })
 
-    // Compute maximum value for Y-axis
-    const maxVal = Math.max(...seriesList.flatMap((s) => s.values), 0)
-    const maximum = maxVal > 0 ? Math.ceil(maxVal * 1.15) : 10
-
-    // Y-axis ticks (5 evenly spaced steps: 0, 25%, 50%, 75%, 100%)
-    const ticks = Array.from({ length: 5 }, (_, i) => {
-      const value = (maximum * i) / 4
-      return {
-        value,
+    // Separate scales keep quantities comparable only among products with the same unit.
+    const unitGroups = scaleSeriesByUnit(seriesList).map(({ unit, items, maximum }) => {
+      const ticks = Array.from({ length: 5 }, (_, i) => ({
+        value: (maximum * i) / 4,
         y: bottom - (plotHeight * i) / 4,
-      }
-    })
-
-    // Compute straight-line coordinates and point data
-    const seriesWithCoordinates = seriesList.map((series) => {
-      const points = series.values.map((val, idx) => {
-        const x = numPoints > 1 ? chartSize.left + (plotWidth * idx) / (numPoints - 1) : chartSize.left + plotWidth / 2
-        const y = bottom - (val / maximum) * plotHeight
-        return {
-          x,
-          y,
-          value: val,
-          label: labels[idx],
-          fullPeriod: fullLabels[idx],
-          name: series.name,
-          color: series.color,
-        }
+      }))
+      const series = items.map((item) => {
+        const points = item.values.map((val, idx) => {
+          const x = numPoints > 1 ? chartSize.left + (plotWidth * idx) / (numPoints - 1) : chartSize.left + plotWidth / 2
+          const y = bottom - (val / maximum) * plotHeight
+          return {
+            x,
+            y,
+            value: val,
+            label: labels[idx],
+            fullPeriod: fullLabels[idx],
+            name: item.name,
+            unit,
+            color: item.color,
+          }
+        })
+        return { ...item, points, pathD: buildMonotonePath(points) }
       })
-
-      // Smooth monotone curve (matches Dashboard line chart)
-      const pathD = buildMonotonePath(points)
-
-      return {
-        ...series,
-        points,
-        pathD,
-      }
+      const xLabels = labels.map((label, idx) => ({
+        label,
+        x: numPoints > 1 ? chartSize.left + (plotWidth * idx) / (numPoints - 1) : chartSize.left + plotWidth / 2,
+        y: chartSize.height - 18,
+      }))
+      return { unit, bottom, ticks, xLabels, series }
     })
 
-    // X-axis label coordinates
-    const xLabels = labels.map((label, idx) => ({
-      label,
-      x: numPoints > 1 ? chartSize.left + (plotWidth * idx) / (numPoints - 1) : chartSize.left + plotWidth / 2,
-      y: chartSize.height - 18,
-    }))
-
-    return {
-      bottom,
-      ticks,
-      xLabels,
-      series: seriesWithCoordinates,
-    }
+    return { unitGroups }
   }, [selectedProducts, salesItems, periodMode, selectedYear, availableYears])
-
-  // Tooltip handler
-  function showPointTooltip(point, event) {
-    const bounds = event.currentTarget.getBoundingClientRect()
-    const x = Number.isFinite(event.clientX) && event.clientX ? event.clientX : bounds.left + bounds.width / 2
-    const y = Number.isFinite(event.clientY) && event.clientY ? event.clientY : bounds.top
-    const halfWidth = Math.min(140, (window.innerWidth - 24) / 2)
-
-    setTooltip({
-      point,
-      x: Math.max(12 + halfWidth, Math.min(x, window.innerWidth - 12 - halfWidth)),
-      y,
-      above: y > 150,
-    })
-  }
-
-  function hidePointTooltip() {
-    setTooltip(null)
-  }
 
   return (
     <article className="panel product-trends-chart-panel">
@@ -335,7 +282,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
             <TrendingUp size={18} aria-hidden="true" />
             PRODUCT SALES TRENDS
           </h2>
-          <p>Compare monthly sales performance across selected products.</p>
+          <p>Products are compared within their configured units, using separate scales for different units.</p>
         </div>
 
         <div className="product-trends-filter-controls">
@@ -458,7 +405,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
                   className="product-footer-btn"
                   onClick={handleSelectTop5}
                 >
-                  Top 5 Products
+                  Top Product by Unit
                 </button>
                 {activeProductIds.length > 0 && (
                   <button
@@ -485,7 +432,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
               style={{ '--chip-accent': product.color }}
             >
               <span className="product-chip-dot" style={{ backgroundColor: product.color }} />
-              <span className="product-chip-name">{product.product_name}</span>
+              <span className="product-chip-name">{product.product_name} ({product.unit || 'Unspecified unit'})</span>
               <button
                 type="button"
                 className="product-chip-remove"
@@ -506,7 +453,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
           {selectedProducts.map((product) => (
             <span key={product.product_id} className="legend-item">
               <i style={{ backgroundColor: product.color }} />
-              <span>{product.product_name}</span>
+              <span>{product.product_name} ({product.unit || 'Unspecified unit'})</span>
             </span>
           ))}
         </div>
@@ -523,122 +470,20 @@ function ProductSalesPerformanceChart({ products = [] }) {
         <div className="product-trends-empty-state">
           <Boxes size={32} className="empty-icon" aria-hidden="true" />
           <h3>Select products to view their sales trends.</h3>
-          <p>Choose up to 5 products from the selector above to compare their performance over time.</p>
+          <p>Choose up to 5 products from the selector above to view trends grouped by configured unit.</p>
           <button
             type="button"
             className="primary-action slim"
             onClick={handleSelectTop5}
           >
-            Compare Top 5 Selling Products
+            Compare Leading Products by Unit
           </button>
         </div>
       ) : !chartModel ? (
         <EmptyState>No sales records available for the selected period.</EmptyState>
       ) : (
-        <div className="product-trends-canvas-wrapper">
-          <svg
-            className="product-trends-svg sales-product-chart"
-            viewBox={`0 0 ${chartSize.width} ${chartSize.height}`}
-            preserveAspectRatio="none"
-            role="img"
-            aria-label={`Product sales volume trends (${periodMode})`}
-          >
-            {/* Subtle horizontal grid lines & Y-axis labels in KG */}
-            {chartModel.ticks.map((tick) => (
-              <g key={tick.value}>
-                <line
-                  className="product-trends-gridline sales-product-chart-gridline"
-                  x1={chartSize.left}
-                  x2={chartSize.width - chartSize.right}
-                  y1={tick.y}
-                  y2={tick.y}
-                />
-                <text
-                  className="product-trends-axis-label sales-product-chart-axis-label"
-                  x={chartSize.left - 8}
-                  y={tick.y + 4}
-                  textAnchor="end"
-                >
-                  {formatKgAxis(tick.value)}
-                </text>
-              </g>
-            ))}
-
-            {/* Smooth product lines and circular markers */}
-            {chartModel.series.map((series) => (
-              <g key={series.id} className="product-trends-series-group">
-                <path
-                  d={series.pathD}
-                  fill="none"
-                  stroke={series.color}
-                  strokeWidth={SALES_CHART_STYLE.lineWidth}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="product-trends-line sales-product-chart-line"
-                />
-                {series.points.map((point, ptIdx) => (
-                  <circle
-                    key={`${series.id}-${ptIdx}`}
-                    cx={point.x}
-                    cy={point.y}
-                    r={SALES_CHART_STYLE.pointRadius}
-                    fill={series.color}
-                    stroke="var(--card-bg)"
-                    strokeWidth={SALES_CHART_STYLE.markerStrokeWidth}
-                    className="product-trends-point sales-product-chart-point"
-                    aria-label={`${point.name}, ${point.fullPeriod}, ${formatKgValue(point.value)}`}
-                    onPointerEnter={(e) => showPointTooltip(point, e)}
-                    onPointerMove={(e) => showPointTooltip(point, e)}
-                    onPointerLeave={hidePointTooltip}
-                  />
-                ))}
-              </g>
-            ))}
-
-            {/* X-axis Month / Year Labels */}
-            {chartModel.xLabels.map((item) => (
-              <text
-                key={item.label}
-                className="product-trends-axis-label x-axis sales-product-chart-axis-label"
-                x={item.x}
-                y={item.y}
-                textAnchor="middle"
-              >
-                {item.label}
-              </text>
-            ))}
-          </svg>
-        </div>
+        <ProductSalesTrendPlot chartModel={chartModel} periodMode={periodMode} />
       )}
-
-      {/* 6. Interactive Floating Tooltip */}
-      {tooltip &&
-        createPortal(
-          <div
-            className={`product-trends-tooltip sales-product-tooltip ${tooltip.above ? 'above' : 'below'}`}
-            role="tooltip"
-            style={{
-              left: `${tooltip.x}px`,
-              top: `${tooltip.y}px`,
-              '--tooltip-accent': tooltip.point.color,
-            }}
-          >
-            <div className="product-trends-tooltip-header">
-              <span
-                className="product-trends-tooltip-dot"
-                style={{ backgroundColor: tooltip.point.color }}
-              />
-              <strong>{tooltip.point.name}</strong>
-            </div>
-            <div className="product-trends-tooltip-period">
-              {tooltip.point.fullPeriod}
-            </div>
-            <div className="product-trends-tooltip-metric">
-              Quantity Sold: <strong>{formatKgValue(tooltip.point.value)}</strong>
-            </div>
-          </div>,
-          document.body,
-        )}
     </article>
   )
 }

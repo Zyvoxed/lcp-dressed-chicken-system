@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  IdempotencyKeyConflictError,
   getIdempotencyKey,
   hashRequestPayload,
+  reserveIdempotencyKey,
   readIdempotentResponse,
 } from '../utils/idempotency.js'
 
@@ -29,6 +31,38 @@ test('request payload hashes are stable for identical normalized payloads', () =
   )
 })
 
+test('reservation recognizes only the named idempotency scope collision', async () => {
+  const idempotency = {
+    userId: 7,
+    operation: 'sale',
+    key: 'sale-key',
+    payloadHash: hashRequestPayload({ sale_id: 42 }),
+  }
+  const duplicateReservation = Object.assign(
+    new Error("Duplicate entry for key 'uq_idempotency_user_operation_key'"),
+    { code: 'ER_DUP_ENTRY' },
+  )
+  const reservationConnection = {
+    async execute() { throw duplicateReservation },
+  }
+
+  await assert.rejects(
+    reserveIdempotencyKey(reservationConnection, idempotency),
+    (error) => error instanceof IdempotencyKeyConflictError
+      && error.status === 409
+      && error.cause === duplicateReservation,
+  )
+
+  const unrelatedDuplicate = Object.assign(
+    new Error("Duplicate entry for key 'uq_sales_receipt'"),
+    { code: 'ER_DUP_ENTRY' },
+  )
+  await assert.rejects(
+    reserveIdempotencyKey({ async execute() { throw unrelatedDuplicate } }, idempotency),
+    (error) => error === unrelatedDuplicate,
+  )
+})
+
 test('stored idempotent responses replay only when the payload matches', () => {
   const payloadHash = hashRequestPayload({ sale_id: 42, amount_paid_cents: '1500' })
   const record = {
@@ -46,4 +80,13 @@ test('stored idempotent responses replay only when the payload matches', () => {
     'payload-mismatch',
   )
   assert.deepEqual(readIdempotentResponse(null, payloadHash), { kind: 'missing' })
+})
+
+test('an incomplete stored response is not treated as a verified payload conflict', () => {
+  const storedHash = hashRequestPayload({ sale_id: 42, amount_paid_cents: '1500' })
+  assert.throws(() => readIdempotentResponse({
+    request_hash: storedHash,
+    response_status: null,
+    response_body: null,
+  }, hashRequestPayload({ sale_id: 42, amount_paid_cents: '1600' })), /incomplete/)
 })

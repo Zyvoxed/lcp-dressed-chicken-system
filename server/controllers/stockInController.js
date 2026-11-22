@@ -1,12 +1,12 @@
 import pool from '../config/database.js'
 import { DecimalValidationError, decimalLimits, parseDecimal } from '../utils/decimalValidation.js'
 import {
-  findIdempotentResponse,
   getIdempotencyKey,
   hashRequestPayload,
   IdempotencyError,
-  readIdempotentResponse,
+  IdempotencyKeyConflictError,
   reserveIdempotencyKey,
+  resolveIdempotencyReplay,
   saveIdempotentResponse,
 } from '../utils/idempotency.js'
 import { centsToAmount, lineTotalCents, toCents, toThousandths } from '../utils/money.js'
@@ -44,6 +44,153 @@ function decimalValue(value, options) {
   }
 }
 
+function prepareStockInRequest(request) {
+  const idempotencyKey = getIdempotencyKey(request)
+  const supplierId = parsePositiveInteger(request.body?.supplier_id, 'Supplier')
+  const productId = parsePositiveInteger(request.body?.product_id, 'Product')
+  const quantityReceived = decimalValue(request.body?.quantity_received, {
+    fieldName: 'Quantity received',
+    maximum: decimalLimits.quantity,
+    decimalPlaces: 3,
+    minimum: 0,
+    inclusiveMinimum: false,
+  })
+  const costPrice = decimalValue(request.body?.cost_price, {
+    fieldName: 'Cost price',
+    maximum: decimalLimits.unitPrice,
+    decimalPlaces: 2,
+    minimum: 0,
+  })
+  const submittedDeliveryDate = request.body?.delivery_date
+  const deliveryCalendarDate = getStockInCalendarDate(submittedDeliveryDate)
+  if (!deliveryCalendarDate) throw new RequestError(400, STOCK_IN_INVALID_DATE_MESSAGE)
+  if (deliveryCalendarDate > getBusinessCalendarDate()) {
+    throw new RequestError(400, STOCK_IN_FUTURE_DATE_MESSAGE)
+  }
+  const deliveryDate = new Date(submittedDeliveryDate)
+  const costPriceCents = toCents(costPrice)
+  const idempotency = {
+    userId: request.user.user_id,
+    operation: 'stock_in',
+    key: idempotencyKey,
+    payloadHash: hashRequestPayload({
+      supplier_id: supplierId,
+      product_id: productId,
+      quantity_thousandths: toThousandths(quantityReceived).toString(),
+      cost_price_cents: costPriceCents.toString(),
+      delivery_date: String(request.body.delivery_date),
+    }),
+  }
+
+  const quantityValue = quantityReceived.toFixed(3)
+  const costValue = centsToAmount(costPriceCents)
+  const totalCostCents = lineTotalCents(quantityReceived, costPrice)
+  if (totalCostCents > BigInt(Math.round(decimalLimits.money * 100))) {
+    throw new RequestError(400, `Total cost must not exceed ${decimalLimits.money}`)
+  }
+
+  return {
+    supplierId,
+    productId,
+    quantityReceived,
+    quantityValue,
+    costValue,
+    totalCost: centsToAmount(totalCostCents),
+    deliveryDate,
+    idempotency,
+  }
+}
+
+async function lockActiveSupplier(connection, supplierId) {
+  const [suppliers] = await connection.execute(
+    'SELECT supplier_id FROM suppliers WHERE supplier_id = ? AND is_active = TRUE LIMIT 1 FOR UPDATE',
+    [supplierId],
+  )
+  if (suppliers.length === 0) throw new RequestError(404, 'Active supplier not found')
+}
+
+async function lockActiveProduct(connection, productId) {
+  const [products] = await connection.execute(
+    `SELECT product_id, stock_quantity, reorder_level
+     FROM products
+     WHERE product_id = ? AND is_active = TRUE
+     LIMIT 1
+     FOR UPDATE`,
+    [productId],
+  )
+  if (products.length === 0) throw new RequestError(404, 'Active product not found')
+  return products[0]
+}
+
+function calculateInventoryStatus(product, quantityReceived) {
+  const newStock = Number(product.stock_quantity) + quantityReceived
+  if (!Number.isFinite(newStock) || newStock > decimalLimits.quantity) {
+    throw new RequestError(400, `Resulting product stock must not exceed ${decimalLimits.quantity}`)
+  }
+
+  const reorderLevel = Number(product.reorder_level)
+  const status = newStock <= 0 ? 'Out of Stock' : newStock <= reorderLevel ? 'Low Stock' : 'Available'
+  return status
+}
+
+async function persistStockIn(connection, request, stockIn) {
+  // Stock-in history gets the selected product's configured unit through product_id; FIFO uses each batch's cost, date, and balance.
+  const [result] = await connection.execute(
+    `INSERT INTO stock_in (
+       supplier_id,
+       product_id,
+       user_id,
+       quantity_received,
+       remaining_quantity,
+       cost_price,
+       total_cost,
+       delivery_date
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      stockIn.supplierId,
+      stockIn.productId,
+      request.user.user_id,
+      stockIn.quantityValue,
+      stockIn.quantityValue,
+      stockIn.costValue,
+      stockIn.totalCost,
+      stockIn.deliveryDate,
+    ],
+  )
+
+  await connection.execute(
+    'UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?',
+    [stockIn.quantityValue, stockIn.productId],
+  )
+  await connection.execute(
+    'UPDATE products SET status = ? WHERE product_id = ?',
+    [stockIn.status, stockIn.productId],
+  )
+  await connection.execute(
+    `INSERT INTO activity_logs (user_id, action, description, created_at)
+     VALUES (?, 'STOCK_IN_CREATED', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
+    [request.user.user_id, `Stock-In ${result.insertId} created for product ${stockIn.productId}`],
+  )
+
+  return result.insertId
+}
+
+function buildStockInResponse(stockInId, stockIn) {
+  return {
+    success: true,
+    message: 'Stock-in recorded successfully',
+    data: {
+      stockin_id: stockInId,
+      supplier_id: stockIn.supplierId,
+      product_id: stockIn.productId,
+      quantity_received: stockIn.quantityValue,
+      remaining_quantity: stockIn.quantityValue,
+      cost_price: stockIn.costValue,
+      total_cost: stockIn.totalCost,
+    },
+  }
+}
+
 export async function createStockIn(request, response) {
   let connection
   let idempotency
@@ -54,140 +201,28 @@ export async function createStockIn(request, response) {
   let connectionReusable = true
 
   try {
-    const idempotencyKey = getIdempotencyKey(request)
-    const supplierId = parsePositiveInteger(request.body?.supplier_id, 'Supplier')
-    const productId = parsePositiveInteger(request.body?.product_id, 'Product')
-    const quantityReceived = decimalValue(request.body?.quantity_received, {
-      fieldName: 'Quantity received',
-      maximum: decimalLimits.quantity,
-      decimalPlaces: 3,
-      minimum: 0,
-      inclusiveMinimum: false,
-    })
-    const costPrice = decimalValue(request.body?.cost_price, {
-      fieldName: 'Cost price',
-      maximum: decimalLimits.unitPrice,
-      decimalPlaces: 2,
-      minimum: 0,
-    })
-    const submittedDeliveryDate = request.body?.delivery_date
-    const deliveryCalendarDate = getStockInCalendarDate(submittedDeliveryDate)
-    if (!deliveryCalendarDate) throw new RequestError(400, STOCK_IN_INVALID_DATE_MESSAGE)
-    if (deliveryCalendarDate > getBusinessCalendarDate()) {
-      throw new RequestError(400, STOCK_IN_FUTURE_DATE_MESSAGE)
-    }
-    const deliveryDate = new Date(submittedDeliveryDate)
-
-    const costPriceCents = toCents(costPrice)
-    idempotency = {
-      userId: request.user.user_id,
-      operation: 'stock_in',
-      key: idempotencyKey,
-      payloadHash: hashRequestPayload({
-        supplier_id: supplierId,
-        product_id: productId,
-        quantity_thousandths: toThousandths(quantityReceived).toString(),
-        cost_price_cents: costPriceCents.toString(),
-        delivery_date: String(request.body.delivery_date),
-      }),
-    }
-
-    const quantityValue = quantityReceived.toFixed(3)
-    const costValue = centsToAmount(costPriceCents)
-    const totalCostCents = lineTotalCents(quantityReceived, costPrice)
-    if (totalCostCents > BigInt(Math.round(decimalLimits.money * 100))) {
-      throw new RequestError(400, `Total cost must not exceed ${decimalLimits.money}`)
-    }
-    const totalCost = centsToAmount(totalCostCents)
+    const stockIn = prepareStockInRequest(request)
+    idempotency = stockIn.idempotency
 
     connection = await pool.getConnection()
+    // Reserve the idempotency key and perform all stock-in writes in the same
+    // transaction so a failed batch insert cannot leave aggregate stock incremented.
     transactionBeginAttempted = true
     await connection.beginTransaction()
     transactionStarted = true
     await reserveIdempotencyKey(connection, idempotency)
 
-    const [suppliers] = await connection.execute(
-      'SELECT supplier_id FROM suppliers WHERE supplier_id = ? AND is_active = TRUE LIMIT 1 FOR UPDATE',
-      [supplierId],
-    )
+    // Lock referenced active records so archiving or other stock updates cannot race
+    // validation and the product quantity/status change.
+    await lockActiveSupplier(connection, stockIn.supplierId)
+    const product = await lockActiveProduct(connection, stockIn.productId)
+    stockIn.status = calculateInventoryStatus(product, stockIn.quantityReceived)
 
-    if (suppliers.length === 0) {
-      throw new RequestError(404, 'Active supplier not found')
-    }
-
-    const [products] = await connection.execute(
-      `SELECT product_id, stock_quantity, reorder_level
-       FROM products
-       WHERE product_id = ? AND is_active = TRUE
-       LIMIT 1
-       FOR UPDATE`,
-      [productId],
-    )
-
-    if (products.length === 0) {
-      throw new RequestError(404, 'Active product not found')
-    }
-
-    const newStock = Number(products[0].stock_quantity) + quantityReceived
-    if (!Number.isFinite(newStock) || newStock > decimalLimits.quantity) {
-      throw new RequestError(400, `Resulting product stock must not exceed ${decimalLimits.quantity}`)
-    }
-    const reorderLevel = Number(products[0].reorder_level)
-    const status = newStock <= 0 ? 'Out of Stock' : newStock <= reorderLevel ? 'Low Stock' : 'Available'
-
-    const [result] = await connection.execute(
-      `INSERT INTO stock_in (
-         supplier_id,
-         product_id,
-         user_id,
-         quantity_received,
-         remaining_quantity,
-         cost_price,
-         total_cost,
-         delivery_date
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        supplierId,
-        productId,
-        request.user.user_id,
-        quantityValue,
-        quantityValue,
-        costValue,
-        totalCost,
-        deliveryDate,
-      ],
-    )
-
-    await connection.execute(
-      'UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?',
-      [quantityValue, productId],
-    )
-
-    await connection.execute(
-      'UPDATE products SET status = ? WHERE product_id = ?',
-      [status, productId],
-    )
-
-    await connection.execute(
-      `INSERT INTO activity_logs (user_id, action, description, created_at)
-       VALUES (?, 'STOCK_IN_CREATED', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
-      [request.user.user_id, `Stock-In ${result.insertId} created for product ${productId}`],
-    )
-
-    const resultBody = {
-      success: true,
-      message: 'Stock-in recorded successfully',
-      data: {
-        stockin_id: result.insertId,
-        supplier_id: supplierId,
-        product_id: productId,
-        quantity_received: quantityValue,
-        remaining_quantity: quantityValue,
-        cost_price: costValue,
-        total_cost: totalCost,
-      },
-    }
+    // Batch history and aggregate inventory update together; supplier_id remains the historical reference.
+    const stockInId = await persistStockIn(connection, request, stockIn)
+    const resultBody = buildStockInResponse(stockInId, stockIn)
     await saveIdempotentResponse(connection, { ...idempotency, status: 201, body: resultBody })
+    // Commit the batch, aggregate inventory, activity entry, and replay record together.
     commitAttempted = true
     await connection.commit()
     commitCompleted = true
@@ -208,18 +243,9 @@ export async function createStockIn(request, response) {
     })
     connectionReusable = failure.reusable
 
-    if (error.code === 'ER_DUP_ENTRY' && idempotency) {
-      if (failure.outcome === 'unknown') {
-        return response.status(500).json({
-          success: false,
-          code: 'TRANSACTION_OUTCOME_UNKNOWN',
-          transaction_outcome: 'unknown',
-          message: 'Unable to confirm stock delivery status. Check transaction status before retrying.',
-        })
-      }
+    if (error instanceof IdempotencyKeyConflictError && idempotency) {
       try {
-        const record = await findIdempotentResponse(pool, idempotency)
-        const replay = readIdempotentResponse(record, idempotency.payloadHash)
+        const replay = await resolveIdempotencyReplay(pool, idempotency)
         if (replay.kind === 'payload-mismatch') {
           return response.status(409).json({
             success: false,
@@ -231,8 +257,22 @@ export async function createStockIn(request, response) {
         if (replay.kind === 'replay') return response.status(replay.status).json(replay.body)
       } catch (replayError) {
         console.error('Unable to retrieve idempotent stock-in result:', replayError.message)
-        return response.status(500).json({ success: false, message: 'Unable to record stock-in' })
       }
+      return response.status(500).json({
+        success: false,
+        code: 'TRANSACTION_OUTCOME_UNKNOWN',
+        transaction_outcome: 'unknown',
+        message: 'Unable to confirm stock delivery status. Check transaction status before retrying.',
+      })
+    }
+
+    if (error.code === 'ER_DUP_ENTRY' && idempotency) {
+      return response.status(500).json({
+        success: false,
+        code: 'TRANSACTION_OUTCOME_UNKNOWN',
+        transaction_outcome: 'unknown',
+        message: 'Unable to confirm stock delivery status. Check transaction status before retrying.',
+      })
     }
 
     if ((error instanceof RequestError || error instanceof IdempotencyError) && failure.outcome === 'not_committed') {

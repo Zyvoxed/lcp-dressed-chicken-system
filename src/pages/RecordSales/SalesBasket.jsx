@@ -28,6 +28,7 @@ import {
 } from '../../utils/transactionMoney.js'
 import { useToast } from '../../context/ToastContext.jsx'
 import { formatQuantityInput } from './quantityInput.js'
+import { formatQuantityWithUnit, sumQuantitiesByUnit } from '../../utils/unitAwareMetrics.js'
 
 const maximumTransactionCents = 999999999999n
 
@@ -60,7 +61,9 @@ function SalesBasket({
   const [confirmEditRejected, setConfirmEditRejected] = useState(false)
   const submissionLock = useRef(false)
   const totalCents = useMemo(() => transactionTotalCents(cart), [cart])
-  const totalQuantity = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart])
+  const quantitySummary = useMemo(() => sumQuantitiesByUnit(cart, (item) => item.quantity)
+    .map(({ unit, quantity }) => formatQuantityWithUnit(quantity, unit, 1))
+    .join(' · '), [cart])
   const selectedCustomer = customers.find((customer) => String(customer.customer_id) === String(customerId))
   const successResult = pendingSale?.state === 'completed' && pendingSale.response
     ? {
@@ -162,6 +165,7 @@ function SalesBasket({
           payload: {
             customer_id: customerId ? Number(customerId) : null,
             payment_type: paymentType,
+            // Cash received is tender, but the sale ledger records only the sale total.
             amount_paid: paymentType === 'Cash' ? transactionCentsToAmount(totalCents) : amountPaid,
             items: cart.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
           },
@@ -495,7 +499,7 @@ function SalesBasket({
           <h3>Sales Summary</h3>
           <div>
             <span>Total Items</span>
-            <strong>{cart.length} {cart.length === 1 ? 'item' : 'items'} ({totalQuantity.toLocaleString('en-PH', { maximumFractionDigits: 1 })} kg)</strong>
+            <strong>{cart.length} {cart.length === 1 ? 'item' : 'items'}{quantitySummary ? ` (${quantitySummary})` : ''}</strong>
           </div>
           <div>
             <span>Subtotal</span>

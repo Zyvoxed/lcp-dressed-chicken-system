@@ -1,112 +1,45 @@
-import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import net from 'node:net'
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { createServer } from 'vite'
+import {
+  cleanupBrowserSession,
+  closeViteServer,
+  createAssertionTracker,
+  createScreenshotRunDirectory,
+  findBrowser,
+  reportBrowserDiagnostics,
+  removeTemporaryRoot,
+  startBrowser,
+} from './browserTestUtils.js'
 
+const assertionTracker = createAssertionTracker()
 function assert(condition, message) {
-  if (!condition) throw new Error(message)
+  assertionTracker.check(condition, message)
 }
 
 function delay(milliseconds) {
   return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds))
 }
 
-async function getFreePort() {
-  return new Promise((resolvePort, reject) => {
-    const server = net.createServer()
-    server.unref()
-    server.on('error', reject)
-    server.listen(0, '127.0.0.1', () => {
-      const { port } = server.address()
-      server.close(() => resolvePort(port))
-    })
-  })
-}
-
-async function waitForDebugger(port, pageUrl) {
-  for (let attempt = 0; attempt < 80; attempt += 1) {
-    try {
-      const response = await fetch(`http://127.0.0.1:${port}/json/list`)
-      const pages = await response.json()
-      const page = pages.find((candidate) => candidate.url.startsWith(pageUrl))
-      if (page?.webSocketDebuggerUrl) return page.webSocketDebuggerUrl
-    } catch {
-      // Chrome is still starting.
-    }
-    await delay(250)
-  }
-
-  throw new Error('Timed out waiting for the browser test session')
-}
-
-function connectToBrowser(webSocketUrl) {
-  const socket = new WebSocket(webSocketUrl)
-  const pending = new Map()
-  let commandId = 0
-
-  socket.addEventListener('message', (event) => {
-    const message = JSON.parse(event.data)
-    if (!message.id || !pending.has(message.id)) return
-
-    const { resolveCommand, rejectCommand } = pending.get(message.id)
-    pending.delete(message.id)
-
-    if (message.error) rejectCommand(new Error(message.error.message))
-    else resolveCommand(message.result)
-  })
-
-  const ready = new Promise((resolveReady, rejectReady) => {
-    socket.addEventListener('open', resolveReady, { once: true })
-    socket.addEventListener('error', rejectReady, { once: true })
-  })
-
-  return {
-    socket,
-    ready,
-    command(method, params = {}) {
-      commandId += 1
-      socket.send(JSON.stringify({ id: commandId, method, params }))
-      return new Promise((resolveCommand, rejectCommand) => {
-        pending.set(commandId, { resolveCommand, rejectCommand })
-      })
-    },
-  }
-}
-
-function findChrome() {
-  const candidates = [
-    process.env.CHROME_PATH,
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-    '/usr/bin/google-chrome',
-    '/usr/bin/chromium',
-  ].filter(Boolean)
-
-  return candidates.find((candidate) => existsSync(candidate))
-}
-
 const projectRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
-const screenshotRoot = join(projectRoot, 'test-results', 'dashboard-chart')
-const inventoryScreenshotRoot = join(projectRoot, 'test-results', 'inventory-phase5')
-const analyticsScreenshotRoot = join(projectRoot, 'test-results', 'business-analytics-phase8')
-const adminScreenshotRoot = join(projectRoot, 'test-results', 'admin-phase9')
+const screenshotRunRoot = await createScreenshotRunDirectory(projectRoot, 'inventory-ui')
+const screenshotRoot = join(screenshotRunRoot, 'dashboard-chart')
+const inventoryScreenshotRoot = join(screenshotRunRoot, 'inventory-phase5')
+const analyticsScreenshotRoot = join(screenshotRunRoot, 'business-analytics-phase8')
+const adminScreenshotRoot = join(screenshotRunRoot, 'admin-phase9')
 const temporaryRoot = await mkdtemp(join(tmpdir(), 'lcp-inventory-ui-'))
 const safeTempRoot = `${resolve(tmpdir())}${sep}`
-const browserPort = await getFreePort()
-const vitePort = await getFreePort()
-const chromePath = findChrome()
-let browser
+const browserPath = findBrowser()
+let browserSession
 let vite
-let browserConnection
+let vitePort
 
 try {
   assert(resolve(temporaryRoot).startsWith(safeTempRoot), 'Unsafe temporary test directory')
-  assert(chromePath, 'Chrome or Edge is required for the inventory UI test')
+  assert(browserPath, 'Chrome is required for the inventory UI test; set CHROME_PATH to override it')
 
   const sourceRoot = projectRoot.replaceAll('\\', '/')
   const categories = ['Whole Chicken', 'Prime Cuts', 'Wings and Drumsticks', 'Innards & Offal']
@@ -418,26 +351,17 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
     },
     server: {
       host: '127.0.0.1',
-      port: vitePort,
-      strictPort: true,
+      port: 0,
       fs: { allow: [projectRoot, temporaryRoot] },
     },
   })
   await vite.listen()
-
-  browser = spawn(chromePath, [
-    '--headless=new',
-    '--disable-gpu',
-    '--no-first-run',
-    '--no-default-browser-check',
-    `--remote-debugging-port=${browserPort}`,
-    `--user-data-dir=${join(temporaryRoot, 'browser-profile')}`,
-    `http://127.0.0.1:${vitePort}`,
-  ], { stdio: 'ignore', windowsHide: true })
-
-  const webSocketUrl = await waitForDebugger(browserPort, `http://127.0.0.1:${vitePort}`)
-  browserConnection = connectToBrowser(webSocketUrl)
-  await browserConnection.ready
+  vitePort = vite.httpServer.address().port
+  const pageUrl = `http://127.0.0.1:${vitePort}`
+  browserSession = await startBrowser({ browserPath, temporaryRoot, pageUrl, windowSize: null })
+  await browserSession.connect()
+  console.log(`[BROWSER] ${browserSession.version.Browser}; process started, DevTools discovered, WebSocket connected`)
+  const browserConnection = browserSession.connection
 
   async function evaluate(expression) {
     const result = await browserConnection.command('Runtime.evaluate', {
@@ -1163,17 +1087,26 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   console.log('PASS Business Analytics KPI accuracy, chart tooltips, ranking order, keyboard access, and responsive layout')
   console.log(`ANALYTICS_SCREENSHOTS ${analyticsScreenshotRoot}`)
   console.log(`INVENTORY_SCREENSHOTS ${inventoryScreenshotRoot}`)
+  console.log(`SCREENSHOT_RUN_DIRECTORY ${screenshotRunRoot}`)
+} catch (error) {
+  reportBrowserDiagnostics(browserSession)
+  throw error
 } finally {
-  browserConnection?.socket.close()
-  if (browser && browser.exitCode === null) {
-    browser.kill()
-    await Promise.race([
-      new Promise((resolveExit) => browser.once('exit', resolveExit)),
-      delay(3000),
-    ])
+  const counts = assertionTracker.counts
+  console.log(`ASSERTIONS passed=${counts.passed} failed=${counts.failed}`)
+  console.log(`SCREENSHOT_RUN_DIRECTORY ${screenshotRunRoot}`)
+  const cleanupErrors = []
+  try { console.log(`BROWSER_SHUTDOWN ${await cleanupBrowserSession(browserSession)}`) } catch (error) { cleanupErrors.push(error) }
+  let viteStopped = !vite
+  try { console.log(`VITE_SHUTDOWN ${await closeViteServer(vite)}`); viteStopped = true } catch (error) { cleanupErrors.push(error) }
+  const browserStopped = !browserSession || browserSession.process.exitCode !== null || browserSession.process.signalCode !== null
+  if (browserStopped && viteStopped) {
+    try { await removeTemporaryRoot(temporaryRoot, safeTempRoot) } catch (error) { cleanupErrors.push(error) }
+  } else {
+    cleanupErrors.push(new Error(`Preserved temporary root because browser/Vite shutdown was not confirmed: ${temporaryRoot}`))
   }
-  if (vite) await vite.close()
-  if (resolve(temporaryRoot).startsWith(safeTempRoot)) {
-    await rm(temporaryRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+  if (cleanupErrors.length) {
+    for (const error of cleanupErrors) console.error(`CLEANUP_ERROR ${error.stack || error.message}`)
+    process.exitCode = 1
   }
 }

@@ -1,4 +1,5 @@
 import { authenticatedApiFetch } from './api.js'
+import { collectReportPages } from './collectReportPages.js'
 
 async function request(path, options, fallback) {
   const response = await authenticatedApiFetch(path, options)
@@ -15,15 +16,8 @@ export function getSalesReport(filters = {}, options = {}) {
   return request(`/reports/sales${suffix}`, options, 'Unable to retrieve sales report')
 }
 
-export async function getAllSalesReport(filters = {}, options = {}) {
-  const firstPage = await getSalesReport({ ...filters, page: 1, page_size: 100 }, options)
-  const records = [...(firstPage.records ?? [])]
-  const totalPages = Number(firstPage.pagination?.total_pages || 0)
-  for (let page = 2; page <= totalPages; page += 1) {
-    const next = await getSalesReport({ ...filters, page, page_size: 100 }, options)
-    records.push(...(next.records ?? []))
-  }
-  return { ...firstPage, records }
+export function getAllSalesReport(filters = {}, options = {}) {
+  return collectReportPages(getSalesReport, filters, options)
 }
 
 export function getSalesReportDetail(saleId, options = {}) {
@@ -41,15 +35,8 @@ export function getReceivablesReport(filters = {}, options = {}) {
   return request(`/reports/receivables${suffix}`, options, 'Unable to retrieve receivables report')
 }
 
-export async function getAllReceivablesReport(options = {}) {
-  const firstPage = await getReceivablesReport({ page: 1, page_size: 100 }, options)
-  const records = [...(firstPage.records ?? [])]
-  const totalPages = Number(firstPage.pagination?.total_pages || 0)
-  for (let page = 2; page <= totalPages; page += 1) {
-    const next = await getReceivablesReport({ page, page_size: 100 }, options)
-    records.push(...(next.records ?? []))
-  }
-  return { ...firstPage, records }
+export function getAllReceivablesReport(options = {}) {
+  return collectReportPages(getReceivablesReport, {}, options)
 }
 
 export function getProductSalesReport(productIds, year, options = {}) {

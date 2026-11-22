@@ -464,6 +464,25 @@
   margin-top: 6px;
 }
 
+.product-trends-unit-group + .product-trends-unit-group {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.product-trends-unit-group h3 {
+  margin: 0 0 4px;
+  color: var(--text-heading);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.analytics-unit-group + .analytics-unit-group {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
 .product-trends-svg {
   width: 100%;
   height: 310px;

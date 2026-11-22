@@ -5,6 +5,7 @@ import { peso } from '../../utils/currency.js'
 import { getProductSalesReport } from '../../services/reportService.js'
 import { buildMonotonePath } from '../../utils/chartPaths.js'
 import { getMonthlyIndexesForYear } from '../../utils/monthlyChartPeriods.js'
+import { groupByUnit } from '../../utils/unitAwareMetrics.js'
 import {
   SALES_CHART_LAYOUT,
   SALES_CHART_STYLE,
@@ -25,7 +26,7 @@ function compactPeso(value) {
 }
 
 function SalesByProductChart({ products = [] }) {
-  const topProducts = useMemo(() => products.slice(0, 5), [products])
+  const topProducts = useMemo(() => groupByUnit(products).map(({ items }) => items[0]).filter(Boolean).slice(0, 5), [products])
   const productKey = topProducts.map((product) => product.product_id).join(',')
   const [salesByProduct, setSalesByProduct] = useState(null)
   const [selectedYear, setSelectedYear] = useState(null)
@@ -147,14 +148,14 @@ function SalesByProductChart({ products = [] }) {
       <header className="dashboard-product-sales-header">
         <div>
           <h2>Sales by Product</h2>
-          <p>Monthly sales trends of the top 5 products</p>
+          <p>Monthly revenue trends for leading products within each unit</p>
         </div>
         {selectedYear && <span className="dashboard-badge">{selectedYear}</span>}
       </header>
       <div className="dashboard-product-sales-legend" aria-label="Top five products">
         {topProducts.map((product, index) => (
           <span key={product.product_id}>
-            <i style={{ backgroundColor: seriesColors[index] }} />{product.product_name}
+            <i style={{ backgroundColor: seriesColors[index] }} />{product.product_name} ({product.unit})
           </span>
         ))}
       </div>

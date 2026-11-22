@@ -28,6 +28,8 @@ export async function login(request, response) {
 
   try {
     response.set('Cache-Control', 'no-store')
+    // Rate-limit before password work, then require a live account and verified email
+    // before issuing an MFA challenge; login does not issue a session token yet.
     await enforceLoginRateLimits({ username, ipAddress: getRequestIp(request) })
     const [users] = await pool.execute(
       `SELECT user_id, fullname, username, password, role, is_active, auth_version,
@@ -101,6 +103,8 @@ export async function login(request, response) {
 export async function verifyLoginMfa(request, response) {
   response.set('Cache-Control', 'no-store')
   try {
+    // The challenge service validates and consumes the code first; only then is an
+    // eight-hour JWT minted with an explicit MFA-verified claim.
     const user = await consumeLoginChallenge({
       challengeId: request.body?.challengeId,
       code: request.body?.code,
@@ -146,6 +150,8 @@ export async function verifyLoginMfa(request, response) {
 export async function resendLoginMfa(request, response) {
   response.set('Cache-Control', 'no-store')
   try {
+    // Resend rotates the code through the challenge service before email delivery;
+    // delivery failure invalidates that challenge so an unsent code cannot authenticate.
     const challenge = await resendLoginChallenge({
       challengeId: request.body?.challengeId,
       ipAddress: getRequestIp(request),

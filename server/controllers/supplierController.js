@@ -42,6 +42,35 @@ function supplierDetails(body) {
   return { supplierName, contactPerson, contactNumber, address }
 }
 
+async function lockSupplier(connection, supplierId) {
+  const [suppliers] = await connection.execute(
+    `SELECT supplier_id, supplier_name, is_active
+     FROM suppliers
+     WHERE supplier_id = ?
+     LIMIT 1
+     FOR UPDATE`,
+    [supplierId],
+  )
+  return suppliers[0]
+}
+
+async function recordSupplierActivity(connection, userId, action, description) {
+  if (action === 'SUPPLIER_UPDATED') {
+    await connection.execute(
+      `INSERT INTO activity_logs (user_id, action, description, created_at)
+       VALUES (?, 'SUPPLIER_UPDATED', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
+      [userId, description],
+    )
+    return
+  }
+
+  await connection.execute(
+    `INSERT INTO activity_logs (user_id, action, description, created_at)
+     VALUES (?, ?, ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
+    [userId, action, description],
+  )
+}
+
 export async function getSuppliers(request, response) {
   try {
     const [suppliers] = await pool.execute(`
@@ -106,31 +135,21 @@ async function changeSupplierStatus(request, response, restore) {
     await connection.beginTransaction()
     transactionStarted = true
 
-    const [suppliers] = await connection.execute(
-      `SELECT supplier_id, supplier_name, is_active
-       FROM suppliers
-       WHERE supplier_id = ?
-       LIMIT 1
-       FOR UPDATE`,
-      [supplierId],
-    )
-    const supplier = suppliers[0]
+    const supplier = await lockSupplier(connection, supplierId)
     if (!supplier) throw new SupplierError(404, 'Supplier not found')
     if (restore && supplier.is_active) throw new SupplierError(409, 'Supplier is already active')
     if (!restore && !supplier.is_active) throw new SupplierError(409, 'Supplier is already archived')
 
+    // Archive and restore change status in place, preserving stock-in supplier references.
     await connection.execute(
       `UPDATE suppliers SET is_active = ${restore ? 'TRUE' : 'FALSE'} WHERE supplier_id = ?`,
       [supplierId],
     )
-    await connection.execute(
-      `INSERT INTO activity_logs (user_id, action, description, created_at)
-       VALUES (?, ?, ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
-      [
-        request.user.user_id,
-        restore ? 'SUPPLIER_RESTORED' : 'SUPPLIER_ARCHIVED',
-        `Supplier ${supplierId} (${supplier.supplier_name}) ${restore ? 'restored' : 'archived'}`,
-      ],
+    await recordSupplierActivity(
+      connection,
+      request.user.user_id,
+      restore ? 'SUPPLIER_RESTORED' : 'SUPPLIER_ARCHIVED',
+      `Supplier ${supplierId} (${supplier.supplier_name}) ${restore ? 'restored' : 'archived'}`,
     )
 
     await connection.commit()
@@ -200,26 +219,21 @@ export async function updateSupplier(request, response) {
     await connection.beginTransaction()
     transactionStarted = true
 
-    const [suppliers] = await connection.execute(
-      `SELECT supplier_id, supplier_name, is_active
-       FROM suppliers
-       WHERE supplier_id = ?
-       LIMIT 1
-       FOR UPDATE`,
-      [supplierId],
-    )
-    if (!suppliers[0]) throw new SupplierError(404, 'Supplier not found')
+    const supplier = await lockSupplier(connection, supplierId)
+    if (!supplier) throw new SupplierError(404, 'Supplier not found')
 
+    // Update the existing supplier row by ID; stock-in records keep that reference and display its current name.
     await connection.execute(
       `UPDATE suppliers
        SET supplier_name = ?, contact_person = ?, contact_number = ?, address = ?
        WHERE supplier_id = ?`,
       [supplierName, contactPerson, contactNumber, address, supplierId],
     )
-    await connection.execute(
-      `INSERT INTO activity_logs (user_id, action, description, created_at)
-       VALUES (?, 'SUPPLIER_UPDATED', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
-      [request.user.user_id, `Supplier ${supplierId} (${supplierName}) details updated`],
+    await recordSupplierActivity(
+      connection,
+      request.user.user_id,
+      'SUPPLIER_UPDATED',
+      `Supplier ${supplierId} (${supplierName}) details updated`,
     )
 
     await connection.commit()
@@ -233,7 +247,7 @@ export async function updateSupplier(request, response) {
         contact_person: contactPerson,
         contact_number: contactNumber,
         address,
-        is_active: suppliers[0].is_active,
+        is_active: supplier.is_active,
       },
     })
   } catch (error) {

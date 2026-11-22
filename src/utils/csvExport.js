@@ -1,5 +1,31 @@
+const NUMERIC_VALUE = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i
+const FORMULA_PREFIX = /^[=+\-@]/
+
+function leadingSpaceOrControlLength(text) {
+  let length = 0
+  for (const character of text) {
+    const codePoint = character.codePointAt(0)
+    const isControl = codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)
+    if (!/\s/u.test(character) && !isControl) break
+    length += character.length
+  }
+  return length
+}
+
+function isNumericValue(value, text) {
+  if (typeof value === 'number') return Number.isFinite(value)
+  return typeof value === 'string' && NUMERIC_VALUE.test(text)
+}
+
+function neutralizeFormulaText(value, text) {
+  if (isNumericValue(value, text)) return text
+
+  const firstMeaningfulCharacter = text.slice(leadingSpaceOrControlLength(text))
+  return FORMULA_PREFIX.test(firstMeaningfulCharacter) ? `'${text}` : text
+}
+
 export function escapeCsv(value) {
-  const text = String(value ?? '')
+  const text = neutralizeFormulaText(value, String(value ?? ''))
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
 }
 

@@ -575,6 +575,17 @@
   scrollbar-width: thin;
 }
 
+.supplier-unit-chart-group + .supplier-unit-chart-group {
+  margin-top: 16px;
+}
+
+.supplier-unit-chart-group h3 {
+  margin: 0 0 8px;
+  color: var(--text-heading);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .supplier-chart-scroll-wrap {
   min-width: 100%;
   display: block;

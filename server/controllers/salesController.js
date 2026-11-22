@@ -1,12 +1,12 @@
 import pool from '../config/database.js'
 import { DecimalValidationError, decimalLimits, parseDecimal } from '../utils/decimalValidation.js'
 import {
-  findIdempotentResponse,
   getIdempotencyKey,
   hashRequestPayload,
   IdempotencyError,
-  readIdempotentResponse,
+  IdempotencyKeyConflictError,
   reserveIdempotencyKey,
+  resolveIdempotencyReplay,
   saveIdempotentResponse,
 } from '../utils/idempotency.js'
 import { centsToAmount, lineTotalCents, toCents, toThousandths } from '../utils/money.js'
@@ -63,7 +63,205 @@ function normalizeItems(items) {
     return { productId, quantity }
   })
 
+  // Reject duplicates and lock products in a stable ID order to reduce deadlock risk
+  // when concurrent sales touch overlapping products.
   return normalized.sort((left, right) => left.productId - right.productId)
+}
+
+async function lockEligibleStockBatches(connection, productId) {
+  // The database lock follows the same deterministic FIFO order used for consumption.
+  const [batches] = await connection.execute(
+    `SELECT stockin_id, remaining_quantity, cost_price, delivery_date
+     FROM stock_in
+     WHERE product_id = ? AND remaining_quantity > 0
+     ORDER BY delivery_date ASC, stockin_id ASC
+     FOR UPDATE`,
+    [productId],
+  )
+  return batches
+}
+
+function sumAvailableBatchQuantity(batches) {
+  return batches.reduce((sum, batch) => sum + Number(batch.remaining_quantity), 0)
+}
+
+function calculateFifoAllocations(batches, requestedQuantity) {
+  let quantityRemaining = requestedQuantity
+  const allocations = []
+
+  // Each batch contributes at most its remaining balance; fixed-scale rounding matches stored quantities.
+  for (const batch of batches) {
+    if (quantityRemaining <= 0) break
+
+    const deduction = Math.min(quantityRemaining, Number(batch.remaining_quantity))
+    allocations.push({ batch, quantity: deduction.toFixed(3) })
+    quantityRemaining = Number((quantityRemaining - deduction).toFixed(3))
+  }
+
+  return allocations
+}
+
+async function persistFifoAllocations(connection, salesItemId, allocations) {
+  // Keep each deduction and its original batch cost together inside the caller's transaction.
+  for (const { batch, quantity } of allocations) {
+    await connection.execute(
+      'UPDATE stock_in SET remaining_quantity = remaining_quantity - ? WHERE stockin_id = ?',
+      [quantity, batch.stockin_id],
+    )
+    await connection.execute(
+      `INSERT INTO sale_batch_allocations (salesitem_id, stockin_id, quantity_deducted, cost_price)
+       VALUES (?, ?, ?, ?)`,
+      [salesItemId, batch.stockin_id, quantity, batch.cost_price],
+    )
+  }
+}
+
+function normalizeSaleRequest(request) {
+  // Reject malformed input before opening a transaction or taking database locks.
+  const idempotencyKey = getIdempotencyKey(request)
+  const paymentType = request.body?.payment_type
+  if (paymentType !== 'Cash' && paymentType !== 'Credit') {
+    throw new SaleError(400, 'Payment type must be Cash or Credit')
+  }
+
+  const amountPaid = decimalValue(request.body?.amount_paid, {
+    fieldName: 'Amount paid',
+    maximum: decimalLimits.money,
+    decimalPlaces: 2,
+    minimum: 0,
+  })
+  const items = normalizeItems(request.body?.items)
+  const hasCustomer = request.body?.customer_id !== null
+    && request.body?.customer_id !== undefined
+    && request.body?.customer_id !== ''
+  const customerId = hasCustomer ? positiveInteger(request.body.customer_id, 'Customer') : null
+
+  if (paymentType === 'Credit' && !customerId) {
+    throw new SaleError(400, 'A customer is required for credit sales')
+  }
+
+  const amountPaidCents = toCents(amountPaid)
+  const idempotency = {
+    userId: request.user.user_id,
+    operation: 'sale',
+    key: idempotencyKey,
+    payloadHash: hashRequestPayload({
+      payment_type: paymentType,
+      customer_id: customerId,
+      amount_paid_cents: amountPaidCents.toString(),
+      items: items.map((item) => ({
+        product_id: item.productId,
+        quantity_thousandths: toThousandths(item.quantity).toString(),
+      })),
+    }),
+  }
+
+  return { paymentType, amountPaidCents, customerId, items, idempotency }
+}
+
+async function prepareSaleItems(connection, items) {
+  const preparedItems = []
+  let totalCents = 0n
+
+  for (const item of items) {
+    const [products] = await connection.execute(
+      `SELECT product_id, selling_price, stock_quantity, reorder_level
+       FROM products
+       WHERE product_id = ? AND is_active = TRUE
+       LIMIT 1
+       FOR UPDATE`,
+      [item.productId],
+    )
+    const product = products[0]
+
+    if (!product) {
+      throw new SaleError(404, 'Active product not found')
+    }
+
+    if (Number(product.stock_quantity) < item.quantity) {
+      throw new SaleError(409, `Not enough stock for product ${item.productId}`)
+    }
+
+    const batches = await lockEligibleStockBatches(connection, item.productId)
+    const fifoAvailable = sumAvailableBatchQuantity(batches)
+
+    // Both the aggregate product balance and its locked FIFO batches must cover the sale.
+    if (fifoAvailable < item.quantity) {
+      throw new SaleError(409, `Available stock records do not cover product ${item.productId}. Please contact the owner.`)
+    }
+
+    const priceCents = toCents(product.selling_price)
+    const subtotalCents = lineTotalCents(item.quantity, product.selling_price)
+    const maximumMoneyCents = BigInt(Math.round(decimalLimits.money * 100))
+    if (subtotalCents > maximumMoneyCents) {
+      throw new SaleError(400, `Sale item total must not exceed ${decimalLimits.money}`)
+    }
+    totalCents += subtotalCents
+    if (totalCents > maximumMoneyCents) {
+      throw new SaleError(400, `Sale total must not exceed ${decimalLimits.money}`)
+    }
+    preparedItems.push({ ...item, product, batches, priceCents, subtotalCents })
+  }
+
+  return { preparedItems, totalCents }
+}
+
+function calculateSaleAmounts(paymentType, totalCents, amountPaidCents) {
+  if (amountPaidCents > totalCents) {
+    throw new SaleError(400, 'Amount paid cannot exceed the sale total')
+  }
+  if (paymentType === 'Cash' && amountPaidCents < totalCents) {
+    throw new SaleError(400, 'Cash payment must cover the full sale total')
+  }
+
+  const remainingCents = totalCents - amountPaidCents
+  return {
+    remainingCents,
+    status: remainingCents === 0n ? 'Paid' : amountPaidCents > 0n ? 'Partially Paid' : 'Unpaid',
+    totalAmount: centsToAmount(totalCents),
+    paidAmount: centsToAmount(amountPaidCents),
+    remainingBalance: centsToAmount(remainingCents),
+  }
+}
+
+async function persistSaleItems(connection, saleId, preparedItems) {
+  for (const item of preparedItems) {
+    const quantity = item.quantity.toFixed(3)
+    const price = centsToAmount(item.priceCents)
+    const subtotal = centsToAmount(item.subtotalCents)
+    const [itemResult] = await connection.execute(
+      `INSERT INTO sales_items (sale_id, product_id, quantity, price, subtotal)
+       VALUES (?, ?, ?, ?, ?)`,
+      [saleId, item.productId, quantity, price, subtotal],
+    )
+
+    const allocations = calculateFifoAllocations(item.batches, item.quantity)
+    await persistFifoAllocations(connection, itemResult.insertId, allocations)
+
+    await connection.execute(
+      'UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?',
+      [quantity, item.productId],
+    )
+
+    const newStock = Number(item.product.stock_quantity) - item.quantity
+    const reorderLevel = Number(item.product.reorder_level)
+    const productStatus = newStock <= 0 ? 'Out of Stock' : newStock <= reorderLevel ? 'Low Stock' : 'Available'
+    await connection.execute('UPDATE products SET status = ? WHERE product_id = ?', [productStatus, item.productId])
+  }
+}
+
+function buildSaleResponse(saleId, amounts) {
+  return {
+    success: true,
+    message: 'Sale recorded successfully',
+    data: {
+      sale_id: saleId,
+      total_amount: amounts.totalAmount,
+      amount_paid: amounts.paidAmount,
+      remaining_balance: amounts.remainingBalance,
+      status: amounts.status,
+    },
+  }
 }
 
 export async function createSale(request, response) {
@@ -76,43 +274,13 @@ export async function createSale(request, response) {
   let connectionReusable = true
 
   try {
-    const idempotencyKey = getIdempotencyKey(request)
-    const paymentType = request.body?.payment_type
-    if (paymentType !== 'Cash' && paymentType !== 'Credit') {
-      throw new SaleError(400, 'Payment type must be Cash or Credit')
-    }
-
-    const amountPaid = decimalValue(request.body?.amount_paid, {
-      fieldName: 'Amount paid',
-      maximum: decimalLimits.money,
-      decimalPlaces: 2,
-      minimum: 0,
-    })
-    const items = normalizeItems(request.body?.items)
-    const hasCustomer = request.body?.customer_id !== null && request.body?.customer_id !== undefined && request.body?.customer_id !== ''
-    const customerId = hasCustomer ? positiveInteger(request.body.customer_id, 'Customer') : null
-
-    if (paymentType === 'Credit' && !customerId) {
-      throw new SaleError(400, 'A customer is required for credit sales')
-    }
-
-    const amountPaidCents = toCents(amountPaid)
-    idempotency = {
-      userId: request.user.user_id,
-      operation: 'sale',
-      key: idempotencyKey,
-      payloadHash: hashRequestPayload({
-        payment_type: paymentType,
-        customer_id: customerId,
-        amount_paid_cents: amountPaidCents.toString(),
-        items: items.map((item) => ({
-          product_id: item.productId,
-          quantity_thousandths: toThousandths(item.quantity).toString(),
-        })),
-      }),
-    }
+    const saleRequest = normalizeSaleRequest(request)
+    const { paymentType, amountPaidCents, customerId, items } = saleRequest
+    idempotency = saleRequest.idempotency
 
     connection = await pool.getConnection()
+    // The idempotency reservation, sale rows, stock deductions, balances, and audit
+    // entry must commit or roll back together as one business transaction.
     transactionBeginAttempted = true
     await connection.beginTransaction()
     transactionStarted = true
@@ -128,147 +296,52 @@ export async function createSale(request, response) {
       }
     }
 
-    const preparedItems = []
-    let totalCents = 0n
-
-    for (const item of items) {
-      const [products] = await connection.execute(
-        `SELECT product_id, selling_price, stock_quantity, reorder_level
-         FROM products
-         WHERE product_id = ? AND is_active = TRUE
-         LIMIT 1
-         FOR UPDATE`,
-        [item.productId],
-      )
-      const product = products[0]
-
-      if (!product) {
-        throw new SaleError(404, 'Active product not found')
-      }
-
-      if (Number(product.stock_quantity) < item.quantity) {
-        throw new SaleError(409, `Not enough stock for product ${item.productId}`)
-      }
-
-      const [batches] = await connection.execute(
-        `SELECT stockin_id, remaining_quantity, cost_price, delivery_date
-         FROM stock_in
-         WHERE product_id = ? AND remaining_quantity > 0
-         ORDER BY delivery_date ASC, stockin_id ASC
-         FOR UPDATE`,
-        [item.productId],
-      )
-      const fifoAvailable = batches.reduce((sum, batch) => sum + Number(batch.remaining_quantity), 0)
-
-      if (fifoAvailable < item.quantity) {
-        throw new SaleError(409, `Available stock records do not cover product ${item.productId}. Please contact the owner.`)
-      }
-
-      const priceCents = toCents(product.selling_price)
-      const subtotalCents = lineTotalCents(item.quantity, product.selling_price)
-      const maximumMoneyCents = BigInt(Math.round(decimalLimits.money * 100))
-      if (subtotalCents > maximumMoneyCents) {
-        throw new SaleError(400, `Sale item total must not exceed ${decimalLimits.money}`)
-      }
-      totalCents += subtotalCents
-      if (totalCents > maximumMoneyCents) {
-        throw new SaleError(400, `Sale total must not exceed ${decimalLimits.money}`)
-      }
-      preparedItems.push({ ...item, product, batches, priceCents, subtotalCents })
-    }
-
-    if (amountPaidCents > totalCents) {
-      throw new SaleError(400, 'Amount paid cannot exceed the sale total')
-    }
-    if (paymentType === 'Cash' && amountPaidCents < totalCents) {
-      throw new SaleError(400, 'Cash payment must cover the full sale total')
-    }
-
-    const remainingCents = totalCents - amountPaidCents
-    const status = remainingCents === 0n ? 'Paid' : amountPaidCents > 0n ? 'Partially Paid' : 'Unpaid'
-    const totalAmount = centsToAmount(totalCents)
-    const paidAmount = centsToAmount(amountPaidCents)
-    const remainingBalance = centsToAmount(remainingCents)
+    const { preparedItems, totalCents } = await prepareSaleItems(connection, items)
+    const amounts = calculateSaleAmounts(paymentType, totalCents, amountPaidCents)
 
     const [saleResult] = await connection.execute(
       `INSERT INTO sales (
          customer_id, user_id, payment_type, total_amount,
          amount_paid, remaining_balance, status, sale_date
        ) VALUES (?, ?, ?, ?, ?, ?, ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
-      [customerId, request.user.user_id, paymentType, totalAmount, paidAmount, remainingBalance, status],
+      [
+        customerId,
+        request.user.user_id,
+        paymentType,
+        amounts.totalAmount,
+        amounts.paidAmount,
+        amounts.remainingBalance,
+        amounts.status,
+      ],
     )
 
-    for (const item of preparedItems) {
-      const quantity = item.quantity.toFixed(3)
-      const price = centsToAmount(item.priceCents)
-      const subtotal = centsToAmount(item.subtotalCents)
-      const [itemResult] = await connection.execute(
-        `INSERT INTO sales_items (sale_id, product_id, quantity, price, subtotal)
-         VALUES (?, ?, ?, ?, ?)`,
-        [saleResult.insertId, item.productId, quantity, price, subtotal],
-      )
+    await persistSaleItems(connection, saleResult.insertId, preparedItems)
 
-      let quantityRemaining = item.quantity
-      for (const batch of item.batches) {
-        if (quantityRemaining <= 0) break
-
-        const deduction = Math.min(quantityRemaining, Number(batch.remaining_quantity))
-        const deductionValue = deduction.toFixed(3)
-
-        await connection.execute(
-          'UPDATE stock_in SET remaining_quantity = remaining_quantity - ? WHERE stockin_id = ?',
-          [deductionValue, batch.stockin_id],
-        )
-        await connection.execute(
-          `INSERT INTO sale_batch_allocations (salesitem_id, stockin_id, quantity_deducted, cost_price)
-           VALUES (?, ?, ?, ?)`,
-          [itemResult.insertId, batch.stockin_id, deductionValue, batch.cost_price],
-        )
-        quantityRemaining = Number((quantityRemaining - deduction).toFixed(3))
-      }
-
-      await connection.execute(
-        'UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?',
-        [quantity, item.productId],
-      )
-
-      const newStock = Number(item.product.stock_quantity) - item.quantity
-      const reorderLevel = Number(item.product.reorder_level)
-      const productStatus = newStock <= 0 ? 'Out of Stock' : newStock <= reorderLevel ? 'Low Stock' : 'Available'
-      await connection.execute('UPDATE products SET status = ? WHERE product_id = ?', [productStatus, item.productId])
-    }
-
-    if (paymentType === 'Credit' && remainingCents > 0) {
+    if (paymentType === 'Credit' && amounts.remainingCents > 0) {
+      // The customer balance tracks the unpaid portion, not the original sale total.
       await connection.execute(
         'UPDATE customers SET current_balance = current_balance + ? WHERE customer_id = ?',
-        [remainingBalance, customerId],
+        [amounts.remainingBalance, customerId],
       )
     }
 
     await connection.execute(
       `INSERT INTO activity_logs (user_id, action, description, created_at)
        VALUES (?, 'SALE_CREATED', ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))`,
-      [request.user.user_id, `Sale ${saleResult.insertId} created (${paymentType}, ${totalAmount})`],
+      [request.user.user_id, `Sale ${saleResult.insertId} created (${paymentType}, ${amounts.totalAmount})`],
     )
 
-    const resultBody = {
-      success: true,
-      message: 'Sale recorded successfully',
-      data: {
-        sale_id: saleResult.insertId,
-        total_amount: totalAmount,
-        amount_paid: paidAmount,
-        remaining_balance: remainingBalance,
-        status,
-      },
-    }
+    const resultBody = buildSaleResponse(saleResult.insertId, amounts)
     await saveIdempotentResponse(connection, { ...idempotency, status: 201, body: resultBody })
+    // Persist the replay response before commit so a retry can recover the committed sale.
     commitAttempted = true
     await connection.commit()
     commitCompleted = true
 
     return response.status(201).json(resultBody)
   } catch (error) {
+    // If commit was attempted but not confirmed, the database outcome is uncertain;
+    // the shared failure handler avoids reporting a definite rejection in that case.
     const rejectionConfirmed = (error instanceof SaleError || error instanceof IdempotencyError)
       && error.status < 500
     const failure = await resolveTransactionFailure({
@@ -283,18 +356,9 @@ export async function createSale(request, response) {
     })
     connectionReusable = failure.reusable
 
-    if (error.code === 'ER_DUP_ENTRY' && idempotency) {
-      if (failure.outcome === 'unknown') {
-        return response.status(500).json({
-          success: false,
-          code: 'TRANSACTION_OUTCOME_UNKNOWN',
-          transaction_outcome: 'unknown',
-          message: 'Unable to confirm sale status. Check transaction status before retrying.',
-        })
-      }
+    if (error instanceof IdempotencyKeyConflictError && idempotency) {
       try {
-        const record = await findIdempotentResponse(pool, idempotency)
-        const replay = readIdempotentResponse(record, idempotency.payloadHash)
+        const replay = await resolveIdempotencyReplay(pool, idempotency)
         if (replay.kind === 'payload-mismatch') {
           return response.status(409).json({
             success: false,
@@ -306,8 +370,22 @@ export async function createSale(request, response) {
         if (replay.kind === 'replay') return response.status(replay.status).json(replay.body)
       } catch (replayError) {
         console.error('Unable to retrieve idempotent sale result:', replayError.message)
-        return response.status(500).json({ success: false, message: 'Unable to record sale' })
       }
+      return response.status(500).json({
+        success: false,
+        code: 'TRANSACTION_OUTCOME_UNKNOWN',
+        transaction_outcome: 'unknown',
+        message: 'Unable to confirm sale status. Check transaction status before retrying.',
+      })
+    }
+
+    if (error.code === 'ER_DUP_ENTRY' && idempotency) {
+      return response.status(500).json({
+        success: false,
+        code: 'TRANSACTION_OUTCOME_UNKNOWN',
+        transaction_outcome: 'unknown',
+        message: 'Unable to confirm sale status. Check transaction status before retrying.',
+      })
     }
 
     if ((error instanceof SaleError || error instanceof IdempotencyError) && failure.outcome === 'not_committed') {

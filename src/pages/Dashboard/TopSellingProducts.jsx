@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import EmptyState from '../Shared/EmptyState.jsx'
 import { peso, quantity } from '../../utils/currency.js'
+import { groupByUnit } from '../../utils/unitAwareMetrics.js'
 
 const barColors = {
   top: '#235347',
@@ -15,9 +16,9 @@ function ProductBar({ product, maximum, mode }) {
     <div className={`dashboard-performance-row ${mode === 'least' ? 'least' : ''}`}>
       <div className="dashboard-performance-heading">
         <strong>{product.product_name}</strong>
-        <span>{quantity.format(sold)} {product.unit || 'kg'}</span>
+        <span>{quantity.format(sold)} {product.unit || 'Unspecified unit'}</span>
       </div>
-      <div className="dashboard-performance-track" aria-label={`${quantity.format(sold)} ${product.unit || 'kg'} sold`}>
+      <div className="dashboard-performance-track" aria-label={`${quantity.format(sold)} ${product.unit || 'Unspecified unit'} sold`}>
         <span style={{ width, backgroundColor: barColors[mode] }} />
       </div>
       {mode === 'least' && <span className="dashboard-performance-status">LOW DEMAND</span>}
@@ -30,8 +31,7 @@ function ProductBar({ product, maximum, mode }) {
 
 function TopSellingProducts({ products = [], leastProducts = [] }) {
   const [mode, setMode] = useState('top')
-  const selectedProducts = (mode === 'top' ? products : leastProducts).slice(0, 5)
-  const maximum = Math.max(...selectedProducts.map((product) => Math.max(Number(product.quantity_sold) || 0, 0)), 0)
+  const productGroups = groupByUnit(mode === 'top' ? products : leastProducts)
 
   return (
     <article className="panel dashboard-list-panel dashboard-performance-panel">
@@ -42,13 +42,22 @@ function TopSellingProducts({ products = [], leastProducts = [] }) {
           <button type="button" className={mode === 'least' ? 'active' : ''} aria-pressed={mode === 'least'} onClick={() => setMode('least')}>Least 5</button>
         </div>
       </header>
-      {!selectedProducts.length ? (
+      {!productGroups.length ? (
         <EmptyState>{mode === 'top' ? 'No product sales recorded.' : 'No active products found.'}</EmptyState>
       ) : (
         <div className={`dashboard-performance-list ${mode === 'least' ? 'least' : 'top'}`} key={mode}>
-          {selectedProducts.map((product) => (
-            <ProductBar key={product.product_id} product={product} maximum={maximum} mode={mode} />
-          ))}
+          {productGroups.map(({ unit, items }) => {
+            const unitProducts = items.slice(0, 5)
+            const maximum = Math.max(...unitProducts.map((product) => Math.max(Number(product.quantity_sold) || 0, 0)), 0)
+            return (
+              <section className="dashboard-performance-unit-group" key={unit} aria-label={`${mode === 'top' ? 'Top' : 'Least'} products in ${unit}`}>
+                <h3>{mode === 'top' ? 'Top' : 'Least'} 5 in {unit}</h3>
+                {unitProducts.map((product) => (
+                  <ProductBar key={product.product_id} product={product} maximum={maximum} mode={mode} />
+                ))}
+              </section>
+            )
+          })}
         </div>
       )}
     </article>

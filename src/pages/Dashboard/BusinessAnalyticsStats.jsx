@@ -1,12 +1,8 @@
 import { Award, PhilippinePeso, ReceiptText, Sigma } from 'lucide-react'
 import { peso } from '../../utils/currency.js'
 
-function formatQuantity(value) {
-  return Number(value).toLocaleString('en-PH', { maximumFractionDigits: 3 })
-}
-
 function BusinessAnalyticsStats({ summary }) {
-  const topSeller = summary.top_seller
+  const topSellers = summary.top_sellers_by_unit || []
   return (
     <div className="business-kpi-grid">
       <article>
@@ -25,9 +21,9 @@ function BusinessAnalyticsStats({ summary }) {
         <p>Average amount per sale</p>
       </article>
       <article>
-        <header><span className="accent">TOP-SELLING PRODUCT</span><Award size={18} aria-hidden="true" /></header>
-        <strong className="seller-name">{topSeller?.product_name || 'No sales data yet'}</strong>
-        <p>{topSeller ? `${formatQuantity(topSeller.quantity_sold)} ${topSeller.unit} sold` : 'No completed product sales'}</p>
+        <header><span className="accent">TOP PRODUCT BY UNIT</span><Award size={18} aria-hidden="true" /></header>
+        <strong className="seller-name">{topSellers.length ? topSellers.map((product) => `${product.product_name} (${product.unit})`).join(' · ') : 'No sales data yet'}</strong>
+        <p>{topSellers.length ? 'Highest quantity within each unit' : 'No completed product sales'}</p>
       </article>
     </div>
   )

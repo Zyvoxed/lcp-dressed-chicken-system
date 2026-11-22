@@ -6,7 +6,7 @@ function SalesSummary({ summary }) {
     ['Total Sales', peso.format(Number(summary.total_revenue)), 'money'],
     ['Total Transactions', `${wholeNumber.format(Number(summary.total_transactions))} Invoices`, 'numeric'],
     ['Average Sale Value', peso.format(Number(summary.average_sale_value)), 'positive money'],
-    ['Best Seller', summary.best_seller || 'No sales recorded', 'accent'],
+    ['Top Product by Unit', summary.best_seller || 'No sales recorded', 'accent'],
   ]
 
   return (

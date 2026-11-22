@@ -142,7 +142,7 @@ function DashboardStats({ dashboard }) {
         { label: 'Total Revenue', value: peso.format(Number(summary.total_revenue)) },
         { label: 'Transactions', value: String(summary.total_transactions) },
         { label: 'Average Sale', value: peso.format(Number(summary.average_sale_value)) },
-        { label: 'Best Seller', value: summary.best_seller || 'No sales recorded' },
+        { label: 'Top Product by Unit', value: summary.best_seller || 'No sales recorded' },
       ],
     },
     {

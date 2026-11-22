@@ -20,6 +20,8 @@ export async function resolveTransactionFailure({
   operation,
   rejectionConfirmed,
 }) {
+  // A failed BEGIN or unconfirmed COMMIT leaves database state uncertain; do not
+  // release that connection back into the pool for unrelated requests.
   if (transactionBeginAttempted && !transactionStarted) {
     console.error(`Unable to start ${operation} transaction`, {
       errorCode: error?.code || 'UNKNOWN',
@@ -61,6 +63,8 @@ export async function resolveTransactionFailure({
   }
 
   return {
+    // Only a confirmed rollback plus a known client/business rejection proves that
+    // none of this operation's writes committed.
     outcome: rejectionConfirmed && rollbackCompleted ? 'not_committed' : 'unknown',
     reusable: true,
   }

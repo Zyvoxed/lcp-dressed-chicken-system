@@ -22,6 +22,8 @@ export default async function authenticate(request, response, next) {
   }
 
   try {
+    // JWT signature/expiry is not enough: compare current DB role, active state, and
+    // auth_version so account changes revoke old sessions, and require completed MFA.
     const payload = jwt.verify(token, process.env.JWT_SECRET)
     const [users] = await pool.execute(
       `SELECT role, is_active, auth_version

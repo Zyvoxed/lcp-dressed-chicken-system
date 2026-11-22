@@ -20,6 +20,8 @@ function salesFilters(query, { includeInteractive = false } = {}) {
   }
   if (query.end_date) {
     if (!validDate(query.end_date)) throw new Error('Invalid end date')
+    // Use an exclusive next-day bound so the selected end date includes every time
+    // through its final second without relying on timestamp precision.
     clauses.push('sa.sale_date < DATE_ADD(?, INTERVAL 1 DAY)')
     parameters.push(`${query.end_date} 00:00:00`)
   }
@@ -38,8 +40,6 @@ function salesFilters(query, { includeInteractive = false } = {}) {
     parameters.push(userId)
   }
 
-  const summaryWhere = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
-  const summaryParameters = [...parameters]
   if (includeInteractive && query.status) {
     if (!['Paid', 'Partially Paid', 'Unpaid'].includes(query.status)) throw new Error('Invalid status')
     clauses.push('sa.status = ?')
@@ -55,6 +55,10 @@ function salesFilters(query, { includeInteractive = false } = {}) {
     }
   }
 
+  // Snapshot the same filters for totals before pagination parameters are added.
+  const summaryWhere = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
+  const summaryParameters = [...parameters]
+
   return {
     where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '',
     parameters,
@@ -68,9 +72,46 @@ function pagination(query) {
   const pageSize = query.page_size === undefined ? 25 : Number(query.page_size)
   if (!Number.isSafeInteger(page) || page < 1) throw new Error('Invalid page')
   if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new Error('Invalid page size')
+  // Bound both page size and offset so malformed or enormous query values fail early.
   const offset = (page - 1) * pageSize
   if (!Number.isSafeInteger(offset)) throw new Error('Invalid page')
   return { page, pageSize, offset }
+}
+
+function paginationMetadata(page, totalRecords) {
+  return {
+    page: page.page,
+    page_size: page.pageSize,
+    total_records: totalRecords,
+    total_pages: Math.ceil(totalRecords / page.pageSize),
+  }
+}
+
+function receivablesSearch(query, columnPrefix = '') {
+  const search = typeof query.search === 'string' ? query.search.trim() : ''
+  if (search.length > 100) throw new Error('Invalid search text')
+
+  const columns = ['customer_name', 'contact_number', 'address']
+    .map((column) => `${columnPrefix}${column}`)
+  return {
+    where: search ? ` AND (${columns.map((column) => `${column} LIKE ?`).join(' OR ')})` : '',
+    parameters: search ? [`%${search}%`, `%${search}%`, `%${search}%`] : [],
+  }
+}
+
+function productSalesFilters(query) {
+  const rawIds = typeof query.product_ids === 'string' ? query.product_ids : ''
+  const productIds = rawIds.split(',').filter(Boolean).map(Number)
+  if (!productIds.length || productIds.length > 50
+    || productIds.some((id) => !Number.isSafeInteger(id) || id <= 0)) {
+    throw new Error('Select between 1 and 50 valid products')
+  }
+
+  const year = query.year ? Number(query.year) : null
+  if (year !== null && (!Number.isInteger(year) || year < 1000 || year > 9999)) {
+    throw new Error('Invalid reporting year')
+  }
+  return { productIds, year }
 }
 
 export async function getSalesReport(request, response) {
@@ -98,6 +139,8 @@ export async function getSalesReport(request, response) {
        LIMIT ? OFFSET ?`,
       [...parameters, ...paginationParams],
     )
+    // This aggregate intentionally covers the complete filtered result set; LIMIT/OFFSET
+    // is applied only to the visible records above.
     const [summaries] = await pool.execute(
       `SELECT COUNT(*) AS total_transactions,
               COALESCE(SUM(sa.total_amount), 0) AS gross_sales,
@@ -105,7 +148,10 @@ export async function getSalesReport(request, response) {
               COALESCE(SUM(CASE WHEN sa.payment_type = 'Credit' THEN sa.total_amount ELSE 0 END), 0) AS credit_sales_total,
               COALESCE(SUM(sa.amount_paid), 0) AS total_amount_paid,
               COALESCE(SUM(sa.remaining_balance), 0) AS outstanding_balance
-       FROM sales sa ${summaryWhere}`,
+       FROM sales sa
+       LEFT JOIN customers c ON sa.customer_id = c.customer_id
+       JOIN users u ON sa.user_id = u.user_id
+       ${summaryWhere}`,
       summaryParameters,
     )
     const [counts] = await pool.execute(
@@ -122,12 +168,7 @@ export async function getSalesReport(request, response) {
       data: {
         summary: summaries[0],
         records,
-        pagination: {
-          page: page.page,
-          page_size: page.pageSize,
-          total_records: totalRecords,
-          total_pages: Math.ceil(totalRecords / page.pageSize),
-        },
+        pagination: paginationMetadata(page, totalRecords),
       },
     })
   } catch (error) {
@@ -205,6 +246,8 @@ export async function getSalesReportDetail(request, response) {
 
 export async function getInventoryReport(request, response) {
   try {
+    // Cost value uses only remaining quantities in live batches; estimated sales value
+    // uses the product's current aggregate stock and current selling price.
     const [records] = await pool.execute(`
       SELECT p.product_id, p.product_name, p.category, p.unit, p.stock_quantity,
              p.reorder_level, p.status, p.selling_price,
@@ -257,16 +300,15 @@ export async function getReceivablesReport(request, response) {
   try {
     const page = pagination(request.query)
     const paginationParams = [String(page.pageSize), String(page.offset)]
-    const search = typeof request.query.search === 'string' ? request.query.search.trim() : ''
-    if (search.length > 100) throw new Error('Invalid search text')
-    const searchWhere = search
-      ? ' AND (customer_name LIKE ? OR contact_number LIKE ? OR address LIKE ?)'
-      : ''
-    const searchParameters = search ? [`%${search}%`, `%${search}%`, `%${search}%`] : []
+    // Use the same trimmed term and bind order for count and row queries; only table qualification differs.
+    const countSearch = receivablesSearch(request.query)
+    const rowSearch = receivablesSearch(request.query, 'c.')
     const [counts] = await pool.execute(`
       SELECT COUNT(*) AS total_records
-      FROM customers WHERE is_active = TRUE AND current_balance > 0${searchWhere}
-    `, searchParameters)
+      FROM customers WHERE is_active = TRUE AND current_balance > 0${countSearch.where}
+    `, countSearch.parameters)
+    // Rows include only customers with a balance, while each customer's open-sale
+    // count and oldest date derive from credit sales that still have a balance.
     const [records] = await pool.execute(`
       SELECT c.customer_id, c.customer_name, c.contact_number, c.address, c.current_balance,
              COUNT(sa.sale_id) AS open_credit_sales,
@@ -275,11 +317,12 @@ export async function getReceivablesReport(request, response) {
       FROM customers c
       LEFT JOIN sales sa ON c.customer_id = sa.customer_id
           AND sa.payment_type = 'Credit' AND sa.remaining_balance > 0
-      WHERE c.is_active = TRUE AND c.current_balance > 0${searchWhere.replaceAll('customer_name', 'c.customer_name').replaceAll('contact_number', 'c.contact_number').replaceAll('address', 'c.address')}
+      WHERE c.is_active = TRUE AND c.current_balance > 0${rowSearch.where}
       GROUP BY c.customer_id
       ORDER BY c.current_balance DESC, c.customer_name ASC
       LIMIT ? OFFSET ?
-    `, [...searchParameters, ...paginationParams])
+    `, [...rowSearch.parameters, ...paginationParams])
+    // Keep the headline receivables total global even when row search narrows the page.
     const [summaries] = await pool.execute(`
       SELECT COUNT(*) AS customers_with_balance, COALESCE(SUM(current_balance), 0) AS total_receivables
       FROM customers WHERE is_active = TRUE AND current_balance > 0
@@ -290,12 +333,7 @@ export async function getReceivablesReport(request, response) {
       data: {
         summary: summaries[0],
         records,
-        pagination: {
-          page: page.page,
-          page_size: page.pageSize,
-          total_records: totalRecords,
-          total_pages: Math.ceil(totalRecords / page.pageSize),
-        },
+        pagination: paginationMetadata(page, totalRecords),
       },
     })
   } catch (error) {
@@ -306,20 +344,19 @@ export async function getReceivablesReport(request, response) {
 }
 
 export async function getProductSalesReport(request, response) {
-  const rawIds = typeof request.query.product_ids === 'string' ? request.query.product_ids : ''
-  const productIds = rawIds.split(',').filter(Boolean).map(Number)
-  if (!productIds.length || productIds.length > 50
-    || productIds.some((id) => !Number.isSafeInteger(id) || id <= 0)) {
-    return response.status(400).json({ success: false, message: 'Select between 1 and 50 valid products' })
+  let filters
+  try {
+    filters = productSalesFilters(request.query)
+  } catch (error) {
+    return response.status(400).json({ success: false, message: error.message })
   }
-  const year = request.query.year ? Number(request.query.year) : null
-  if (year !== null && (!Number.isInteger(year) || year < 1000 || year > 9999)) {
-    return response.status(400).json({ success: false, message: 'Invalid reporting year' })
-  }
+  const { productIds, year } = filters
 
   try {
     const yearFilter = year === null ? '' : 'AND YEAR(sa.sale_date) = ?'
     const parameters = year === null ? productIds : [...productIds, year]
+    // The database performs the period aggregation for the selected product IDs;
+    // optional year filtering happens before grouping by product/year/month.
     const [records] = await pool.execute(
       `SELECT si.product_id, p.product_name, YEAR(sa.sale_date) AS sale_year,
               MONTH(sa.sale_date) AS sale_month,

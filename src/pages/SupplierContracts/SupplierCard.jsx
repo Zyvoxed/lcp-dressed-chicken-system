@@ -1,9 +1,11 @@
 import { Archive, Building2, MapPin, PackageCheck, Pencil, Phone, RotateCcw, User, Wallet } from 'lucide-react'
 import { peso } from '../../utils/currency.js'
+import { formatQuantityWithUnit, sumQuantitiesByUnit } from '../../utils/unitAwareMetrics.js'
 
 function SupplierCard({ supplier, records = [], archived = false, isAdmin = false, onEdit, onArchive, onRestore }) {
   const totalSpend = records.reduce((sum, record) => sum + Number(record.total_cost || 0), 0)
-  const totalVolume = records.reduce((sum, record) => sum + Number(record.quantity_received || 0), 0)
+  const quantitiesByUnit = sumQuantitiesByUnit(records, (record) => record.quantity_received)
+  const quantitySummary = quantitiesByUnit.map(({ unit, quantity }) => formatQuantityWithUnit(quantity, unit, 1)).join(' · ')
 
   return (
     <article className={`supplier-card${archived ? ' is-archived' : ''}`}>
@@ -57,9 +59,7 @@ function SupplierCard({ supplier, records = [], archived = false, isAdmin = fals
           </div>
           <strong className="stat-number">{records.length.toLocaleString('en-PH')}</strong>
           <small className="stat-sub">
-            {totalVolume > 0
-              ? `${Number(totalVolume).toLocaleString('en-PH', { maximumFractionDigits: 1 })} kg supplied`
-              : 'No volume yet'}
+            {quantitySummary || 'No quantity received yet'}
           </small>
         </div>
 
