@@ -19,16 +19,21 @@ function ProtectedLayout({ activeModule, onSelect, children }) {
     if (isAuthenticated && window.location.pathname === loginRoute) {
       const returnTo = sessionStorage.getItem('returnTo') || defaultRoute
       sessionStorage.removeItem('returnTo')
-      const destination = role === 'employee'
-        ? modules.find((module) => module.path === employeeRoute)
-        : modules.find((module) => module.path === returnTo && hasRouteAccess(module, role))
+      const destination = modules.find((module) => module.path === returnTo && hasRouteAccess(module, role))
           || modules.find((module) => module.path === defaultRoute)
       onSelect(destination.label)
     }
   }, [authLoading, isAuthenticated, onSelect, role])
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated || !role) {
+    if (authLoading || !isAuthenticated || !role || window.location.pathname === loginRoute) {
+      return
+    }
+
+    const effectivePath = window.location.pathname === '/stock-in' ? '/inventory' : window.location.pathname
+    const pathModule = modules.find((module) => module.path === effectivePath)
+    if (!pathModule || !hasRouteAccess(pathModule, role)) {
+      onSelect(modules.find((module) => module.path === defaultRoute).label)
       return
     }
 
@@ -51,20 +56,6 @@ function ProtectedLayout({ activeModule, onSelect, children }) {
       <PageTransition>
         <Login onLogin={login} onVerifyMfa={verifyLoginMfa} onResendMfa={resendLoginMfa} />
       </PageTransition>
-    )
-  }
-
-  if (role === 'employee' && activeModule !== 'Record Sales') {
-    return (
-      <MainLayout
-        activeModule="Record Sales"
-        onSelect={onSelect}
-        onLogout={logout}
-        role={role}
-        user={user}
-      >
-        {null}
-      </MainLayout>
     )
   }
 

@@ -156,6 +156,7 @@ globalThis.supplierTestState = {
   get postCount() { return supplierPostCount },
   get patchCount() { return supplierPatchCount },
   get suppliers() { return suppliers },
+  get deliveries() { return deliveries },
   failNext() { failNextSupplier = true },
 }
 
@@ -321,12 +322,12 @@ createRoot(document.getElementById('root')).render(
   await clickByText("Add Supplier");
   await waitFor("Boolean(document.querySelector('.supplier-form-modal'))");
   const backdrop = await evaluate(
-    `(() => { const rect = document.querySelector('.modal-backdrop').getBoundingClientRect(); return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight, overflow: document.body.style.overflow, focusInDialog: document.querySelector('[role=dialog]').contains(document.activeElement) } })()`,
+    `(() => { const rect = document.querySelector('.modal-backdrop').getBoundingClientRect(); return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, documentWidth: document.documentElement.clientWidth, viewportHeight: innerHeight, overflow: document.body.style.overflow, focusInDialog: document.querySelector('[role=dialog]').contains(document.activeElement) } })()`,
   );
   assert(
     backdrop.left === 0 &&
       backdrop.top === 0 &&
-      backdrop.width === backdrop.viewportWidth &&
+      backdrop.width === backdrop.documentWidth &&
       backdrop.height === backdrop.viewportHeight,
     "Supplier modal backdrop did not cover the full viewport",
   );
@@ -409,6 +410,7 @@ createRoot(document.getElementById('root')).render(
   await waitFor(
     "!document.querySelector('[role=dialog]') && document.querySelectorAll('.supplier-card').length === 4",
   );
+  await evaluate("supplierTestState.deliveries.unshift({ stockin_id: 61, supplier_id: 101, supplier_name: 'Central Chicken Traders', product_id: 11, product_name: 'Test Historical Delivery', unit: 'kg', quantity_received: '5', remaining_quantity: '5', cost_price: '100.00', total_cost: '500.00', delivery_date: '2026-11-01T09:00:00+08:00', recorded_by: 'Test Admin' })");
 
   await evaluate(
     "(() => { const card = [...document.querySelectorAll('.supplier-card')].find((item) => item.querySelector('h3')?.textContent.trim() === 'Central Chicken Traders'); card.querySelector('.supplier-card-footer .supplier-action-btn').click() })()",
@@ -446,6 +448,7 @@ createRoot(document.getElementById('root')).render(
   await waitFor(
     "!document.querySelector('[role=dialog]') && document.querySelectorAll('.supplier-card').length === 4",
   );
+  await waitFor("document.querySelector('.supplier-ledger-panel tbody').textContent.includes('Central Poultry Traders')");
   assert(
     await evaluate(
       "document.querySelector('.supplier-ledger-panel tbody').textContent.includes('Central Poultry Traders')",

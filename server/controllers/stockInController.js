@@ -298,6 +298,21 @@ export async function createStockIn(request, response) {
 
 export async function getStockInRecords(request, response) {
   try {
+    if (request.user?.role === 'Staff') {
+      const [records] = await pool.execute(`
+        SELECT si.stockin_id, si.supplier_id, s.supplier_name, si.product_id,
+               p.product_name, p.unit, si.user_id, u.fullname AS recorded_by,
+               si.quantity_received, si.remaining_quantity,
+               CONCAT(DATE_FORMAT(si.delivery_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS delivery_date,
+               si.created_at
+        FROM stock_in si
+        JOIN suppliers s ON si.supplier_id = s.supplier_id
+        JOIN products p ON si.product_id = p.product_id
+        JOIN users u ON si.user_id = u.user_id
+        ORDER BY si.delivery_date DESC, si.stockin_id DESC
+      `)
+      return response.json({ success: true, data: records })
+    }
     const [records] = await pool.execute(`
       SELECT
           si.stockin_id,

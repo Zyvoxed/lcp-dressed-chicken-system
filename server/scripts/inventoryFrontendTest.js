@@ -96,6 +96,11 @@ import '/@fs/${sourceRoot}/src/styles/pages/UserAccounts.css'
 import '/@fs/${sourceRoot}/src/styles/shared/Toast.css'
 
 const fixtures = ${JSON.stringify(products)}
+const salesChartFixtures = [
+  { sale_id: 51, sale_date: '2025-03-12T10:00:00+08:00', sale_year: 2025, sale_month: 3, product_id: 1, quantity_sold: '50.000', total_amount: '2000.00' },
+  { sale_id: 52, sale_date: '2026-10-05T10:00:00+08:00', sale_year: 2026, sale_month: 10, product_id: 1, quantity_sold: '100.000', total_amount: '1000.00' },
+  { sale_id: 53, sale_date: '2026-10-20T10:00:00+08:00', sale_year: 2026, sale_month: 10, product_id: 1, quantity_sold: '150.000', total_amount: '5000.00' },
+]
 const stockInRecords = [
   { stockin_id: 16, supplier_id: 7, supplier_name: 'Test Poultry Supplier', product_id: 3, product_name: 'Chicken Wings', unit: 'kg', user_id: 1, recorded_by: 'Inventory Admin', quantity_received: '200.000', remaining_quantity: '0.000', cost_price: '20000.00', total_cost: '4000000.00', delivery_date: '2026-09-27T17:32:00+08:00' },
   { stockin_id: 17, supplier_id: 7, supplier_name: 'Test Poultry Supplier', product_id: 3, product_name: 'Chicken Wings', unit: 'kg', user_id: 1, recorded_by: 'Inventory Admin', quantity_received: '300.000', remaining_quantity: '180.000', cost_price: '210.00', total_cost: '63000.00', delivery_date: '2026-10-21T00:25:00+08:00' },
@@ -120,7 +125,7 @@ const userFixtures = Array.from({ length: 10 }, (_, index) => ({
   email_verified_at: index === 1 ? null : '2026-10-20T10:00:00+08:00',
   contact_number: index === 1 ? '09171234567' : null,
   role: index === 0 || index === 2 ? 'Admin' : 'Staff',
-  is_active: index !== 1,
+  is_active: true,
   created_at: '2026-10-' + String(20 - index).padStart(2, '0') + 'T10:00:00+08:00',
   updated_at: '2026-10-' + String(20 - index).padStart(2, '0') + 'T10:00:00+08:00',
 }))
@@ -169,6 +174,7 @@ const dashboardFixtures = {
       gross_revenue: '125000.50',
       average_ticket_value: '2976.20238',
       top_seller: { product_id: 1, product_name: 'Whole Chicken Premium Extra Long Product Name', unit: 'kg', quantity_sold: '1250.500', gross_sales: '90000.50', current_stock: '30.000', reorder_level: '20.000' },
+      top_sellers_by_unit: [{ product_id: 1, product_name: 'Whole Chicken Premium Extra Long Product Name', unit: 'kg' }],
     },
     product_performance: [
       { product_id: 1, product_name: 'Whole Chicken Premium Extra Long Product Name', unit: 'kg', quantity_sold: '1250.500', gross_sales: '90000.50', current_stock: '30.000', reorder_level: '20.000' },
@@ -206,10 +212,21 @@ globalThis.failNextStockIn = false
 globalThis.rejectNextStockIn = false
 globalThis.userRequests = []
 globalThis.activityRequests = []
+globalThis.salesReportRequests = []
 globalThis.failNextUserRequest = false
 localStorage.setItem('authToken', 'inventory-ui-test-token')
 globalThis.fetch = async (url, options = {}) => {
   const requestUrl = String(url)
+  if (requestUrl.includes('/api/reports/sales')) globalThis.salesReportRequests.push(requestUrl)
+  if (requestUrl.includes('/api/reports/sales')) {
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        records: salesChartFixtures,
+        pagination: { page: 1, page_size: 100, total_records: salesChartFixtures.length, total_pages: 1 },
+      },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
   if (requestUrl.endsWith('/api/analytics/dashboard/business')) {
     return new Response(JSON.stringify({ success: true, data: dashboardFixtures.business }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
@@ -228,7 +245,7 @@ globalThis.fetch = async (url, options = {}) => {
     }
     const user = userFixtures.find((item) => item.user_id === userId)
     if (action === '/status') user.is_active = body.is_active
-    return new Response(JSON.stringify({ success: true, message: action === '/password' ? 'Password reset successfully' : action === '/status' ? 'User ' + (body.is_active ? 'activated' : 'deactivated') + ' successfully' : 'User updated successfully', data: user }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ success: true, message: action === '/password' ? 'Password reset successfully' : action === '/status' ? 'User ' + (body.is_active ? 'restored' : 'archived') + ' successfully' : 'User updated successfully', data: user }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   if (String(url).includes('/activity-logs')) {
     globalThis.activityRequests.push(requestUrl)
@@ -364,11 +381,17 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   const browserConnection = browserSession.connection
 
   async function evaluate(expression) {
-    const result = await browserConnection.command('Runtime.evaluate', {
-      expression,
-      awaitPromise: true,
-      returnByValue: true,
-    })
+    let result
+    try {
+      result = await browserConnection.command('Runtime.evaluate', {
+        expression,
+        awaitPromise: true,
+        returnByValue: true,
+      })
+    } catch (error) {
+      console.error(`[BROWSER EVALUATION FAILED] ${expression}`)
+      throw error
+    }
 
     if (result.exceptionDetails) {
       throw new Error(result.exceptionDetails.exception?.description || 'Browser evaluation failed')
@@ -382,8 +405,8 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
       if (await evaluate(expression)) return
       await delay(100)
     }
-    const pageText = await evaluate("document.querySelector('#stock-in-test')?.innerText")
-    throw new Error(`Timed out waiting for browser condition: ${expression}; page: ${pageText}`)
+    const pageState = await evaluate("({ text: document.querySelector('#dashboard-test-harness .dashboard-sales-chart')?.innerText, requests: globalThis.salesReportRequests, points: document.querySelectorAll('#dashboard-test-harness .sales-overview-point').length, circles: document.querySelectorAll('#dashboard-test-harness .dashboard-sales-chart circle').length, svg: document.querySelector('#dashboard-test-harness .dashboard-sales-chart svg')?.innerHTML.slice(-1200) })")
+    throw new Error(`Timed out waiting for browser condition: ${expression}; chart: ${JSON.stringify(pageState)}`)
   }
 
   async function waitForProducts() {
@@ -528,117 +551,56 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   assert(await pageLabel() === '1 / 1', 'Pagination did not clamp when the dataset shrank')
   assert(JSON.stringify(await rowNames()) === JSON.stringify(products.slice(0, 5).map((product) => product.product_name)), 'Clamped pagination displayed the wrong products')
 
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-segments button.active').textContent.trim()") === 'Week', 'Weekly chart period was not initially active')
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-chart-header p').textContent.trim()") === 'Sales Performance Overview', 'Chart subtitle did not use the required overview wording')
-  assert(!await evaluate("Boolean(document.querySelector('#dashboard-test-harness .dashboard-sales-chart circle'))"), 'Sales chart rendered a visible point marker')
+  await waitForCondition("document.querySelectorAll('#dashboard-test-harness .sales-overview-point').length === 11")
+  assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-segments button.active').textContent.trim()") === 'Monthly', 'Monthly chart period was not initially active')
+  assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-chart-header h2').textContent.includes('Sales Revenue Overview')"), 'Admin dashboard revenue chart heading changed')
+  assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-chart-header p').textContent.trim() === 'Monthly business revenue for 2026'"), 'Monthly chart subtitle did not use the selected business year')
+  assert(await evaluate("document.querySelector('#dashboard-test-harness .sales-chart-year select').value === '2026'"), 'Revenue chart did not select the latest available year')
   const curvePresentation = await evaluate(`(() => {
     const chart = document.querySelector('#dashboard-test-harness .dashboard-sales-chart')
     const line = chart.querySelector('.chart-line')
-    const fill = chart.querySelector('.chart-fill')
-    const pointYs = [...chart.querySelectorAll('.chart-point')].map((point) => Number(point.dataset.chartY))
+    const area = chart.querySelector('.sales-overview-area')
     const bounds = line.getBBox()
+    const points = [...chart.querySelectorAll('.sales-overview-point')]
     const stops = [...chart.querySelectorAll('linearGradient stop')]
     return {
-      strokeWidth: Number.parseFloat(getComputedStyle(line).strokeWidth),
-      strokeDasharray: getComputedStyle(line).strokeDasharray,
       linePath: line.getAttribute('d'),
-      fillPath: fill?.getAttribute('d'),
-      fillPrecedesLine: Boolean(fill && (fill.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING)),
-      startOpacity: stops[0]?.getAttribute('stop-opacity'),
-      endOpacity: stops.at(-1)?.getAttribute('stop-opacity'),
+      areaPath: area?.getAttribute('d'),
+      strokeWidth: Number.parseFloat(getComputedStyle(line).strokeWidth),
+      pointCount: points.length,
+      nonzeroPoints: points.filter((point) => point.getAttribute('aria-label').match(/₱(?!0[.]00)/)).length,
       pathTop: bounds.y,
       pathBottom: bounds.y + bounds.height,
-      minimumPointY: Math.min(...pointYs),
-      maximumPointY: Math.max(...pointYs),
+      gradientStops: stops.map((stop) => stop.getAttribute('stop-opacity')),
+      areaPrecedesLine: Boolean(area && (area.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING)),
     }
   })()`)
-  assert(curvePresentation.strokeWidth >= 3 && curvePresentation.strokeWidth <= 4, 'Sales curve did not use the required bold stroke')
-  assert(curvePresentation.strokeDasharray === 'none', 'Sales curve was partially hidden by the legacy draw animation')
-  assert(curvePresentation.fillPath?.startsWith(curvePresentation.linePath), 'Gradient area did not share the sales curve geometry')
-  assert(curvePresentation.fillPrecedesLine, 'Gradient area was not rendered behind the sales curve')
-  assert(Number(curvePresentation.startOpacity) >= 0.18 && Number(curvePresentation.startOpacity) <= 0.25, 'Gradient start opacity was outside the required range')
-  assert(Number(curvePresentation.endOpacity) === 0, 'Gradient did not fade to full transparency')
-  assert(curvePresentation.pathTop >= curvePresentation.minimumPointY - 0.01, 'Sales curve overshot above an actual data value')
-  assert(curvePresentation.pathBottom <= curvePresentation.maximumPointY + 0.01, 'Sales curve overshot below an actual data value')
-  await evaluate("document.querySelector('#dashboard-test-harness .chart-point').focus()")
-  await delay(100)
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .chart-tooltip strong').textContent.trim()") === 'Monday', 'Chart tooltip used the wrong period label')
-  assert(!await evaluate("Boolean(document.querySelector('#dashboard-test-harness .dashboard-sales-chart circle'))"), 'Tooltip focus displayed a forbidden point marker')
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .chart-tooltip small').textContent.includes('1 transaction')"), 'Chart tooltip omitted the transaction count')
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .chart-tooltip span').textContent.includes('₱1,000.00')"), 'Chart tooltip used the wrong PHP sales value')
+  assert(curvePresentation.pointCount === 11 && curvePresentation.nonzeroPoints === 1, 'Monthly revenue chart did not retain elapsed calendar months and zero-value months')
+  assert(curvePresentation.linePath.includes('C') && curvePresentation.areaPath?.startsWith(curvePresentation.linePath), 'Revenue curve or gradient area did not use the same smooth path')
+  assert(curvePresentation.areaPrecedesLine && Number(curvePresentation.gradientStops[0]) > Number(curvePresentation.gradientStops.at(-1)), 'Revenue gradient did not fade beneath the curve')
+  assert(curvePresentation.strokeWidth >= 2 && curvePresentation.pathTop >= 0 && curvePresentation.pathBottom <= 280, 'Revenue line geometry exceeded its chart bounds')
 
-  await evaluate("[...document.querySelectorAll('#dashboard-test-harness .dashboard-segments button')].find((button) => button.textContent.trim() === 'Today').click()")
-  await delay(100)
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-chart-header h2').textContent.includes('Today Sales Performance')"), 'Today period did not update the chart heading')
-  assert(await evaluate("document.querySelectorAll('#dashboard-test-harness .chart-point').length") === 24, 'Today period did not display 24 chronological hourly buckets')
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .chart-point').getAttribute('aria-label').startsWith('00:00:')"), 'Today period did not begin at 00:00')
-  await evaluate("document.querySelectorAll('#dashboard-test-harness .chart-point')[9].focus()")
-  await delay(100)
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .chart-tooltip strong').textContent.trim()") === '09:00', 'Today tooltip used the wrong hourly bucket')
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .chart-tooltip span').textContent.includes('₱5,000.00')"), 'Today tooltip clipped or changed a sale above PHP 1,000')
-  assert(await evaluate("Number(document.querySelectorAll('#dashboard-test-harness .chart-point')[9].dataset.chartY) > 28"), 'Today sale touched or exceeded the Y-axis ceiling')
+  await evaluate("document.querySelector('.sales-overview-point[aria-label^=\"October 2026\"]').dispatchEvent(new PointerEvent('pointerover', { bubbles: true, clientX: 160, clientY: 160 }))")
+  await waitForCondition("document.querySelector('.dashboard-product-sales-tooltip')?.textContent.includes('October 2026')")
+  assert(await evaluate("document.querySelector('.dashboard-product-sales-tooltip').textContent.includes('Total sales revenue: ₱6,000.00')"), 'Revenue tooltip did not show the combined sale total in PHP')
 
-  await evaluate("[...document.querySelectorAll('#dashboard-test-harness .dashboard-segments button')].find((button) => button.textContent.trim() === 'Month').click()")
-  await delay(100)
-  assert(await evaluate("document.querySelectorAll('#dashboard-test-harness .chart-point').length") === 31, 'Month period did not display calendar-date buckets')
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .chart-point').getAttribute('aria-label').startsWith('Oct 1:')"), 'Month period did not use calendar-date labels')
-  await evaluate("setDashboardTrends({ ...inventoryDashboardFixtures.trends, monthly: inventoryDashboardFixtures.trends.monthly.map((item) => ({ ...item, sales: 0, transactions: 0 })) })")
-  await delay(100)
-  const zeroChart = await evaluate(`(() => {
-    const chart = document.querySelector('#dashboard-test-harness .dashboard-sales-chart')
-    const line = chart.querySelector('.chart-line')
-    const svg = chart.querySelector('.line-chart')
-    const bounds = line.getBBox()
-    return {
-      hasEmptyState: Boolean(chart.querySelector('.empty-basket')),
-      hasFill: Boolean(chart.querySelector('.chart-fill')),
-      pointCount: chart.querySelectorAll('.chart-point').length,
-      pathWidth: bounds.width,
-      pathHeight: bounds.height,
-      plotWidth: svg.viewBox.baseVal.width - 72 - 24,
-      axisLabels: chart.querySelectorAll('.chart-axis-label').length,
-    }
-  })()`)
-  assert(!zeroChart.hasEmptyState, 'Valid zero-sales data was incorrectly replaced by an empty state')
-  assert(!zeroChart.hasFill, 'Zero-sales chart rendered a misleading gradient block')
-  assert(zeroChart.pointCount === 31, 'Zero-sales chart did not preserve its calendar timeline')
-  assert(Math.abs(zeroChart.pathWidth - zeroChart.plotWidth) <= 0.01 && zeroChart.pathHeight <= 0.01, 'Zero-sales chart did not render a full-width flat baseline')
-  assert(zeroChart.axisLabels === 5, 'Zero-sales chart did not preserve its Y-axis')
-  for (const [period, key, expectedCount] of [['Today', 'daily', 24], ['Week', 'weekly', 7]]) {
-    await evaluate(`setDashboardTrends({
-      ...inventoryDashboardFixtures.trends,
-      ${key}: inventoryDashboardFixtures.trends.${key}.map((item) => ({ ...item, sales: 0, transactions: 0 })),
-    })`)
-    await evaluate(`[
-      ...document.querySelectorAll('#dashboard-test-harness .dashboard-segments button')
-    ].find((button) => button.textContent.trim() === ${JSON.stringify(period)}).click()`)
-    await delay(100)
-    const zeroPeriod = await evaluate(`(() => {
-      const chart = document.querySelector('#dashboard-test-harness .dashboard-sales-chart')
-      const line = chart.querySelector('.chart-line')
-      return {
-        hasEmptyState: Boolean(chart.querySelector('.empty-basket')),
-        hasFill: Boolean(chart.querySelector('.chart-fill')),
-        pointCount: chart.querySelectorAll('.chart-point').length,
-        pathHeight: line.getBBox().height,
-      }
-    })()`)
-    assert(!zeroPeriod.hasEmptyState && !zeroPeriod.hasFill, `${period} zero-sales data did not remain a chart without a gradient`)
-    assert(zeroPeriod.pointCount === expectedCount && zeroPeriod.pathHeight <= 0.01, `${period} zero-sales chart did not preserve a flat timeline`)
-  }
-  await evaluate("setDashboardTrends({ ...inventoryDashboardFixtures.trends, monthly: [] })")
-  await evaluate("[...document.querySelectorAll('#dashboard-test-harness .dashboard-segments button')].find((button) => button.textContent.trim() === 'Month').click()")
-  await delay(100)
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-sales-chart .empty-basket').textContent.includes('No sales trend data available for this period.')"), 'Empty chart state was not handled')
-  await evaluate('setDashboardTrends(inventoryDashboardFixtures.trends)')
-  await delay(100)
+  await evaluate("[...document.querySelectorAll('#dashboard-test-harness .dashboard-segments button')].find((button) => button.textContent.trim() === 'Yearly').click()")
+  await waitForCondition("document.querySelectorAll('#dashboard-test-harness .sales-overview-point').length === 2")
+  assert(await evaluate("document.querySelector('#dashboard-test-harness .dashboard-chart-header p').textContent.trim() === 'Annual business revenue across recorded sales'"), 'Yearly chart subtitle did not update')
+  assert(await evaluate("[...document.querySelectorAll('#dashboard-test-harness .sales-overview-point')].some((point) => point.getAttribute('aria-label').startsWith('2025:')) && [...document.querySelectorAll('#dashboard-test-harness .sales-overview-point')].some((point) => point.getAttribute('aria-label').startsWith('2026:'))"), 'Yearly chart did not group sales by calendar year')
 
+  await evaluate("[...document.querySelectorAll('#dashboard-test-harness .dashboard-segments button')].find((button) => button.textContent.trim() === 'Monthly').click()")
+  await evaluate("(() => { const year = document.querySelector('.sales-chart-year select'); year.value = '2025'; year.dispatchEvent(new Event('change', { bubbles: true })) })()")
+  await waitForCondition("document.querySelector('#dashboard-test-harness .dashboard-chart-header p').textContent.includes('2025')")
+  assert(await evaluate("Boolean(document.querySelectorAll('#dashboard-test-harness .sales-overview-point').length === 12 && document.querySelector('#dashboard-test-harness .sales-overview-point[aria-label^=\"March 2025\"]'))"), 'Selected-year chart did not preserve the calendar timeline')
+  await evaluate("(() => { const year = document.querySelector('.sales-chart-year select'); year.value = '2026'; year.dispatchEvent(new Event('change', { bubbles: true })) })()")
+  await waitForCondition("document.querySelector('#dashboard-test-harness .dashboard-chart-header p').textContent.includes('2026')")
   const summaryValues = await evaluate("[...document.querySelectorAll('#dashboard-test-harness .dashboard-summary-list strong')].map((node) => node.textContent.trim())")
   assert(summaryValues[0].includes('₱12,345.67'), 'Sales Summary did not use PHP currency formatting')
   assert(summaryValues[1] === '1,234 Invoices', 'Sales Summary transaction count was not localized')
-  const topProductNames = await evaluate("[...document.querySelectorAll('#dashboard-test-harness .top-products-test .dashboard-product-row strong')].map((node) => node.textContent.trim())")
+  const topProductNames = await evaluate("[...document.querySelectorAll('#dashboard-test-harness .top-products-test .dashboard-performance-row strong')].map((node) => node.textContent.trim())")
   assert(JSON.stringify(topProductNames) === JSON.stringify(['Whole Chicken Premium Extra Long Product Name', 'Chicken Liver']), 'Top-selling product order changed')
-  assert(await evaluate("document.querySelector('#dashboard-test-harness .top-products-test .dashboard-product-row span').textContent.includes('1,234.5 kg sold')"), 'Product quantity formatting was incorrect')
+  assert(await evaluate("document.querySelector('#dashboard-test-harness .top-products-test .dashboard-performance-row .dashboard-performance-heading span').textContent.includes('1,234.5 kg')"), 'Product quantity formatting was incorrect')
   const stockStatuses = await evaluate("[...document.querySelectorAll('#dashboard-test-harness .dashboard-stock-row .status')].map((node) => node.textContent.trim())")
   assert(JSON.stringify(stockStatuses) === JSON.stringify(['Low Stock', 'Out of Stock']), 'Low-stock rows did not use the existing status conventions')
   const operationsPanelHeights = await evaluate(`(() => {
@@ -689,26 +651,27 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
     await delay(50)
   }
   assert(await evaluate("[...document.querySelectorAll('#user-accounts-test th')].some((cell) => cell.textContent.includes('Status'))"), 'User Accounts did not provide a clear Status column')
-  assert(await evaluate("document.querySelector('#user-accounts-test .user-status-badge.inactive').textContent.trim() === 'Inactive'"), 'Inactive account status was not readable')
+  assert(await evaluate("[...document.querySelectorAll('#user-accounts-test tbody tr')].every((row) => row.querySelector('.status.active')?.textContent.trim() === 'Active')"), 'Active account status was not readable')
   assert(await evaluate("document.querySelector('#user-accounts-test .table-pagination').textContent.includes('1 / 2')"), 'User Account pagination did not include every account')
   await evaluate("[...document.querySelectorAll('#user-accounts-test th button')].find((button) => button.textContent.includes('Full Name')).click()")
   await delay(50)
   assert(await evaluate("document.querySelector('#user-accounts-test .user-identity strong').textContent.trim()") === 'Ana Staff', 'Full Name sorting used the wrong account field')
   const anaRowSelector = `(() => [...document.querySelectorAll('#user-accounts-test tbody tr')].find((row) => row.textContent.includes('Ana Staff')))`
-  await evaluate(`${anaRowSelector}().querySelector('.table-action.success').click()`)
-  assert(await evaluate("document.querySelector('.user-confirmation-modal').textContent.includes('Ana Staff')"), 'Status confirmation did not identify the affected account')
+  const beaRowSelector = `(() => [...document.querySelectorAll('#user-accounts-test tbody tr')].find((row) => row.textContent.includes('Bea Staff')))`
+  await evaluate(`${beaRowSelector}().querySelector('.table-action.danger').click()`)
+  assert(await evaluate("document.querySelector('.user-confirmation-modal').textContent.includes('Bea Staff')"), 'Archive confirmation did not identify the affected account')
   assert(await evaluate("document.activeElement?.getAttribute('aria-label') === 'Close modal'"), 'Account confirmation did not use shared modal focus behavior')
   await click('.user-confirmation-modal .secondary-action')
   assert(!await evaluate("Boolean(document.querySelector('.user-confirmation-modal'))"), 'Cancel did not close the account confirmation')
-  await evaluate(`${anaRowSelector}().querySelector('.table-action.success').click(); failNextUserRequest = true`)
+  await evaluate(`${beaRowSelector}().querySelector('.table-action.danger').click(); failNextUserRequest = true`)
   await click('.user-confirmation-modal .primary-action')
   await waitForCondition("document.querySelector('.user-confirmation-modal [role=alert]')?.textContent.includes('Safe account fixture failure.')")
-  assert(await evaluate("Boolean(document.querySelector('.user-confirmation-modal'))"), 'Failed account status change closed its confirmation')
+  assert(await evaluate("Boolean(document.querySelector('.user-confirmation-modal'))"), 'Failed account archive closed its confirmation')
   const statusRequestCount = await evaluate("userRequests.filter((request) => request.action === '/status').length")
   await evaluate("document.querySelector('.user-confirmation-modal .primary-action').click(); document.querySelector('.user-confirmation-modal .primary-action').click()")
   await waitForCondition("!document.querySelector('.user-confirmation-modal')")
-  assert(await evaluate("userRequests.filter((request) => request.action === '/status').length") === statusRequestCount + 1, 'Account status duplicate-submit lock did not enforce one request')
-  assert(await evaluate("document.querySelector('.toast-viewport .system-toast.success').textContent.includes('activated')"), 'Successful account activation did not show a success toast')
+  assert(await evaluate("userRequests.filter((request) => request.action === '/status').length") === statusRequestCount + 1, 'Account archive duplicate-submit lock did not enforce one request')
+  assert(await evaluate("document.querySelector('.toast-viewport .system-toast.success').textContent.includes('archived')"), 'Successful account archive did not show a success toast')
 
   await evaluate(`${anaRowSelector}().querySelectorAll('.table-action')[1].click()`)
   await setInput('#user-accounts-test #user-password', 'NewSecurePassword1!')
@@ -757,12 +720,12 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   assert(!await evaluate("Boolean(document.querySelector('#business-analytics-test .analytics-context-row'))"), 'Redundant Business Analytics introduction was not removed')
   const analyticsKpis = await evaluate("[...document.querySelectorAll('#business-analytics-test .business-kpi-grid article > strong')].map((node) => node.textContent.trim())")
   assert(analyticsKpis[0] === '42' && analyticsKpis[1].includes('125,000.50') && analyticsKpis[2].includes('2,976.20'), 'Business Analytics KPI formatting changed the source values')
-  assert(analyticsKpis[3] === 'Whole Chicken Premium Extra Long Product Name', 'Business Analytics top seller changed')
-  assert(await evaluate("document.querySelectorAll('#business-analytics-test .analytics-bar-column').length") === 3, 'Product chart did not exclude only zero-sales products')
-  const firstAnalyticsBarLabel = await evaluate("document.querySelector('#business-analytics-test .analytics-bar-column').getAttribute('aria-label')")
-  assert(firstAnalyticsBarLabel.includes('1,250.5 kg sold') && firstAnalyticsBarLabel.includes('90,000.50 gross sales'), 'Product chart tooltip omitted real quantity or PHP sales values')
-  await evaluate("document.querySelector('#business-analytics-test .analytics-bar-column').focus()")
-  assert(await evaluate("document.activeElement.classList.contains('analytics-bar-column')"), 'Product chart bars were not keyboard focusable')
+  assert(analyticsKpis[3] === 'Whole Chicken Premium Extra Long Product Name (kg)', 'Business Analytics top seller changed')
+  const productTrendPointCount = await evaluate("document.querySelectorAll('#business-analytics-test .product-trends-point').length")
+  const productTrendState = await evaluate("document.querySelector('#business-analytics-test .product-trends-empty-state, #business-analytics-test [role=alert], #business-analytics-test .product-trends-loading-state')?.textContent.trim() || 'chart rendered'")
+  assert(productTrendPointCount === 11, `Product chart did not render the elapsed-month calendar timeline (points=${productTrendPointCount}; state=${productTrendState})`)
+  const firstAnalyticsPointLabel = await evaluate("document.querySelector('#business-analytics-test .product-trends-point').getAttribute('aria-label')")
+  assert(firstAnalyticsPointLabel.includes('2026') && firstAnalyticsPointLabel.includes('kg'), 'Product chart point did not expose its period and quantity accessibly')
   const analyticsRanks = await evaluate("[...document.querySelectorAll('#business-analytics-test .analytics-performance-list.top .analytics-performance-row strong')].map((node) => node.textContent.trim())")
   assert(JSON.stringify(analyticsRanks) === JSON.stringify(['Whole Chicken Premium Extra Long Product Name', 'Chicken Liver']), 'Top-performing product ranking order changed')
   assert(await evaluate("document.querySelector('#business-analytics-test .analytics-restock-panel').textContent.includes('0 kg') && document.querySelector('#business-analytics-test .analytics-restock-panel').textContent.includes('Reorder at: 8 kg')"), 'Restock analytics did not show actual stock and reorder values')
@@ -773,7 +736,7 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   let analyticsScreenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
   await writeFile(join(analyticsScreenshotRoot, 'desktop-business-analytics.png'), analyticsScreenshot.data, 'base64')
 
-  await evaluate("[...document.querySelectorAll('#dashboard-test-harness .dashboard-segments button')].find((button) => button.textContent.trim() === 'Week').click()")
+  await evaluate("[...document.querySelectorAll('#dashboard-test-harness .dashboard-segments button')].find((button) => button.textContent.trim() === 'Monthly').click()")
   await delay(100)
 
   async function measureDashboardChart(viewportWidth) {
@@ -797,8 +760,8 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
         svgWidth: svg.getBoundingClientRect().width,
         svgHeight: svg.getBoundingClientRect().height,
         viewBoxWidth: svg.viewBox.baseVal.width,
-        plotWidth: (svg.viewBox.baseVal.width - 96) * matrix.a,
-        verticalUtilization: line.getBBox().height / (310 - 28 - 54),
+        plotWidth: (svg.viewBox.baseVal.width - 90) * matrix.a,
+        verticalUtilization: line.getBBox().height / (310 - 24 - 48),
       }
     })()`)
   }
@@ -811,7 +774,7 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
     assert(Math.abs(measurement.viewBoxWidth - measurement.canvasWidth) <= 1, `Chart viewBox did not track its ${measurement.viewportWidth}px container`)
     assert(measurement.svgWidth <= measurement.canvasWidth + 1, `Chart overflowed at ${measurement.viewportWidth}px`)
     assert(measurement.svgHeight >= 280 && measurement.svgHeight <= 340, `Chart height was unbalanced at ${measurement.viewportWidth}px`)
-    assert(measurement.verticalUtilization >= 0.75, `Weekly sales line was vertically compressed at ${measurement.viewportWidth}px`)
+    assert(measurement.verticalUtilization >= 0.75, `Monthly sales line was vertically compressed at ${measurement.viewportWidth}px`)
   }
   for (const measurement of chartMeasurements.slice(0, 2)) {
     const plotRatio = measurement.plotWidth / measurement.canvasWidth
@@ -841,11 +804,11 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   }
 
   await mkdir(screenshotRoot, { recursive: true })
-  await captureChartScreenshot('desktop-today.png', 1440, 'Today')
-  await captureChartScreenshot('desktop-week.png', 1440, 'Week')
-  await captureChartScreenshot('desktop-month.png', 1440, 'Month')
-  await captureChartScreenshot('tablet-week.png', 900, 'Week')
-  await captureChartScreenshot('mobile-week.png', 600, 'Week')
+  await captureChartScreenshot('desktop-monthly.png', 1440, 'Monthly')
+  await captureChartScreenshot('desktop-yearly.png', 1440, 'Yearly')
+  await captureChartScreenshot('desktop-monthly-tablet.png', 900, 'Monthly')
+  await captureChartScreenshot('tablet-yearly.png', 900, 'Yearly')
+  await captureChartScreenshot('mobile-monthly.png', 600, 'Monthly')
 
   await browserConnection.command('Emulation.setDeviceMetricsOverride', {
     width: 600,
@@ -901,8 +864,8 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
     return Boolean(sale && sale.textContent.includes('90 kg') && sale.textContent.includes('Quantity Used') && !sale.textContent.includes('Allocation order'))
   })()`), 'Batch 16 did not show the verified Sale 34 quantity in plain language')
   assert(await evaluate("document.activeElement?.getAttribute('aria-label') === 'Close modal'"), 'FIFO batch modal did not use shared modal focus behavior')
-  const fifoBackdrop = await evaluate(`(() => { const rect = document.querySelector('.modal-backdrop').getBoundingClientRect(); return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight } })()`)
-  assert(fifoBackdrop.left === 0 && fifoBackdrop.top === 0 && fifoBackdrop.width === fifoBackdrop.viewportWidth && fifoBackdrop.height === fifoBackdrop.viewportHeight, 'FIFO batch backdrop did not cover the viewport')
+  const fifoBackdrop = await evaluate(`(() => { const rect = document.querySelector('.modal-backdrop').getBoundingClientRect(); return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, viewportWidth: document.documentElement.clientWidth, viewportHeight: document.documentElement.clientHeight } })()`)
+  assert(fifoBackdrop.left === 0 && fifoBackdrop.top === 0 && fifoBackdrop.width === fifoBackdrop.viewportWidth && fifoBackdrop.height === fifoBackdrop.viewportHeight, `FIFO batch backdrop did not cover the viewport (${JSON.stringify(fifoBackdrop)})`)
   await mkdir(inventoryScreenshotRoot, { recursive: true })
   let fifoScreenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
   await writeFile(join(inventoryScreenshotRoot, 'desktop-fifo-batch-16.png'), fifoScreenshot.data, 'base64')
@@ -1000,7 +963,7 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   assert(await evaluate("document.querySelector('[role=dialog] h2').textContent.trim()") === 'Review Stock Delivery', 'Stock In review modal did not open')
   const backdropCoverage = await evaluate(`(() => {
     const rect = document.querySelector('.modal-backdrop').getBoundingClientRect()
-    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight }
+    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, viewportWidth: document.documentElement.clientWidth, viewportHeight: document.documentElement.clientHeight }
   })()`)
   assert(backdropCoverage.left === 0 && backdropCoverage.top === 0, 'Stock In modal backdrop did not start at the viewport origin')
   assert(backdropCoverage.width === backdropCoverage.viewportWidth && backdropCoverage.height === backdropCoverage.viewportHeight, 'Stock In modal backdrop did not cover the viewport')

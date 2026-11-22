@@ -1,4 +1,5 @@
 import { PackageCheck, PackageX, TriangleAlert } from 'lucide-react'
+import PageSkeleton from '../Shared/PageSkeleton.jsx'
 import StatCard from '../Shared/StatCard.jsx'
 
 function InventoryStats({ products, loading, error }) {
@@ -37,4 +38,3 @@ function InventoryStats({ products, loading, error }) {
 }
 
 export default InventoryStats
-import PageSkeleton from '../Shared/PageSkeleton.jsx'

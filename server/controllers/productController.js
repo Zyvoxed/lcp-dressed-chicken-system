@@ -288,7 +288,9 @@ export async function updateProduct(request, response) {
 
 export async function getProducts(request, response) {
   try {
-    const fields = request.user?.role === 'Staff'
+    const fields = request.path === '/inventory'
+      ? `product_id, product_name, category, unit, stock_quantity, reorder_level, status`
+      : request.user?.role === 'Staff'
       ? `product_id, product_name, category, unit, selling_price, stock_quantity`
       : `product_id, product_name, category, unit, selling_price, stock_quantity, reorder_level, status, created_at`
     const [products] = await pool.query(`

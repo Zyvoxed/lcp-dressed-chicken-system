@@ -4,7 +4,7 @@ const operations = new Set(['sale', 'stock_in', 'payment'])
 
 export async function getIdempotencyStatus(request, response) {
   const { operation, key } = request.params
-  if (request.user?.role === 'Staff' && operation !== 'sale') {
+  if (request.user?.role === 'Staff' && !['sale', 'stock_in', 'payment'].includes(operation)) {
     return response.status(403).json({ success: false, message: 'Access denied' })
   }
   if (!operations.has(operation) || !/^[A-Za-z0-9._:-]{1,128}$/.test(key)) {

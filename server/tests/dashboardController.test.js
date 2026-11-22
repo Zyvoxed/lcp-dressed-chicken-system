@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import pool from '../config/database.js'
-import { getDashboard, rankBusinessProducts } from '../controllers/dashboardController.js'
+import { getDashboard, getStaffSalesActivity, rankBusinessProducts } from '../controllers/dashboardController.js'
 
 function response() {
   return {
@@ -90,17 +90,20 @@ test('business analytics quantity rankings are independently ordered within each
   ])
 })
 
-test('staff dashboard returns the established limited metrics and recent transactions', async () => {
+test('staff dashboard returns operational metrics without monetary sales or payment totals', async () => {
   const original = pool.execute
   const queries = []
   pool.execute = async (sql) => {
     queries.push(sql)
-    if (sql.includes('today_sales')) {
-      return [[{ today_sales: '80.00', today_transactions: 3, outstanding_credits: '50.00', payments_today: '20.00' }]]
+    if (sql.includes('today_transactions')) {
+      return [[{ today_transactions: 3, outstanding_credits: '50.00' }]]
     }
     if (sql.includes('transaction_type')) {
-      return [[{ transaction_type: 'Sale', reference_id: 6, customer_name: 'Walk-In Customer', amount: '30.00', status: 'Paid', occurred_at: '2026-11-22T08:00:00+08:00' }]]
+      return [[{ transaction_type: 'Sale', reference_id: 6, customer_name: 'Walk-In Customer', status: 'Paid', occurred_at: '2026-11-22T08:00:00+08:00' }]]
     }
+    if (sql.includes('stock_quantity <= reorder_level')) return [[{ product_id: 2, product_name: 'Low Stock', unit: 'tray', stock_quantity: '1.000', reorder_level: '2.000', status: 'Low Stock' }]]
+    if (sql.includes('GROUP BY p.unit')) return [[{ unit: 'kg', total_quantity: '2.000' }]]
+    if (sql.includes('FROM stock_in si')) return [[{ stockin_id: 9, supplier_name: 'Supplier', product_name: 'Chicken', unit: 'kg', quantity_received: '3.000', delivery_date: '2026-11-22T07:00:00+08:00' }]]
     assert.fail(`Unexpected staff dashboard query: ${sql}`)
   }
 
@@ -109,13 +112,55 @@ test('staff dashboard returns the established limited metrics and recent transac
     await getDashboard({ user: { role: 'Staff' } }, result)
 
     assert.equal(result.statusCode, 200)
-    assert.deepEqual(result.body.data.summary, {
-      today_sales: '80.00', today_transactions: 3, outstanding_credits: '50.00', payments_today: '20.00',
-    })
+    assert.deepEqual(result.body.data.summary, { today_transactions: 3, outstanding_credits: '50.00' })
     assert.equal(result.body.data.recent_transactions[0].reference_id, 6)
+    assert.equal(Object.hasOwn(result.body.data.recent_transactions[0], 'amount'), false)
+    assert.deepEqual(result.body.data.today_quantity_by_unit, [{ unit: 'kg', total_quantity: '2.000' }])
+    assert.equal(result.body.data.low_stock_alerts[0].product_id, 2)
+    assert.equal(result.body.data.recent_stock_in[0].stockin_id, 9)
     assert.equal('trends' in result.body.data, false)
-    assert.equal(queries.length, 2)
+    assert.equal(queries.length, 5)
     assert.ok(queries.every((sql) => !sql.includes('activity_logs')))
+  } finally {
+    pool.execute = original
+  }
+})
+
+test('staff sales activity returns seven Manila calendar days with zero-filled distinct transaction counts', async () => {
+  const original = pool.execute
+  let queryText = ''
+  let queryParams = []
+  pool.execute = async (sql, params) => {
+    queryText = sql
+    queryParams = params
+    const secondDay = new Date(`${params[0]}T00:00:00.000Z`)
+    secondDay.setUTCDate(secondDay.getUTCDate() + 1)
+    return [[
+      { sale_day: params[0], transaction_count: 2 },
+      { sale_day: secondDay.toISOString().slice(0, 10), transaction_count: 1 },
+    ]]
+  }
+
+  try {
+    const result = response()
+    await getStaffSalesActivity({ user: { role: 'Staff' } }, result)
+
+    assert.equal(result.statusCode, 200)
+    assert.match(queryText, /COUNT\(DISTINCT sale_id\)/)
+    assert.doesNotMatch(queryText, /total_amount|amount_paid|profit|revenue/i)
+    assert.equal(queryParams.length, 2)
+    const days = result.body.data.days
+    const expectedSecondDay = new Date(`${queryParams[0]}T00:00:00.000Z`)
+    expectedSecondDay.setUTCDate(expectedSecondDay.getUTCDate() + 1)
+    assert.equal(days.length, 7)
+    assert.equal(days[0].date, queryParams[0])
+    assert.equal(days[0].transactions, 2)
+    assert.equal(days[1].date, expectedSecondDay.toISOString().slice(0, 10))
+    assert.equal(days[1].transactions, 1)
+    assert.deepEqual(days.slice(2).map((day) => day.transactions), [0, 0, 0, 0, 0])
+    assert.equal(days[6].date, new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date()))
   } finally {
     pool.execute = original
   }

@@ -45,6 +45,21 @@ export function getProductSalesReport(productIds, year, options = {}) {
   return request(`/reports/product-sales?${query.toString()}`, options, 'Unable to retrieve product sales report')
 }
 
+export function getOperationalReport(report, filters = {}, options = {}) {
+  const { exportReport = false, ...fetchOptions } = options
+  const query = new URLSearchParams()
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') query.set(key, value)
+  })
+  const suffix = query.size ? `?${query.toString()}` : ''
+  const exportPath = exportReport ? '/export' : ''
+  return request(`/reports/operational/${encodeURIComponent(report)}${exportPath}${suffix}`, fetchOptions, 'Unable to retrieve operational report')
+}
+
+export function getAllOperationalReport(report, filters = {}, options = {}) {
+  return collectReportPages((pageFilters, pageOptions) => getOperationalReport(report, pageFilters, { ...pageOptions, exportReport: true }), filters, options)
+}
+
 export function logReportExport(reportType) {
   return request('/reports/log', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ report_type: reportType }),

@@ -1,5 +1,9 @@
+import { hasCapability, normalizeRole } from '../../shared/permissions.js'
+
+export { hasCapability, normalizeRole }
+
 export function isAdmin(role) {
-  return role === 'admin'
+  return normalizeRole(role) === 'admin'
 }
 
 export function roleLabel(role) {
@@ -7,5 +11,7 @@ export function roleLabel(role) {
 }
 
 export function hasRouteAccess(route, role) {
-  return route.roles.includes(role)
+  if (route.staffOnly && normalizeRole(role) !== 'employee') return false
+  if (route.adminOnly) return isAdmin(role)
+  return hasCapability(role, route.capability)
 }

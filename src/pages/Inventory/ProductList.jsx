@@ -18,6 +18,24 @@ const columns = [
   'Actions',
 ]
 
+const staffColumns = [
+  'Product Name',
+  'Category',
+  'Current Stock',
+  'Reorder Level',
+  'Status',
+]
+
+const sortAccessorMap = {
+  'Product Name': (product) => product.product_name,
+  'Category': (product) => product.category,
+  'Selling Price': (product) => Number(product.selling_price || 0),
+  'Current Stock': (product) => Number(product.stock_quantity),
+  'Reorder Level': (product) => Number(product.reorder_level),
+  'Status': (product) => product.status,
+  'Actions': () => '',
+}
+
 const archivedColumns = [
   'Product Name',
   'Category',
@@ -25,16 +43,6 @@ const archivedColumns = [
   'Stock Quantity',
   'Archived Status',
   'Actions',
-]
-
-const sortAccessors = [
-  (product) => product.product_name,
-  (product) => product.category,
-  (product) => Number(product.selling_price),
-  (product) => Number(product.stock_quantity),
-  (product) => Number(product.reorder_level),
-  (product) => product.status,
-  () => '',
 ]
 
 const archivedSortAccessors = [
@@ -50,12 +58,14 @@ function normalizeCategory(category = '') {
   return category.toLowerCase().replaceAll('&', 'and').replace(/\s+/g, ' ').trim()
 }
 
-function ProductList({ products, loading, error, onEdit, onArchive }) {
+function ProductList({ products, loading, error, onEdit, onArchive, readOnly = false }) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
   const [productToArchive, setProductToArchive] = useState(null)
   const [archiveError, setArchiveError] = useState('')
   const [archiving, setArchiving] = useState(false)
+
+  const visibleColumns = readOnly ? staffColumns : columns
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -129,10 +139,15 @@ function ProductList({ products, loading, error, onEdit, onArchive }) {
       </div>
       <DataTable
         key={`${category}:${query}`}
-        columns={columns}
+        columns={visibleColumns}
         rows={filteredProducts}
+        pageSize={readOnly ? 10 : 8}
         searchable={false}
-        getSortValue={(product, columnIndex) => sortAccessors[columnIndex](product)}
+        nonSortableColumns={readOnly ? visibleColumns : []}
+        getSortValue={(product, columnIndex) => {
+          const col = visibleColumns[columnIndex]
+          return sortAccessorMap[col] ? sortAccessorMap[col](product) : ''
+        }}
         renderRow={(product) => (
           <tr
             key={product.product_id}
@@ -140,7 +155,9 @@ function ProductList({ products, loading, error, onEdit, onArchive }) {
           >
             <td><strong className="inventory-product-name">{product.product_name}</strong></td>
             <td><span className="inventory-product-category">{product.category}</span></td>
-            <td><strong className="inventory-money-value">{peso.format(Number(product.selling_price))}</strong></td>
+            {!readOnly && (
+              <td><strong className="inventory-money-value">{peso.format(Number(product.selling_price))}</strong></td>
+            )}
             <td>
               <strong className="inventory-stock-value">{Number(product.stock_quantity)}</strong>{' '}
               <span className="inventory-unit">{product.unit}</span>
@@ -151,28 +168,30 @@ function ProductList({ products, loading, error, onEdit, onArchive }) {
             <td>
               <StatusBadge value={product.status} />
             </td>
-            <td>
-              <button
-                className="table-action"
-                type="button"
-                onClick={() => onEdit(product)}
-                aria-label={`Edit ${product.product_name}`}
-              >
-                Edit
-              </button>
-              <button
-                className="table-action danger"
-                type="button"
-                onClick={() => setProductToArchive(product)}
-                aria-label={`Archive ${product.product_name}`}
-              >
-                Archive
-              </button>
-            </td>
+            {!readOnly && (
+              <td>
+                <button
+                  className="table-action"
+                  type="button"
+                  onClick={() => onEdit(product)}
+                  aria-label={`Edit ${product.product_name}`}
+                >
+                  Edit
+                </button>
+                <button
+                  className="table-action danger"
+                  type="button"
+                  onClick={() => setProductToArchive(product)}
+                  aria-label={`Archive ${product.product_name}`}
+                >
+                  Archive
+                </button>
+              </td>
+            )}
           </tr>
         )}
       />
-      {productToArchive && (
+      {!readOnly && productToArchive && (
         <Modal title="Archive Product" onClose={() => { if (!archiving) setProductToArchive(null) }} className="user-confirmation-modal">
           <p>Archive <strong>{productToArchive.product_name}</strong> from active inventory?</p>
           <p>Archiving removes this product from active inventory and POS listings. Historical transaction records remain preserved.</p>

@@ -27,6 +27,13 @@ export async function getProducts(options = {}) {
   return result.data
 }
 
+export async function getInventoryProducts(options = {}) {
+  const response = await authenticatedApiFetch('/products/inventory', options)
+  const result = await parseResponse(response, 'Inventory could not be loaded. Please try again.')
+  if (!Array.isArray(result.data)) throw new Error('Inventory could not be loaded. Please try again.')
+  return result.data
+}
+
 export async function getArchivedProducts(options = {}) {
   const response = await authenticatedApiFetch('/products/archived', options)
   const result = await parseResponse(response, 'Archived products could not be loaded. Please try again.')

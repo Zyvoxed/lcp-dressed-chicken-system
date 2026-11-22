@@ -389,6 +389,51 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.credits-page .stats-grid.credit-stats.staff-credit-stats,
+.staff-credits-page .stats-grid.credit-stats,
+.staff-credits-page .page-skeleton-customer-credit-stats .page-skeleton-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.staff-credits-page .system-data-table thead th {
+  padding: 8px;
+  font-size: 11px;
+}
+
+.staff-credits-page .system-data-table tbody td {
+  padding: 8px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.staff-credits-page .customer-list-controls {
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+}
+
+.staff-credits-page .customer-list-controls .table-search,
+.staff-credits-page .customer-list-controls select {
+  min-width: 0;
+  min-height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+}
+
+.staff-credits-page .customer-list-summary {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  padding: 4px 12px;
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: var(--card-bg);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
 .credits-page .credit-stats .stat-card {
   min-height: 116px;
   padding: 18px;
@@ -1142,6 +1187,11 @@
 
   .customer-list-controls {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .staff-credits-page .customer-list-controls {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px;
   }
 
   .customer-drawer {

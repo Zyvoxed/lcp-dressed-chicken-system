@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import StatusBadge from '../Shared/StatusBadge.jsx'
 import TransactionSuccessModal from '../Shared/TransactionSuccessModal.jsx'
-import { getProducts } from '../../services/productService.js'
+import { getInventoryProducts, getProducts } from '../../services/productService.js'
 import { getSuppliers } from '../../services/supplierService.js'
 import { createStockIn } from '../../services/stockInService.js'
 import { peso } from '../../utils/currency.js'
@@ -83,12 +83,12 @@ function getInitialStockInRecovery(userId) {
   }
 }
 
-function StockInForm({ onCreated }) {
+function StockInForm({ onCreated, staffMode = false }) {
   const { user } = useAuth()
-  return <StockInFormForUser key={user?.user_id || 'unauthenticated'} userId={user?.user_id} onCreated={onCreated} />
+  return <StockInFormForUser key={user?.user_id || 'unauthenticated'} userId={user?.user_id} onCreated={onCreated} staffMode={staffMode} />
 }
 
-function StockInFormForUser({ userId, onCreated }) {
+function StockInFormForUser({ userId, onCreated, staffMode }) {
   const { showSuccess, showError, showWarning } = useToast()
   const [initialRecovery] = useState(() => getInitialStockInRecovery(userId))
   const [products, setProducts] = useState([])
@@ -118,7 +118,7 @@ function StockInFormForUser({ userId, onCreated }) {
     async function loadOptions() {
       try {
         const [productData, supplierData] = await Promise.all([
-          getProducts({ signal: controller.signal }),
+          (staffMode ? getInventoryProducts : getProducts)({ signal: controller.signal }),
           getSuppliers({ signal: controller.signal }),
         ])
         setProducts(productData)
@@ -132,7 +132,7 @@ function StockInFormForUser({ userId, onCreated }) {
 
     loadOptions()
     return () => controller.abort()
-  }, [])
+  }, [staffMode])
 
   useEffect(() => {
     if (loading || !pendingAttempt || pendingAttempt.state === 'rejected' || recoveryChecked.current) return

@@ -152,7 +152,7 @@ function CustomerLedger({
         </section>
 
         <nav className="customer-drawer-tabs" aria-label="Customer details sections">
-          {['Record Payment', 'Sales History'].map((section) => (
+          {(isAdmin ? ['Record Payment', 'Sales History'] : ['Record Payment']).map((section) => (
             <button
               key={section}
               className={activeSection === section ? 'active' : ''}
@@ -214,7 +214,7 @@ function CustomerLedger({
             </>
           )}
 
-          {activeSection === 'Sales History' && (
+          {isAdmin && activeSection === 'Sales History' && (
             <section className="customer-sales-history" aria-labelledby="customer-sales-history-heading">
               <div className="customer-sales-heading">
                 <h3 id="customer-sales-history-heading">Sales History</h3>

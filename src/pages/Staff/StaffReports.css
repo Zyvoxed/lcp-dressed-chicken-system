@@ -1,0 +1,823 @@
+/* ==========================================================================
+   Staff Reports & Audits Enhanced Styles
+   Strictly scoped to .staff-reports to preserve Admin Reports untouched.
+   ========================================================================== */
+
+.staff-reports {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+  width: 100%;
+  font-family: inherit;
+}
+
+/* Page Heading Spacing */
+.staff-reports .page-heading {
+  margin-bottom: 0;
+}
+
+.staff-reports .page-heading .eyebrow {
+  margin: 0 0 4px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.staff-reports .page-heading h1 {
+  margin: 0 0 8px;
+  color: var(--text-heading);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+.staff-reports .page-heading p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Segmented Tabs Navigation */
+.staff-reports .reports-tabs-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.staff-reports .reports-segmented-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 2px rgba(5, 31, 32, 0.04);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.staff-reports .reports-segmented-control::-webkit-scrollbar {
+  display: none;
+}
+
+.staff-reports .reports-nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.staff-reports .reports-nav-tab:hover:not(.active) {
+  color: var(--text-heading);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.staff-reports .reports-nav-tab.active {
+  background: var(--primary);
+  color: var(--primary-action-text);
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(5, 31, 32, 0.16), 0 1px 2px rgba(5, 31, 32, 0.08);
+}
+
+.staff-reports .reports-nav-tab.active .reports-tab-icon {
+  color: var(--primary-soft);
+}
+
+/* KPI Summary Cards */
+.staff-reports .stats-grid.report-stats {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.staff-reports .stats-grid.report-stats.report-sales-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.staff-reports .stats-grid.report-stats.report-inventory-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.staff-reports .stats-grid.report-stats.report-receivables-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.staff-reports .stat-card {
+  min-width: 0;
+  min-height: 116px;
+  padding: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.staff-reports .stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Layouts */
+.staff-reports .report-layout {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+  min-width: 0;
+}
+
+.staff-reports .report-layout.sales-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+}
+
+.staff-reports .report-layout.full-width {
+  grid-template-columns: 1fr;
+}
+
+/* Single Panel (Full Width) Container for Inventory & Receivables */
+.staff-reports .staff-reports-single-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* Table Panel Header with Actions Toolbar */
+.staff-reports .staff-panel-header {
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-light);
+  flex-wrap: wrap;
+}
+
+.staff-reports .staff-panel-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.staff-reports .staff-panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.staff-reports .staff-panel-title-row h2 {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+}
+
+.staff-reports .staff-panel-subtitle {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Toolbar Controls */
+.staff-reports .staff-toolbar-controls {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Search Input Wrap */
+.staff-reports .staff-search-input-wrap {
+  position: relative;
+  display: flex;
+  flex: 1 1 260px;
+  align-items: center;
+  min-width: min(220px, 100%);
+  max-width: none;
+}
+
+.staff-reports .staff-search-icon {
+  position: absolute;
+  left: 11px;
+  color: var(--text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.staff-reports .staff-search-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 32px 0 34px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  color: var(--text-heading);
+  font-size: 13px;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.staff-reports .staff-search-input:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.staff-reports .staff-search-clear-btn {
+  position: absolute;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.staff-reports .staff-search-clear-btn:hover {
+  color: var(--text-heading);
+  background: var(--surface-inset);
+}
+
+/* Filter Toggle Button */
+.staff-reports .staff-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 550;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  color: var(--primary);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.staff-reports .staff-filter-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-heading);
+  border-color: var(--border-strong);
+}
+
+.staff-reports .staff-filter-btn.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-color: var(--primary);
+  font-weight: 600;
+}
+
+.staff-reports .staff-toolbar-controls .staff-export-csv-btn {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-md);
+  color: var(--primary-action-text);
+  background: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 2px 6px var(--primary-soft);
+}
+
+.staff-reports .staff-toolbar-controls .staff-export-csv-btn:hover:not(:disabled) {
+  border-color: var(--brand-dark);
+  color: var(--primary-action-text);
+  background: var(--brand-dark);
+}
+
+.staff-reports .staff-toolbar-controls .staff-export-csv-btn:focus-visible,
+.staff-reports .staff-filter-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.staff-reports .staff-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  font-size: 10.5px;
+  font-weight: 700;
+  background: var(--primary);
+  color: var(--primary-action-text);
+  line-height: 1;
+}
+
+/* Expandable Filter Drawer */
+.staff-reports .staff-filter-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 24px;
+  background: var(--surface-inset);
+  border-bottom: 1px solid var(--border);
+  animation: staffFilterExpand 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes staffFilterExpand {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.staff-reports .staff-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.staff-reports .staff-filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 70px;
+}
+
+.staff-reports .staff-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.staff-reports .staff-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 13px;
+  font-size: 12px;
+  font-weight: 550;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.staff-reports .staff-pill-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-heading);
+  border-color: var(--border-strong);
+}
+
+.staff-reports .staff-pill-btn.active {
+  background: var(--primary);
+  color: var(--primary-action-text);
+  border-color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(5, 31, 32, 0.12);
+}
+
+.staff-reports .staff-clear-filter-link {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px 6px;
+}
+
+.staff-reports .staff-clear-filter-link:hover {
+  color: var(--danger-text);
+}
+
+/* Data Table Container */
+.staff-reports .report-table-panel .system-data-table :is(th, td) {
+  padding: 8px;
+  line-height: 1.35;
+}
+
+.staff-reports .system-data-table thead th {
+  padding: 8px;
+  font-size: 11px;
+}
+
+.staff-reports .system-data-table tbody td {
+  padding: 8px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.staff-reports .staff-table-body-wrap {
+  padding: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.staff-reports .staff-table-body-wrap .data-table-shell {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* Right Aligned Numeric Cells */
+.staff-reports td.cell-right,
+.staff-reports th.cell-right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.staff-reports .staff-receivables-ledger-table .system-data-table :is(th, td) {
+  text-align: left;
+}
+
+.staff-reports .staff-receivables-ledger-table .system-data-table thead th button {
+  justify-content: flex-start;
+}
+
+.staff-reports .staff-inventory-status-table .system-data-table :is(th, td) {
+  text-align: left;
+}
+
+.staff-reports .staff-inventory-status-table .system-data-table thead th button {
+  justify-content: flex-start;
+}
+
+.staff-reports .report-transaction-reference {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Sales Filter Aside Panel Enhancement */
+.staff-reports .report-filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.staff-reports .report-filter-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.staff-reports .report-filter-panel input,
+.staff-reports .report-filter-panel select {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--text-heading);
+  font-size: 13px;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.staff-reports .report-filter-panel input:focus,
+.staff-reports .report-filter-panel select:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.staff-reports .report-filter-panel .report-filter-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.staff-reports .report-tab-content {
+  min-width: 0;
+  gap: 24px;
+}
+
+.staff-reports .report-heading-row {
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  padding: 20px 24px;
+}
+
+.staff-reports .sales-report-heading-row {
+  justify-content: space-between;
+  margin: 0;
+  padding: 20px 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.staff-reports .staff-sales-report-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  width: auto;
+  margin: 12px 0 2px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
+.staff-reports .staff-sales-report-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 50px;
+  color: var(--primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+}
+
+.staff-reports .staff-sales-report-search svg {
+  position: absolute;
+  left: 12px;
+  pointer-events: none;
+}
+
+.staff-reports .staff-sales-report-search input {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  padding: 0 12px 0 36px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--text-heading);
+  font-size: 13px;
+  box-shadow: none;
+}
+
+.staff-reports .staff-sales-report-search:focus-within {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.staff-reports .staff-sales-report-search input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.staff-reports .staff-sales-report-tools .report-result-count {
+  min-height: 40px;
+  justify-content: center;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--card-bg);
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.staff-reports .report-heading h2 {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.staff-reports .report-heading p {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.staff-reports .sales-report-panel .table-pagination,
+.staff-reports .staff-table-body-wrap + .table-pagination {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+}
+
+.staff-reports .sales-report-panel .table-pagination {
+  margin-top: 0;
+}
+
+.staff-reports .staff-report-inline-message {
+  margin: 16px 24px;
+  line-height: 1.5;
+}
+
+.staff-reports .staff-table-body-wrap > [role="status"] {
+  padding: 16px 24px;
+}
+
+.staff-reports .report-filter-panel h2 {
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.staff-reports :is(.staff-search-input, .staff-filter-btn, .report-filter-panel input, .report-filter-panel select, .report-filter-panel .primary-action, .report-filter-panel .secondary-action) {
+  font-family: inherit;
+}
+
+/* Responsive Rules */
+@media (max-width: 1024px) {
+  .staff-reports .stats-grid.report-stats.report-inventory-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .staff-reports .report-layout.sales-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-reports .report-filter-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .staff-reports .report-filter-panel .report-heading,
+  .staff-reports .report-filter-panel .report-filter-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .staff-reports .staff-panel-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .staff-reports .staff-toolbar-controls {
+    display: grid;
+    flex: none;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px;
+    padding: 0;
+  }
+
+  .staff-reports .staff-search-input-wrap {
+    min-width: 0;
+    max-width: 100%;
+    grid-column: 1 / -1;
+  }
+
+  .staff-reports .stats-grid.report-stats.report-sales-stats,
+  .staff-reports .stats-grid.report-stats.report-receivables-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-reports .report-heading-row {
+    align-items: flex-start;
+    flex-direction: column;
+    margin: 0;
+    padding: 16px 0;
+  }
+
+  .staff-reports .staff-sales-report-search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .staff-reports .staff-sales-report-tools {
+    grid-template-columns: minmax(0, 1fr) auto;
+    max-width: none;
+    margin: 12px 0 2px;
+    padding: 12px;
+  }
+
+  .staff-reports .staff-sales-report-tools .report-result-count {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 480px) {
+  .staff-reports .staff-sales-report-tools {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .staff-reports .staff-sales-report-tools .report-result-count {
+    grid-column: 1;
+  }
+
+  .staff-reports .report-filter-panel {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .staff-reports .report-filter-panel .report-heading,
+  .staff-reports .report-filter-panel .report-filter-actions {
+    grid-column: auto;
+  }
+
+  .staff-reports .staff-filter-drawer {
+    padding: 16px;
+  }
+
+  .staff-reports .staff-filter-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .staff-reports {
+    gap: 16px;
+  }
+
+  .staff-reports .reports-segmented-control {
+    width: 100%;
+  }
+
+  .staff-reports .reports-nav-tab {
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+
+  .staff-reports .stats-grid.report-stats.report-inventory-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-reports .staff-toolbar-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .staff-reports .staff-search-input-wrap {
+    grid-column: 1 / -1;
+  }
+
+  .staff-reports .staff-toolbar-controls > button {
+    justify-content: center;
+  }
+
+  .staff-reports .staff-panel-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}

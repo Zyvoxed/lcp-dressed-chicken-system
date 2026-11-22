@@ -44,10 +44,8 @@ function CustomerCredits() {
     const controller = new AbortController()
     async function loadCustomers() {
       try {
-        const [data, archivedData] = await Promise.all([
-          getCustomers({ signal: controller.signal }),
-          getArchivedCustomers({ signal: controller.signal }),
-        ])
+        const data = await getCustomers({ signal: controller.signal })
+        const archivedData = isAdmin ? await getArchivedCustomers({ signal: controller.signal }) : []
         setCustomers(data)
         setArchivedCustomers(archivedData)
       } catch (requestError) {
@@ -99,7 +97,7 @@ function CustomerCredits() {
     async function loadSales() {
       try {
         setSalesLoading(true)
-        const salesData = await getCustomerSales(selectedCustomer.customer_id, { signal: controller.signal })
+        const salesData = isAdmin ? await getCustomerSales(selectedCustomer.customer_id, { signal: controller.signal }) : []
         setSales(salesData)
         setSalesError('')
       } catch (requestError) {
@@ -111,7 +109,7 @@ function CustomerCredits() {
     loadDetails()
     loadSales()
     return () => controller.abort()
-  }, [selectedCustomer])
+  }, [isAdmin, selectedCustomer])
 
   function selectCustomer(customer) {
     if (Number(customer.customer_id) !== Number(selectedCustomer?.customer_id)) {
@@ -133,7 +131,7 @@ function CustomerCredits() {
       getCustomers(),
       getCustomerCredits(customerId),
       getCustomerPayments(customerId),
-      getCustomerSales(customerId),
+      isAdmin ? getCustomerSales(customerId) : Promise.resolve([]),
     ])
     setCustomers(customerList)
     if (Number(selectedCustomerIdRef.current) === Number(customerId)) {
@@ -143,16 +141,14 @@ function CustomerCredits() {
       setSales(salesData)
     }
     return paymentData.find((payment) => payment.payment_id === paymentId)
-  }, [])
+  }, [isAdmin])
 
   const refreshLists = useCallback(async () => {
-    const [active, archived] = await Promise.all([
-      getCustomers(),
-      getArchivedCustomers(),
-    ])
+    const active = await getCustomers()
+    const archived = isAdmin ? await getArchivedCustomers() : []
     setCustomers(active)
     setArchivedCustomers(archived)
-  }, [])
+  }, [isAdmin])
 
   const closeCustomerDrawer = useCallback(() => {
     setSelectedCustomer(null)
@@ -202,11 +198,11 @@ function CustomerCredits() {
   }
 
   return (
-    <section className="credits-page page-stack">
+    <section className={`credits-page page-stack ${!isAdmin ? 'staff-credits-page' : ''}`}>
       <div className="credits-layout">
       {loading
         ? <PageSkeleton variant="customer-credit-stats" label="customer credit summary" />
-        : <CreditStats customers={customers} archivedCustomers={archivedCustomers} />}
+        : <CreditStats customers={customers} archivedCustomers={archivedCustomers} isAdmin={isAdmin} />}
       {loading && <PageSkeleton variant="customer-credits" label="customer credit records" />}
       {!loading && error && <EmptyState>{error}</EmptyState>}
       {!loading && !error && (

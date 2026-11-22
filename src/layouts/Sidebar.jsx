@@ -31,6 +31,8 @@ const navigationLabels = {
   "Main Dashboard": "Dashboard",
   "Customer Credits Book": "Customer Credits",
   "Supplier Contracts": "Suppliers",
+  "Inventory & Stock In": "Inventory & Stock In",
+  "Reports & Audits": "Reports & Audits",
 };
 
 const navGroups = [
@@ -101,10 +103,7 @@ function Sidebar({ activeModule, onSelect, role, collapsed, mobileOpen }) {
           aria-hidden="true"
           style={activeIndicatorStyle}
         />
-        {(role === "employee"
-          ? [{ label: "", items: ["Record Sales"] }]
-          : navGroups
-        ).map((group) => {
+        {navGroups.map((group) => {
           const groupItems = group.items.filter((label) => accessibleLabels.has(label));
           if (!groupItems.length) return null;
 

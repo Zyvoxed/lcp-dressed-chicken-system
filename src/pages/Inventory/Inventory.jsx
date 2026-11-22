@@ -4,6 +4,7 @@ import { Archive } from 'lucide-react'
 import {
   archiveProduct,
   getArchivedProducts,
+  getInventoryProducts,
   getProducts,
   restoreProduct,
 } from '../../services/productService.js'
@@ -15,11 +16,15 @@ import HighestStockLevels from './HighestStockLevels.jsx'
 import ProductList, { ArchivedProductList } from './ProductList.jsx'
 import ProductModal from './ProductModal.jsx'
 import StockInForm from './StockInForm.jsx'
+import { useAuth } from '../../hooks/useAuth.js'
 import { useToast } from '../../context/ToastContext.jsx'
+import '../Staff/StaffInventory.css'
 
-function Inventory() {
+function Inventory({ initialTab = 'Product List' }) {
+  const { role } = useAuth()
+  const isStaff = role === 'employee' || role === 'Staff'
   const reduceMotion = useReducedMotion()
-  const [activeTab, setActiveTab] = useState('Product List')
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [showProductModal, setShowProductModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [inventoryVersion, setInventoryVersion] = useState(0)
@@ -39,7 +44,8 @@ function Inventory() {
       try {
         setProductsLoading(true)
         setProductsError('')
-        const productData = await getProducts({ signal: controller.signal })
+        const fetchProducts = isStaff ? getInventoryProducts : getProducts
+        const productData = await fetchProducts({ signal: controller.signal })
         setProducts(productData)
       } catch (requestError) {
         if (requestError.name !== 'AbortError') {
@@ -55,9 +61,11 @@ function Inventory() {
     loadProducts()
 
     return () => controller.abort()
-  }, [inventoryVersion])
+  }, [inventoryVersion, isStaff])
 
   useEffect(() => {
+    if (isStaff) return undefined
+
     const controller = new AbortController()
     getArchivedProducts({ signal: controller.signal })
       .then(setArchivedProducts)
@@ -65,10 +73,10 @@ function Inventory() {
         if (requestError.name !== 'AbortError') setArchivedProducts([])
       })
     return () => controller.abort()
-  }, [inventoryVersion])
+  }, [inventoryVersion, isStaff])
 
   useEffect(() => {
-    if (!showArchivedPanel) return undefined
+    if (isStaff || !showArchivedPanel) return undefined
 
     const controller = new AbortController()
 
@@ -92,7 +100,7 @@ function Inventory() {
     loadArchivedProducts()
 
     return () => controller.abort()
-  }, [inventoryVersion, showArchivedPanel])
+  }, [inventoryVersion, isStaff, showArchivedPanel])
 
   function closeProductModal() {
     setShowProductModal(false)
@@ -144,34 +152,37 @@ function Inventory() {
         />
       )}
       {activeTab === 'Product List' && (
-        <article className="panel table-panel inventory-product-table">
+        <article className={`panel table-panel inventory-product-table ${isStaff ? 'staff-inventory-product-table' : ''}`}>
           <PageHeader title="PRODUCTS AND STOCK">
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button
-                className="primary-action slim"
-                type="button"
-                onClick={() => {
-                  setSelectedProduct(null)
-                  setShowProductModal(true)
-                }}
-              >
-                Add Product
-              </button>
-              <button
-                className="secondary-action slim product-archived-trigger"
-                type="button"
-                onClick={() => setShowArchivedPanel(true)}
-              >
-                <Archive size={15} aria-hidden="true" />
-                <span>Archived Products</span>
-                {archivedProducts.length > 0 && <span className="product-archived-badge">{archivedProducts.length}</span>}
-              </button>
-            </div>
+            {!isStaff && (
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  className="primary-action slim"
+                  type="button"
+                  onClick={() => {
+                    setSelectedProduct(null)
+                    setShowProductModal(true)
+                  }}
+                >
+                  Add Product
+                </button>
+                <button
+                  className="secondary-action slim product-archived-trigger"
+                  type="button"
+                  onClick={() => setShowArchivedPanel(true)}
+                >
+                  <Archive size={15} aria-hidden="true" />
+                  <span>Archived Products</span>
+                  {archivedProducts.length > 0 && <span className="product-archived-badge">{archivedProducts.length}</span>}
+                </button>
+              </div>
+            )}
           </PageHeader>
           <ProductList
             products={products}
             loading={productsLoading}
             error={productsError}
+            readOnly={isStaff}
             onEdit={(product) => {
               setSelectedProduct(product)
               setShowProductModal(true)
@@ -181,7 +192,7 @@ function Inventory() {
         </article>
       )}
       <AnimatePresence>
-      {showArchivedPanel && (
+      {!isStaff && showArchivedPanel && (
         <motion.div
           className="archive-drawer-backdrop"
           initial={{ opacity: 0 }}
@@ -231,10 +242,13 @@ function Inventory() {
       )}
       </AnimatePresence>
       {activeTab === 'Stock In Product (Delivery)' && (
-        <StockInForm onCreated={() => setInventoryVersion((version) => version + 1)} />
+        <StockInForm
+          staffMode={isStaff}
+          onCreated={() => setInventoryVersion((version) => version + 1)}
+        />
       )}
-      {activeTab === 'Inflow Records' && <InflowRecords key={inventoryVersion} />}
-      {showProductModal && (
+      {activeTab === 'Inflow Records' && <InflowRecords key={inventoryVersion} staffView={isStaff} />}
+      {!isStaff && showProductModal && (
         <ProductModal
           product={selectedProduct}
           onClose={closeProductModal}

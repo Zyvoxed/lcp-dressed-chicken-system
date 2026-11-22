@@ -74,7 +74,7 @@ export async function getCustomers(request, response) {
   try {
     if (request.user?.role === 'Staff') {
       const [customers] = await pool.execute(`
-        SELECT customer_id, customer_name
+        SELECT customer_id, customer_name, current_balance
         FROM customers
         WHERE is_active = TRUE
         ORDER BY customer_name ASC
@@ -313,6 +313,15 @@ export async function getCustomer(request, response) {
   if (!customerId) return response.status(400).json({ success: false, message: 'Invalid customer ID' })
 
   try {
+    if (request.user?.role === 'Staff') {
+      const [customers] = await pool.execute(
+        `SELECT customer_id, customer_name, current_balance
+         FROM customers WHERE customer_id = ? AND is_active = TRUE LIMIT 1`,
+        [customerId],
+      )
+      if (!customers[0]) return response.status(404).json({ success: false, message: 'Customer not found' })
+      return response.json({ success: true, data: customers[0] })
+    }
     const [customers] = await pool.execute(
       `SELECT ${customerSelectFields}
        FROM customers c

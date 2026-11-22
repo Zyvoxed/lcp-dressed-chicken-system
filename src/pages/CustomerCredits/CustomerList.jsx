@@ -8,7 +8,7 @@ import StatusBadge from '../Shared/StatusBadge.jsx'
 import { peso } from '../../utils/currency.js'
 import { formatActivityTimestamp } from '../../utils/activityDateTime.js'
 
-const columns = [
+const adminColumns = [
   'Customer Name',
   'Contact Number',
   'Total Credit',
@@ -17,14 +17,20 @@ const columns = [
   'Last Payment',
   'Status',
 ]
+const staffColumns = ['Customer Name', 'Outstanding Balance', 'Status']
 
-const sortAccessors = [
+const adminSortAccessors = [
   (customer) => customer.customer_name,
   (customer) => customer.contact_number,
   (customer) => Number(customer.total_credit),
   (customer) => Number(customer.total_paid),
   (customer) => Number(customer.current_balance),
   (customer) => customer.last_payment_at || '',
+  (customer) => Number(customer.current_balance) > 0 ? 'Unpaid' : 'Paid',
+]
+const staffSortAccessors = [
+  (customer) => customer.customer_name,
+  (customer) => Number(customer.current_balance),
   (customer) => Number(customer.current_balance) > 0 ? 'Unpaid' : 'Paid',
 ]
 
@@ -53,7 +59,7 @@ function CustomerList({ customers, onSelect, onAddCustomer, onShowArchived, arch
       <div className="customer-list-heading">
         <div>
           <h2>CUSTOMERS</h2>
-          <p>Select a customer to review their balance, record a payment, or view sales history.</p>
+          <p>{isAdmin ? 'Select a customer to review their balance, record a payment, or view sales history.' : 'Select a customer to review their outstanding balance, record a payment, and view payment history.'}</p>
         </div>
         <div className="customer-list-actions">
           <button className="primary-action slim" type="button" onClick={onAddCustomer}>
@@ -95,11 +101,12 @@ function CustomerList({ customers, onSelect, onAddCustomer, onShowArchived, arch
           ? <EmptyState>No matching customers found.</EmptyState>
           : (
             <DataTable
-              columns={columns}
+          columns={isAdmin ? adminColumns : staffColumns}
               rows={filteredCustomers}
               pageSize={8}
               searchable={false}
-              getSortValue={(customer, columnIndex) => sortAccessors[columnIndex]?.(customer) ?? ''}
+              nonSortableColumns={isAdmin ? [] : staffColumns}
+              getSortValue={(customer, columnIndex) => (isAdmin ? adminSortAccessors : staffSortAccessors)[columnIndex]?.(customer) ?? ''}
               renderRow={(customer) => {
                 const outstanding = Number(customer.current_balance)
                 return (
@@ -118,17 +125,17 @@ function CustomerList({ customers, onSelect, onAddCustomer, onShowArchived, arch
                     tabIndex={0}
                   >
                     <td><strong className="customer-table-name">{customer.customer_name}</strong></td>
-                    <td>{customer.contact_number || '—'}</td>
-                    <td>{peso.format(Number(customer.total_credit || 0))}</td>
-                    <td>{peso.format(Number(customer.total_paid || 0))}</td>
+                    {isAdmin && <td>{customer.contact_number || '—'}</td>}
+                    {isAdmin && <td>{peso.format(Number(customer.total_credit || 0))}</td>}
+                    {isAdmin && <td>{peso.format(Number(customer.total_paid || 0))}</td>}
                     <td className={outstanding > 0 ? 'customer-table-outstanding' : ''}>
                       <strong>{peso.format(outstanding)}</strong>
                     </td>
-                    <td>
+                    {isAdmin && <td>
                       {customer.last_payment_at
                         ? formatActivityTimestamp(customer.last_payment_at).dateTime
                         : '—'}
-                    </td>
+                    </td>}
                     <td><StatusBadge value={outstanding > 0 ? 'Unpaid' : 'Paid'} /></td>
                   </tr>
                 )

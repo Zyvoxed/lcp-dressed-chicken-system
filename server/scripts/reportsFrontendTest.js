@@ -77,9 +77,24 @@ const inventoryReport = { summary: { total_products: 4, total_inventory_cost_val
 const receivablesReport = { summary: { customers_with_balance: 1, total_receivables: '2000.00' }, records: [{ customer_id: 8, customer_name: 'Maria Santos', contact_number: '09171234567', address: 'Quezon City', current_balance: '2000.00', total_original_credit_amount: '2500.00', open_credit_sales: 1, oldest_unpaid_sale_date: '2026-10-21T10:30:00+08:00' }] }
 
 globalThis.fetch = async (input, options = {}) => {
-  const path = new URL(String(input), location.origin).pathname
+  const requestUrl = new URL(String(input), location.origin)
+  const path = requestUrl.pathname
   if (path === '/api/reports/sales/202') return Response.json({ success: true, data: details })
-  if (path === '/api/reports/sales') return Response.json({ success: true, data: salesReport })
+  if (path === '/api/reports/sales') {
+    const search = (requestUrl.searchParams.get('search') || '').toLowerCase()
+    const status = requestUrl.searchParams.get('status') || ''
+    const filtered = records.filter((record) => {
+      const matchesSearch = !search || ['OR-' + record.sale_id, record.customer_name, record.recorded_by].join(' ').toLowerCase().includes(search)
+      return matchesSearch && (!status || record.status === status)
+    })
+    const page = Number(requestUrl.searchParams.get('page') || 1)
+    const pageSize = Number(requestUrl.searchParams.get('page_size') || 25)
+    return Response.json({ success: true, data: {
+      ...salesReport,
+      records: filtered.slice((page - 1) * pageSize, page * pageSize),
+      pagination: { page, page_size: pageSize, total_records: filtered.length, total_pages: Math.ceil(filtered.length / pageSize) },
+    } })
+  }
   if (path === '/api/reports/inventory') return Response.json({ success: true, data: inventoryReport })
   if (path === '/api/reports/receivables') return Response.json({ success: true, data: receivablesReport })
   if (path === '/api/reports/log' && options.method === 'POST') return Response.json({ success: true, data: { report_id: 1 } }, { status: 201 })
@@ -136,21 +151,24 @@ createRoot(document.getElementById('root')).render(<main className="content-area
   await waitFor("Boolean(document.querySelector('.sales-report-panel tbody tr'))")
   assert(!await evaluate("Boolean(document.querySelector('.report-page-intro'))"), 'Redundant Reports introduction card was still rendered')
   assert(await evaluate("document.querySelector('.report-result-count').textContent.includes('10 of 10')"), 'Initial report count was incorrect')
-  assert(await evaluate("document.querySelector('.table-pagination').textContent.includes('Showing 1-10 of 10')"), 'Sales report did not show up to 10 transactions per page')
+  assert(await evaluate("document.querySelectorAll('.sales-report-panel tbody tr').length === 10 && !document.querySelector('.sales-report-panel .table-pagination')"), 'Server-paginated report did not render the returned page without a second client pager')
   assert(await evaluate("document.querySelector('.sales-report-panel .table-scroll').getBoundingClientRect().right <= document.querySelector('.sales-report-panel').getBoundingClientRect().right"), 'Sales table overflowed its card')
   await mkdir(screenshotRoot, { recursive: true })
   let screenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
   await writeFile(join(screenshotRoot, 'desktop-sales-audit.png'), screenshot.data, 'base64')
 
   await setValue('.report-local-filters input', 'OR-202')
-  assert(await evaluate("document.querySelector('.report-result-count').textContent.includes('1 of 10')"), 'Formatted transaction ID search was inaccurate')
+  await waitFor("document.querySelector('.report-result-count').textContent.includes('1 of 1')")
+  assert(await evaluate("document.querySelector('.report-result-count').textContent.includes('1 of 1')"), 'Formatted transaction ID search was inaccurate')
   assert(await evaluate("document.querySelector('.sales-report-panel tbody').textContent.includes('Maria Santos')"), 'Formatted ID search returned the wrong transaction')
   await setValue('.report-local-filters input', '')
   await setValue('.report-local-filters select', 'Unpaid')
-  assert(await evaluate("document.querySelector('.report-result-count').textContent.includes('1 of 10')"), 'Payment-status filtering was inaccurate')
+  await waitFor("document.querySelector('.report-result-count').textContent.includes('1 of 1') && document.querySelector('.sales-report-panel tbody').textContent.includes('OR-203')")
+  assert(await evaluate("document.querySelector('.report-result-count').textContent.includes('1 of 1')"), 'Payment-status filtering was inaccurate')
   assert(await evaluate("document.querySelector('.sales-report-panel tbody').textContent.includes('OR-203')"), 'Unpaid status filter returned the wrong transaction')
 
   await setValue('.report-local-filters select', '')
+  await waitFor("document.querySelector('.report-result-count').textContent.includes('10 of 10') && document.querySelector('.sales-report-panel tbody').textContent.includes('OR-202')")
   await evaluate("[...document.querySelectorAll('.sales-report-panel tbody tr')].find((row) => row.textContent.includes('OR-202')).click()")
   await waitFor("Boolean(document.querySelector('.report-transaction-modal .report-detail-content'))")
   assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('Chicken Breast') && document.querySelector('[role=dialog]').textContent.includes('₱750.00')"), 'Historical sale items and prices were not displayed')
@@ -158,8 +176,8 @@ createRoot(document.getElementById('root')).render(<main className="content-area
   assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('Payment #41') && document.querySelector('[role=dialog]').textContent.includes('Oct 21, 2026, 10:30 AM')"), 'Payment records or Manila transaction timestamp were missing')
   assert(!await evaluate("document.querySelector('[role=dialog]').textContent.includes('PHT')"), 'Transaction modal displayed a prohibited timezone suffix')
   assert(await evaluate("document.activeElement?.classList.contains('close-button')"), 'Shared modal did not receive its expected initial focus')
-  const backdrop = await evaluate(`(() => { const rect = document.querySelector('.modal-backdrop').getBoundingClientRect(); return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, viewportWidth: innerWidth, viewportHeight: innerHeight, overflow: document.body.style.overflow } })()`)
-  assert(backdrop.left === 0 && backdrop.top === 0 && backdrop.width === backdrop.viewportWidth && backdrop.height === backdrop.viewportHeight, 'Transaction backdrop did not cover the viewport')
+  const backdrop = await evaluate(`(() => { const rect = document.querySelector('.modal-backdrop').getBoundingClientRect(); return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, documentWidth: document.documentElement.clientWidth, viewportHeight: innerHeight, overflow: document.body.style.overflow } })()`)
+  assert(backdrop.left === 0 && backdrop.top === 0 && backdrop.width === backdrop.documentWidth && backdrop.height === backdrop.viewportHeight, 'Transaction backdrop did not cover the viewport')
   assert(backdrop.overflow === 'hidden', 'Transaction modal did not lock background scrolling')
 
   screenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
@@ -168,7 +186,7 @@ createRoot(document.getElementById('root')).render(<main className="content-area
   await browserConnection.command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
   await waitFor("!document.querySelector('[role=dialog]')")
 
-  await evaluate("[...document.querySelectorAll('.tabs button')].find((button) => button.textContent.includes('Inventory Assets')).click()")
+  await evaluate("[...document.querySelectorAll('.reports-tabs-container button')].find((button) => button.textContent.includes('Inventory Assets')).click()")
   await waitFor("document.body.textContent.includes('Inventory Assets Valuation')")
   assert(await evaluate("document.body.textContent.includes('Whole Chicken') && document.body.textContent.includes('FIFO Stock Cost') && document.body.textContent.includes('₱1,000.00')"), 'Inventory report tab or summary cards did not retain their data')
   assert(await evaluate("document.querySelector('.valuation-donut').dataset.chartTotal === '1000.00' && !document.querySelector('.valuation-reconciliation-warning')"), 'Product chart values did not reconcile with the authoritative report total')
@@ -196,7 +214,7 @@ createRoot(document.getElementById('root')).render(<main className="content-area
   screenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
   await writeFile(join(screenshotRoot, 'mobile-inventory-valuation.png'), screenshot.data, 'base64')
 
-  await evaluate("[...document.querySelectorAll('.tabs button')].find((button) => button.textContent.includes('Credit Receivables')).click()")
+  await evaluate("[...document.querySelectorAll('[role=tab]')].find((button) => button.textContent.includes('Credit Receivables')).click()")
   await waitFor("document.body.textContent.includes('Credit Receivables Ledger')")
   assert(await evaluate("document.body.textContent.includes('Maria Santos') && document.body.textContent.includes('₱2,500.00') && document.body.textContent.includes('₱2,000.00')"), 'Receivables report tab did not retain credit and balance data')
   assert(await evaluate("document.body.textContent.includes('Oct 21, 2026, 10:30 AM') && !document.body.textContent.includes('PHT')"), 'Receivables timestamp was not the expected Manila date/time format')

@@ -33,31 +33,25 @@ function fillSeries(length, rows, indexField, labelForIndex) {
 async function getStaffDashboardData() {
   const [summaryRows] = await pool.execute(`
     SELECT
-      (SELECT COALESCE(SUM(total_amount), 0) FROM sales
-       WHERE sale_date >= ${manilaCurrentDate}
-         AND sale_date < ${manilaCurrentDate} + INTERVAL 1 DAY) AS today_sales,
       (SELECT COUNT(*) FROM sales
        WHERE sale_date >= ${manilaCurrentDate}
          AND sale_date < ${manilaCurrentDate} + INTERVAL 1 DAY) AS today_transactions,
       (SELECT COALESCE(SUM(current_balance), 0) FROM customers
-       WHERE is_active = TRUE) AS outstanding_credits,
-      (SELECT COALESCE(SUM(payment_amount), 0) FROM payments
-       WHERE payment_date >= ${manilaCurrentDate}
-         AND payment_date < ${manilaCurrentDate} + INTERVAL 1 DAY) AS payments_today
+       WHERE is_active = TRUE) AS outstanding_credits
   `)
   const [recentTransactions] = await pool.execute(`
-    SELECT transaction_type, reference_id, customer_name, amount, status, occurred_at
+    SELECT transaction_type, reference_id, customer_name, status, occurred_at
     FROM (
       SELECT 'Sale' AS transaction_type, sa.sale_id AS reference_id,
              COALESCE(c.customer_name, 'Walk-In Customer') AS customer_name,
-             sa.total_amount AS amount, sa.status,
+             sa.status,
              CONCAT(DATE_FORMAT(sa.sale_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS occurred_at
       FROM sales sa
       LEFT JOIN customers c ON c.customer_id = sa.customer_id
       UNION ALL
       SELECT 'Payment' AS transaction_type, pa.payment_id AS reference_id,
              c.customer_name,
-             pa.payment_amount AS amount, 'Recorded' AS status,
+             'Recorded' AS status,
              CONCAT(DATE_FORMAT(pa.payment_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS occurred_at
       FROM payments pa
       JOIN customers c ON c.customer_id = pa.customer_id
@@ -65,10 +59,34 @@ async function getStaffDashboardData() {
     ORDER BY occurred_at DESC, reference_id DESC
     LIMIT 10
   `)
+  const [lowStock] = await pool.execute(`
+    SELECT product_id, product_name, unit, stock_quantity, reorder_level, status
+    FROM products WHERE is_active = TRUE AND stock_quantity <= reorder_level
+    ORDER BY stock_quantity ASC, product_name ASC LIMIT 10
+  `)
+  const [todayQuantityByUnit] = await pool.execute(`
+    SELECT p.unit, SUM(si.quantity) AS total_quantity
+    FROM sales_items si JOIN sales sa ON sa.sale_id = si.sale_id
+    JOIN products p ON p.product_id = si.product_id
+    WHERE sa.sale_date >= ${manilaCurrentDate}
+      AND sa.sale_date < ${manilaCurrentDate} + INTERVAL 1 DAY
+    GROUP BY p.unit ORDER BY p.unit
+  `)
+  const [recentStockIn] = await pool.execute(`
+    SELECT si.stockin_id, s.supplier_name, p.product_name, p.unit,
+           si.quantity_received,
+           CONCAT(DATE_FORMAT(si.delivery_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS delivery_date
+    FROM stock_in si JOIN suppliers s ON s.supplier_id = si.supplier_id
+    JOIN products p ON p.product_id = si.product_id
+    ORDER BY si.delivery_date DESC, si.stockin_id DESC LIMIT 5
+  `)
 
   return {
     summary: summaryRows[0],
     recent_transactions: recentTransactions,
+    low_stock_alerts: lowStock,
+    recent_stock_in: recentStockIn,
+    today_quantity_by_unit: todayQuantityByUnit,
   }
 }
 
@@ -177,6 +195,48 @@ async function getAdminDashboardData() {
     low_products: lowProducts,
     low_stock_alerts: lowStock,
     recent_activity: activities,
+  }
+}
+
+function manilaDateKey(date) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+function shiftCalendarDate(dateKey, offset) {
+  const date = new Date(`${dateKey}T00:00:00.000Z`)
+  date.setUTCDate(date.getUTCDate() + offset)
+  return date.toISOString().slice(0, 10)
+}
+
+export async function getStaffSalesActivity(request, response) {
+  try {
+    const today = manilaDateKey(new Date())
+    const startDate = shiftCalendarDate(today, -6)
+    const endDate = shiftCalendarDate(today, 1)
+    const [rows] = await pool.execute(`
+      SELECT DATE_FORMAT(sale_date, '%Y-%m-%d') AS sale_day,
+             COUNT(DISTINCT sale_id) AS transaction_count
+      FROM sales
+      WHERE sale_date >= ? AND sale_date < ?
+      GROUP BY sale_day
+      ORDER BY sale_day ASC
+    `, [startDate, endDate])
+    const countsByDate = new Map(rows.map((row) => [row.sale_day, Number(row.transaction_count)]))
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const date = shiftCalendarDate(startDate, index)
+      return { date, transactions: countsByDate.get(date) || 0 }
+    })
+    return response.json({ success: true, data: { days } })
+  } catch (error) {
+    console.error('Unable to retrieve staff sales activity:', error.message)
+    return response.status(500).json({ success: false, message: 'Unable to retrieve sales activity' })
   }
 }
 

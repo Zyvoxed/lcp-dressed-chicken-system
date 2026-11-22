@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import DataTable from '../Shared/DataTable.jsx'
 import EmptyState from '../Shared/EmptyState.jsx'
+import PageSkeleton from '../Shared/PageSkeleton.jsx'
 import StatusBadge from '../Shared/StatusBadge.jsx'
 import BatchDetailsModal from './BatchDetailsModal.jsx'
 import { getStockInRecords } from '../../services/stockInService.js'
@@ -21,19 +22,19 @@ const columns = [
   'Recorded By',
 ]
 
-const sortAccessors = [
-  (record) => record.stockin_id,
-  (record) => record.supplier_name,
-  (record) => record.product_name,
-  (record) => record.delivery_date,
-  (record) => Number(record.quantity_received),
-  (record) => Number(record.remaining_quantity),
-  (record) => consumedQuantity(record),
-  (record) => batchStatus(record),
-  (record) => Number(record.cost_price),
-  (record) => Number(record.total_cost),
-  (record) => record.recorded_by,
-]
+const sortAccessorMap = {
+  'Delivery No.': (record) => record.stockin_id,
+  'Supplier Name': (record) => record.supplier_name,
+  'Product': (record) => record.product_name,
+  'Delivery Date': (record) => record.delivery_date,
+  'Stock Added': (record) => Number(record.quantity_received),
+  'Stock Remaining': (record) => Number(record.remaining_quantity),
+  'Stock Sold / Deducted': (record) => consumedQuantity(record),
+  'Status': (record) => batchStatus(record),
+  'Cost Per Unit': (record) => Number(record.cost_price),
+  'Total Cost': (record) => Number(record.total_cost),
+  'Recorded By': (record) => record.recorded_by,
+}
 
 function consumedQuantity(record) {
   return Math.max(Number(record.quantity_received) - Number(record.remaining_quantity), 0)
@@ -51,7 +52,7 @@ function formatQuantity(value) {
   return Number(value).toLocaleString('en-PH', { maximumFractionDigits: 3 })
 }
 
-function InflowRecords() {
+function InflowRecords({ staffView = false }) {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -79,36 +80,51 @@ function InflowRecords() {
     return () => controller.abort()
   }, [])
 
+  const visibleColumns = staffView
+    ? columns
+      .filter((column) => !['Cost Per Unit', 'Total Cost'].includes(column))
+      .map((column) => (column === 'Stock Sold / Deducted' ? 'Stock Sold' : column))
+    : columns
+
   return (
     <>
-      <article className="panel table-panel inventory-inflow-table">
+      <article className={`panel table-panel inventory-inflow-table ${staffView ? 'staff-inventory-inflow-table' : ''}`}>
         <div className="inventory-inflow-heading">
           <h2>STOCK DELIVERY HISTORY</h2>
-          {!loading && !error && <span>{records.length} batch{records.length === 1 ? '' : 'es'}</span>}
+          {!loading && !error && !staffView && <span>{records.length} batch{records.length === 1 ? '' : 'es'}</span>}
         </div>
         {loading && <PageSkeleton variant="inventory-inflow" label="inflow records" />}
         {!loading && error && <EmptyState>{error}</EmptyState>}
         {!loading && !error && !records.length && <EmptyState>No stock delivery records found.</EmptyState>}
         {!loading && !error && records.length > 0 && <DataTable
-          columns={columns}
+          columns={visibleColumns}
           rows={records}
-          pageSize={10}
+          pageSize={staffView ? 20 : 10}
           searchPlaceholder="Search batches, products, or suppliers"
-          getSortValue={(record, columnIndex) => sortAccessors[columnIndex](record)}
+          toolbarContent={staffView && (
+            <span className="staff-inventory-batch-count" aria-live="polite">
+              {records.length} {records.length === 1 ? 'batch' : 'batches'}
+            </span>
+          )}
+          nonSortableColumns={staffView ? visibleColumns : []}
+          getSortValue={(record, columnIndex) => {
+            const col = visibleColumns[columnIndex]
+            return sortAccessorMap[col] ? sortAccessorMap[col](record) : ''
+          }}
           renderRow={(record) => {
             const status = batchStatus(record)
             return (
               <tr
                 key={record.stockin_id}
                 className={`inventory-batch-row ${status.toLowerCase().replaceAll(' ', '-')}`}
-                tabIndex={0}
-                aria-label={`Open delivery details for DLV-${record.stockin_id}`}
-                aria-haspopup="dialog"
-                onClick={() => setSelectedBatch(record)}
+                tabIndex={staffView ? -1 : 0}
+                aria-label={staffView ? `Stock-in receipt DLV-${record.stockin_id}` : `Open delivery details for DLV-${record.stockin_id}`}
+                aria-haspopup={staffView ? undefined : 'dialog'}
+                onClick={() => { if (!staffView) setSelectedBatch(record) }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()
-                    setSelectedBatch(record)
+                    if (!staffView) setSelectedBatch(record)
                   }
                 }}
               >
@@ -120,18 +136,17 @@ function InflowRecords() {
                 <td><strong>{formatQuantity(record.remaining_quantity)} {record.unit}</strong></td>
                 <td>{formatQuantity(consumedQuantity(record))} {record.unit}</td>
                 <td><StatusBadge value={status} /></td>
-                <td>{peso.format(Number(record.cost_price))}</td>
-                <td>{peso.format(Number(record.total_cost))}</td>
+                {!staffView && <td>{peso.format(Number(record.cost_price))}</td>}
+                {!staffView && <td>{peso.format(Number(record.total_cost))}</td>}
                 <td>{record.recorded_by}</td>
               </tr>
             )
           }}
         />}
       </article>
-      {selectedBatch && <BatchDetailsModal batch={selectedBatch} onClose={() => setSelectedBatch(null)} />}
+      {!staffView && selectedBatch && <BatchDetailsModal batch={selectedBatch} onClose={() => setSelectedBatch(null)} />}
     </>
   )
 }
 
 export default InflowRecords
-import PageSkeleton from '../Shared/PageSkeleton.jsx'
