@@ -11,7 +11,6 @@ import salesRoutes from '../routes/salesRoutes.js'
 import stockInRoutes from '../routes/stockInRoutes.js'
 import supplierRoutes from '../routes/supplierRoutes.js'
 import userRoutes from '../routes/userRoutes.js'
-import { getDashboard } from '../controllers/dashboardController.js'
 import { logReportGeneration } from '../controllers/reportController.js'
 
 function responseRecorder() {
@@ -36,19 +35,23 @@ function assertRoles(actual, expected, label) {
   assert.deepEqual([...actual].sort(), [...expected].sort(), label)
 }
 
-test('Staff bookkeeping endpoints are authorized server-side', () => {
-  assertRoles(routeRoles(salesRoutes, 'get', '/'), [], 'Authenticated Staff and Admin can read sales')
-  assertRoles(routeRoles(salesRoutes, 'post', '/'), [], 'Authenticated Staff and Admin can record sales')
-  assertRoles(routeRoles(paymentRoutes, 'post', '/'), [], 'Authenticated Staff and Admin can record payments')
-  assertRoles(routeRoles(customerRoutes, 'get', '/'), [], 'Staff can read customers')
-  assertRoles(routeRoles(customerRoutes, 'get', '/:id/credits'), [], 'Staff can read customer ledgers')
-  assertRoles(routeRoles(customerRoutes, 'post', '/'), [], 'Staff can register customers through existing workflows')
-  assertRoles(routeRoles(stockInRoutes, 'get', '/'), [], 'Staff can view stock-in records')
-  assertRoles(routeRoles(supplierRoutes, 'get', '/'), [], 'Staff can view active suppliers')
-  assertRoles(routeRoles(reportRoutes, 'get', '/sales'), ['Admin', 'Staff'], 'Staff can read sales reports')
-  assertRoles(routeRoles(reportRoutes, 'get', '/sales/:id'), ['Admin', 'Staff'], 'Staff can read sale details')
-  assertRoles(routeRoles(reportRoutes, 'get', '/receivables'), ['Admin', 'Staff'], 'Staff can read credit reports')
-  assertRoles(routeRoles(dashboardRoutes, 'get', '/'), ['Admin', 'Staff'], 'Staff can access the role-scoped dashboard')
+test('Staff server permissions are limited to POS and its minimum lookup operations', () => {
+  assertRoles(routeRoles(salesRoutes, 'get', '/'), ['Admin'], 'Sales monitoring is Admin-only')
+  assertRoles(routeRoles(salesRoutes, 'post', '/'), ['Admin', 'Staff'], 'Staff and Admin can check out sales')
+  assertRoles(routeRoles(paymentRoutes, 'post', '/'), ['Admin'], 'Customer credit payments are Admin-only')
+  assertRoles(routeRoles(customerRoutes, 'get', '/'), ['Admin', 'Staff'], 'POS can look up customers')
+  assertRoles(routeRoles(customerRoutes, 'get', '/:id/credits'), ['Admin'], 'Customer credit ledgers are Admin-only')
+  assertRoles(routeRoles(customerRoutes, 'get', '/:id/payments'), ['Admin'], 'Customer payment history is Admin-only')
+  assertRoles(routeRoles(customerRoutes, 'get', '/:id/sales'), ['Admin'], 'Customer sales history is Admin-only')
+  assertRoles(routeRoles(customerRoutes, 'post', '/'), ['Admin', 'Staff'], 'POS can register a customer for checkout')
+  assertRoles(routeRoles(customerRoutes, 'get', '/:id'), ['Admin'], 'Customer profiles are Admin-only')
+  assertRoles(routeRoles(productRoutes, 'get', '/'), ['Admin', 'Staff'], 'POS can look up sellable products')
+  assertRoles(routeRoles(stockInRoutes, 'get', '/'), ['Admin'], 'Stock-in history is Admin-only')
+  assertRoles(routeRoles(supplierRoutes, 'get', '/'), ['Admin'], 'Supplier data is Admin-only')
+  assertRoles(routeRoles(reportRoutes, 'get', '/sales'), ['Admin'], 'Sales reports are Admin-only')
+  assertRoles(routeRoles(reportRoutes, 'get', '/sales/:id'), ['Admin'], 'Sale details are Admin-only')
+  assertRoles(routeRoles(reportRoutes, 'get', '/receivables'), ['Admin'], 'Credit reports are Admin-only')
+  assertRoles(routeRoles(dashboardRoutes, 'get', '/'), ['Admin'], 'Dashboard analytics are Admin-only')
 })
 
 test('Admin-only configuration and audit endpoints stay protected', () => {
@@ -61,27 +64,6 @@ test('Admin-only configuration and audit endpoints stay protected', () => {
   assertRoles(routeRoles(supplierRoutes, 'post', '/'), ['Admin'], 'Supplier management remains Admin-only')
   assertRoles(routeRoles(customerRoutes, 'patch', '/:id/archive'), ['Admin'], 'Customer archiving remains Admin-only')
   assertRoles(routeRoles(customerRoutes, 'patch', '/:id'), ['Admin'], 'Customer profile edits remain Admin-only')
-})
-
-test('Staff dashboard returns operational bookkeeping summaries without Admin analytics', async () => {
-  const originalExecute = pool.execute
-  const calls = []
-  pool.execute = async (sql) => {
-    calls.push(sql)
-    return calls.length === 1
-      ? [[{ today_sales: '1250.00', today_transactions: 4, outstanding_credits: '300.00', payments_today: '100.00' }]]
-      : [[{ transaction_type: 'Sale', reference_id: 13, customer_name: 'Maria Santos', amount: '250.00', status: 'Paid', occurred_at: '2026-11-13T10:30:00+08:00' }]]
-  }
-  try {
-    const response = responseRecorder()
-    await getDashboard({ user: { role: 'Staff' } }, response)
-    assert.equal(response.statusCode, 200)
-    assert.equal(calls.length, 2)
-    assert.equal(response.payload.data.summary.today_transactions, 4)
-    assert.equal(response.payload.data.recent_transactions[0].reference_id, 13)
-    assert.equal(Object.hasOwn(response.payload.data, 'recent_activity'), false)
-    assert.equal(Object.hasOwn(response.payload.data, 'top_products'), false)
-  } finally { pool.execute = originalExecute }
 })
 
 test('Staff cannot log administrative inventory valuation reports', async () => {

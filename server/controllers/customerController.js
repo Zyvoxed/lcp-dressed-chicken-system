@@ -72,6 +72,15 @@ function failure(error, response, fallback) {
 
 export async function getCustomers(request, response) {
   try {
+    if (request.user?.role === 'Staff') {
+      const [customers] = await pool.execute(`
+        SELECT customer_id, customer_name
+        FROM customers
+        WHERE is_active = TRUE
+        ORDER BY customer_name ASC
+      `)
+      return response.json({ success: true, data: customers })
+    }
     const [customers] = await pool.execute(`
       SELECT ${customerSelectFields}
       FROM customers c

@@ -18,6 +18,7 @@ import { peso } from '../../utils/currency.js'
 function SupplierContracts() {
   const reduceMotion = useReducedMotion()
   const [showSupplierModal, setShowSupplierModal] = useState(false)
+  const [editingSupplier, setEditingSupplier] = useState(null)
   const [suppliers, setSuppliers] = useState([])
   const [archivedSuppliers, setArchivedSuppliers] = useState([])
   const [records, setRecords] = useState([])
@@ -49,6 +50,37 @@ function SupplierContracts() {
     } finally {
       setSuppliersLoading(false)
     }
+  }
+
+  async function refreshSupplierData() {
+    const warnings = []
+    const supplierWarning = await refreshSuppliers()
+    if (supplierWarning) warnings.push(supplierWarning)
+
+    try {
+      setRecords(await getStockInRecords())
+      setRecordsError('')
+    } catch (requestError) {
+      setRecordsError(requestError.message)
+      warnings.push(`The supplier was saved, but delivery history could not be refreshed: ${requestError.message}`)
+    }
+
+    return warnings.join(' ')
+  }
+
+  function openAddSupplier() {
+    setEditingSupplier(null)
+    setShowSupplierModal(true)
+  }
+
+  function openEditSupplier(supplier) {
+    setEditingSupplier(supplier)
+    setShowSupplierModal(true)
+  }
+
+  function closeSupplierModal() {
+    setShowSupplierModal(false)
+    setEditingSupplier(null)
   }
 
   useEffect(() => {
@@ -136,7 +168,7 @@ function SupplierContracts() {
             <p>Review active supplier contact details and confirmed delivery activity.</p>
           </div>
           <div className="supplier-directory-actions">
-            <button className="primary-action slim" type="button" onClick={() => setShowSupplierModal(true)}>
+            <button className="primary-action slim" type="button" onClick={openAddSupplier}>
               <Plus size={15} aria-hidden="true" /> Add Supplier
             </button>
             {isAdmin && <button className="secondary-action slim" type="button" onClick={() => setShowArchivedPanel(true)}>
@@ -166,6 +198,7 @@ function SupplierContracts() {
               supplier={supplier}
               archived={false}
               isAdmin={isAdmin}
+              onEdit={openEditSupplier}
               onArchive={(target) => { setConfirmation({ action: 'archive', supplier: target }); setActionError('') }}
               onRestore={(target) => { setConfirmation({ action: 'restore', supplier: target }); setActionError('') }}
               records={records.filter((record) => String(record.supplier_id) === String(supplier.supplier_id))}
@@ -180,7 +213,7 @@ function SupplierContracts() {
       </section>
 
       {showSupplierModal && (
-        <SupplierModal onClose={() => setShowSupplierModal(false)} onCreated={refreshSuppliers} />
+        <SupplierModal supplier={editingSupplier} onClose={closeSupplierModal} onSaved={refreshSupplierData} />
       )}
 
       {confirmation && (

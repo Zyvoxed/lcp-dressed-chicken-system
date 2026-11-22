@@ -10,6 +10,7 @@
     "create-admin": "node scripts/createAdmin.js",
     "reset-admin-password": "node scripts/resetAdminPassword.js",
     "recover-admin-email": "node scripts/recoverAdminEmail.js",
+    "migrate": "node scripts/migrate.js",
     "test:products": "node scripts/productCreationTest.js",
     "test:dashboard": "node scripts/dashboardTrendTest.js",
     "test:activity": "node scripts/activityTimestampTest.js",

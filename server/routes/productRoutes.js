@@ -12,7 +12,7 @@ import authorizeRoles from '../middleware/authorizeRoles.js'
 
 const router = Router()
 
-router.get('/', authenticate, getProducts)
+router.get('/', authenticate, authorizeRoles('Admin', 'Staff'), getProducts)
 router.get('/archived', authenticate, authorizeRoles('Admin'), getArchivedProducts)
 router.post('/', authenticate, authorizeRoles('Admin'), createProduct)
 router.patch('/:id/archive', authenticate, authorizeRoles('Admin'), archiveProduct)

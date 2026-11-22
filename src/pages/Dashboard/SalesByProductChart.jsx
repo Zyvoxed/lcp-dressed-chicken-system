@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import EmptyState from '../Shared/EmptyState.jsx'
 import { peso } from '../../utils/currency.js'
-import { getSalesReport, getSalesReportDetail } from '../../services/reportService.js'
+import { getProductSalesReport } from '../../services/reportService.js'
 import { buildMonotonePath } from '../../utils/chartPaths.js'
 import { getMonthlyIndexesForYear } from '../../utils/monthlyChartPeriods.js'
 import {
@@ -15,12 +15,6 @@ const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const seriesColors = ['#235347', '#8EB69B', '#91ACB5', '#C6A76A', '#D98F7C']
 
-function yearInManila(value) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return Number(new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', year: 'numeric' }).format(date))
-}
-
 function compactPeso(value) {
   return new Intl.NumberFormat('en-PH', {
     style: 'currency',
@@ -31,7 +25,7 @@ function compactPeso(value) {
 }
 
 function SalesByProductChart({ products = [] }) {
-  const topProducts = products.slice(0, 5)
+  const topProducts = useMemo(() => products.slice(0, 5), [products])
   const productKey = topProducts.map((product) => product.product_id).join(',')
   const [salesByProduct, setSalesByProduct] = useState(null)
   const [selectedYear, setSelectedYear] = useState(null)
@@ -52,9 +46,10 @@ function SalesByProductChart({ products = [] }) {
       }
 
       try {
-        const report = await getSalesReport({}, { signal: controller.signal })
+        const productIds = topProducts.map((product) => product.product_id)
+        const report = await getProductSalesReport(productIds, null, { signal: controller.signal })
         const records = report.records || []
-        const years = records.map((record) => yearInManila(record.sale_date)).filter((year) => year !== null)
+        const years = records.map((record) => Number(record.sale_year)).filter(Number.isInteger)
         const year = years.length ? Math.max(...years) : null
         if (isActive) setSelectedYear(year)
 
@@ -69,34 +64,16 @@ function SalesByProductChart({ products = [] }) {
           return
         }
 
-        const yearRecords = records.filter((record) => yearInManila(record.sale_date) === year)
-        const productIds = new Set(topProducts.map((product) => String(product.product_id)))
         const totals = new Map(topProducts.map((product) => [String(product.product_id), Array(monthIndexes.length).fill(0)]))
-        let nextRecord = 0
-        const workerCount = Math.min(yearRecords.length, 6)
-
-        async function loadWorker() {
-          while (nextRecord < yearRecords.length) {
-            const record = yearRecords[nextRecord]
-            nextRecord += 1
-            const detail = await getSalesReportDetail(record.sale_id, { signal: controller.signal })
-            const saleDate = detail.sale?.sale_date || record.sale_date
-            const saleMonth = Number(new Intl.DateTimeFormat('en-PH', {
-              timeZone: 'Asia/Manila', month: 'numeric',
-            }).format(new Date(saleDate))) - 1
-            if (saleMonth < 0 || saleMonth >= monthIndexes.length) continue
-
-            for (const item of detail.items || []) {
-              const productTotal = totals.get(String(item.product_id))
-              const revenue = Number(item.subtotal)
-              if (productTotal && productIds.has(String(item.product_id)) && Number.isFinite(revenue)) {
-                productTotal[saleMonth] += revenue
-              }
-            }
+        for (const record of records) {
+          if (Number(record.sale_year) !== year) continue
+          const values = totals.get(String(record.product_id))
+          const monthIndex = Number(record.sale_month) - 1
+          const revenue = Number(record.sales_amount)
+          if (values && monthIndex >= 0 && monthIndex < monthIndexes.length && Number.isFinite(revenue)) {
+            values[monthIndex] += revenue
           }
         }
-
-        await Promise.all(Array.from({ length: workerCount }, () => loadWorker()))
         if (isActive) setSalesByProduct(topProducts.map((product) => ({
           id: product.product_id,
           name: product.product_name,
@@ -113,7 +90,7 @@ function SalesByProductChart({ products = [] }) {
       isActive = false
       controller.abort()
     }
-  }, [productKey])
+  }, [productKey, topProducts])
 
   const model = useMemo(() => {
     if (!salesByProduct?.length) return null

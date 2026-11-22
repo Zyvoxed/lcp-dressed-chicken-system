@@ -1,0 +1,200 @@
+/* Cross-page responsive safeguards. Page-specific layouts remain in their own stylesheets. */
+
+:where(
+  .content-area,
+  .page-transition,
+  .page-stack,
+  .page-stack > *,
+  .panel,
+  .data-table-shell,
+  .table-scroll,
+  .chart-container,
+  .chart-wrapper,
+  .recharts-responsive-container
+) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.table-scroll {
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.table-scroll:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.recharts-responsive-container,
+.recharts-wrapper,
+.chart-container,
+.chart-wrapper,
+canvas {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .sidebar nav button,
+  .sidebar-icon-button,
+  .logout-button,
+  .sidebar-toggle {
+    min-height: 44px;
+  }
+
+  .sidebar nav button {
+    height: auto;
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  .content-area {
+    width: 100%;
+    max-width: 100vw;
+    padding: 24px 14px 24px;
+  }
+
+  .panel,
+  .receipt-panel {
+    padding: 14px;
+  }
+
+  .topbar {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+
+  .topbar-left,
+  .topbar-page-title {
+    gap: 7px;
+  }
+
+  .topbar-page-title h1 {
+    font-size: clamp(13px, 3.7vw, 15px);
+  }
+
+  .sidebar-toggle,
+  .privilege-card {
+    min-height: 44px;
+  }
+
+  .topbar .sidebar-toggle {
+    width: 44px;
+    height: 44px;
+  }
+
+  .table-toolbar {
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .table-toolbar > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .table-search {
+    min-height: 44px;
+  }
+
+  .system-data-table th button,
+  .table-pagination button {
+    min-height: 44px;
+  }
+
+  .table-pagination button {
+    width: 44px;
+  }
+
+  .modal-backdrop {
+    align-items: safe center;
+    padding: 8px;
+  }
+
+  .modal-card {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 16px);
+    overscroll-behavior: contain;
+  }
+
+  .modal-card .primary-action,
+  .modal-card .secondary-action,
+  .modal-card .modal-actions button {
+    min-height: 44px;
+  }
+
+  .modal-card .close-button {
+    width: 44px;
+    min-height: 44px;
+  }
+
+  .archive-drawer,
+  .customer-archived-panel {
+    max-width: 100vw;
+  }
+
+  .pos-mobile-switch button,
+  .payment-toggle-btn {
+    min-height: 44px;
+  }
+
+  .pos-product-action .pos-add-product {
+    min-height: 40px;
+  }
+
+  .pos-submit-btn {
+    min-height: 44px;
+  }
+
+  /* Let cashiers reach payment and checkout even when the phone is short. */
+  .pos-app-shell .sales-layout > .basket-panel {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pos-app-shell .basket-items {
+    flex: 0 0 auto;
+    min-height: 84px;
+    max-height: min(24dvh, 190px);
+  }
+}
+
+@media (max-width: 360px) {
+  .content-area {
+    padding-inline: 12px;
+  }
+
+  .topbar {
+    padding-inline: 10px;
+  }
+
+  .topbar-page-title > span {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+
+  .panel,
+  .receipt-panel {
+    padding: 12px;
+  }
+
+  .modal-card {
+    padding: 14px;
+  }
+}

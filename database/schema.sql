@@ -113,6 +113,42 @@ CREATE TABLE password_reset_rate_limits (
 );
 
 -- =========================================================
+-- 1D. LOGIN MFA CHALLENGES AND SHARED RATE LIMITS
+-- Required by every login; raw OTP values are never stored.
+-- =========================================================
+CREATE TABLE login_mfa_challenges (
+    challenge_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    challenge_hash BINARY(32) NOT NULL,
+    user_id INT NOT NULL,
+    auth_version INT UNSIGNED NOT NULL,
+    email_hash BINARY(32) NOT NULL,
+    otp_hash BINARY(32) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    attempts SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    resend_available_at DATETIME(3) NOT NULL,
+    consumed_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    UNIQUE KEY uq_login_mfa_challenge_hash (challenge_hash),
+    KEY idx_login_mfa_user_created (user_id, created_at),
+    KEY idx_login_mfa_expiry (expires_at),
+    CONSTRAINT fk_login_mfa_challenge_user FOREIGN KEY (user_id)
+        REFERENCES users(user_id) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE login_mfa_rate_limits (
+    rate_limit_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    action ENUM('login', 'challenge', 'verify', 'resend') NOT NULL,
+    identifier_kind ENUM('ip', 'account', 'challenge') NOT NULL,
+    identifier_hash BINARY(32) NOT NULL,
+    window_started_at DATETIME(3) NOT NULL,
+    request_count INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    UNIQUE KEY uq_login_mfa_rate_window
+        (action, identifier_kind, identifier_hash, window_started_at),
+    KEY idx_login_mfa_rate_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- =========================================================
 -- 2. PRODUCTS
 -- Stores poultry products and current inventory information
 -- =========================================================

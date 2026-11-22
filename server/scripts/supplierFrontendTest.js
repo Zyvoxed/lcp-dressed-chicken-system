@@ -103,7 +103,6 @@ try {
   await writeFile(join(temporaryRoot, 'harness.jsx'), `
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { ThemeProvider } from '/@fs/${sourceRoot}/src/context/ThemeContext.jsx'
 import { AuthContext } from '/@fs/${sourceRoot}/src/context/AuthContext.jsx'
 import { ToastProvider } from '/@fs/${sourceRoot}/src/context/ToastContext.jsx'
 import MainLayout from '/@fs/${sourceRoot}/src/layouts/MainLayout.jsx'
@@ -146,6 +145,7 @@ const deliveries = Array.from({ length: 10 }, (_, index) => ({
   recorded_by: 'Test Admin',
 }))
 let supplierPostCount = 0
+let supplierPatchCount = 0
 let failNextSupplier = false
 
 globalThis.fetch = async (input, options = {}) => {
@@ -173,6 +173,15 @@ globalThis.fetch = async (input, options = {}) => {
     suppliers = [...suppliers, supplier]
     return Response.json({ success: true, data: { supplier_id: supplierId, is_active: true } })
   }
+  if (statusPath.length === 4 && statusPath[1] === 'api' && statusPath[2] === 'suppliers' && options.method === 'PATCH') {
+    const supplierId = Number(statusPath[3])
+    const supplier = [...suppliers, ...archivedSuppliers].find((item) => item.supplier_id === supplierId)
+    if (!supplier) return Response.json({ success: false, message: 'Supplier not found' }, { status: 404 })
+    supplierPatchCount += 1
+    Object.assign(supplier, JSON.parse(options.body))
+    deliveries.filter((record) => record.supplier_id === supplierId).forEach((record) => { record.supplier_name = supplier.supplier_name })
+    return Response.json({ success: true, data: { ...supplier } })
+  }
   if (path === '/api/stock-in' && (!options.method || options.method === 'GET')) {
     return Response.json({ success: true, data: deliveries })
   }
@@ -192,17 +201,17 @@ globalThis.fetch = async (input, options = {}) => {
 
 globalThis.supplierTestState = {
   get postCount() { return supplierPostCount },
+  get patchCount() { return supplierPatchCount },
+  get suppliers() { return suppliers },
   failNext() { failNextSupplier = true },
 }
 
 createRoot(document.getElementById('root')).render(
   <ToastProvider>
     <AuthContext.Provider value={{ user: { role: 'admin' }, role: 'admin' }}>
-      <ThemeProvider>
-        <MainLayout activeModule="Supplier Contracts" role="admin" user={{ fullname: 'Test Admin' }} onSelect={() => {}} onLogout={() => {}}>
-          <SupplierContracts />
-        </MainLayout>
-      </ThemeProvider>
+      <MainLayout activeModule="Supplier Contracts" role="admin" user={{ fullname: 'Test Admin' }} onSelect={() => {}} onLogout={() => {}}>
+        <SupplierContracts />
+      </MainLayout>
     </AuthContext.Provider>
   </ToastProvider>,
 )
@@ -281,6 +290,12 @@ createRoot(document.getElementById('root')).render(
   await clickByText('Review Supplier')
   assert(await evaluate("document.querySelector('[role=alert]')?.textContent.includes('required')"), 'Required supplier-name validation did not run')
   await setValue('input[name=supplier_name]', 'Central Chicken Traders')
+  await clickByText('Review Supplier')
+  assert(await evaluate("document.querySelector('#supplier-contact-number-error')?.textContent.includes('required') && document.querySelector('#supplier-address-error')?.textContent.includes('required') && supplierTestState.postCount === 0"), 'Required contact number and address validation did not prevent submission')
+  await setValue('input[name=contact_number]', '   ')
+  await setValue('textarea[name=address]', '   ')
+  await clickByText('Review Supplier')
+  assert(await evaluate("document.querySelector('#supplier-contact-number-error')?.textContent.includes('required') && document.querySelector('#supplier-address-error')?.textContent.includes('required')"), 'Whitespace-only required supplier fields were accepted')
   await setValue('input[name=contact_person]', 'Carla Reyes')
   await setValue('input[name=contact_number]', '09190001111')
   await setValue('textarea[name=address]', 'Makati City')
@@ -297,46 +312,65 @@ createRoot(document.getElementById('root')).render(
   await writeFile(join(screenshotRoot, 'desktop-success.png'), screenshot.data, 'base64')
   await clickByText('Done')
   await waitFor("!document.querySelector('[role=dialog]') && document.querySelectorAll('.supplier-card').length === 4")
-  console.log('PASS supplier creation completed')
+
+  await evaluate("(() => { const card = [...document.querySelectorAll('.supplier-card')].find((item) => item.querySelector('h3')?.textContent.trim() === 'Central Chicken Traders'); card.querySelector('.supplier-card-footer .supplier-action-btn').click() })()")
+  await waitFor("Boolean(document.querySelector('.supplier-form-modal'))")
+  assert(await evaluate("document.querySelector('input[name=supplier_name]').value === 'Central Chicken Traders' && document.querySelector('input[name=contact_number]').value === '09190001111' && document.querySelector('textarea[name=address]').value === 'Makati City'"), 'Edit supplier form did not prepopulate saved information')
+  await setValue('input[name=supplier_name]', 'Central Poultry Traders')
+  await setValue('input[name=contact_person]', 'Carla M. Reyes')
+  await setValue('input[name=contact_number]', '+63 (919) 000-1111')
+  await setValue('textarea[name=address]', 'Unit 3, Makati City.')
+  await clickByText('Review Changes')
+  await waitFor("Boolean(document.querySelector('.supplier-review-modal'))")
+  assert(await evaluate("supplierTestState.patchCount === 0 && supplierTestState.suppliers.find((item) => item.supplier_name === 'Central Chicken Traders').supplier_id === 101"), 'Supplier edit submitted before confirmation or changed the existing ID')
+  await clickByText('Confirm Changes')
+  await waitFor("Boolean(document.querySelector('.transaction-success-modal'))")
+  assert(await evaluate("supplierTestState.patchCount === 1 && supplierTestState.suppliers.find((item) => item.supplier_name === 'Central Poultry Traders').supplier_id === 101"), 'Supplier edit did not update the original supplier record')
+  await clickByText('Done')
+  await waitFor("!document.querySelector('[role=dialog]') && document.querySelectorAll('.supplier-card').length === 4")
+  assert(await evaluate("document.querySelector('.supplier-ledger-panel tbody').textContent.includes('Central Poultry Traders')"), 'Supplier delivery history did not refresh to the current supplier name')
+  console.log('PASS supplier creation and editing preserve the original supplier ID')
+  console.log('PASS required contact number/address validation rejects blank and whitespace-only values')
+  console.log('PASS supplier rename refreshes supplier delivery history')
 
   for (const supplierName of ['Luzon Poultry Supply', 'Visayas Cold Chain']) {
-    await evaluate(`(() => { const card = [...document.querySelectorAll('.supplier-card')].find((item) => item.querySelector('h3')?.textContent.trim() === ${JSON.stringify(supplierName)}); card.querySelector('.supplier-card-actions button').click() })()`)
+    await evaluate(`(() => { const card = [...document.querySelectorAll('.supplier-card')].find((item) => item.querySelector('h3')?.textContent.trim() === ${JSON.stringify(supplierName)}); card.querySelector('.supplier-card-footer .supplier-action-btn.danger').click() })()`)
     await waitFor("Boolean(document.querySelector('.supplier-status-modal'))")
     await clickByText('Confirm Archive')
     await waitFor(`[...document.querySelectorAll('.toast-viewport .system-toast.success')].some((toast) => toast.textContent.includes(${JSON.stringify(supplierName)}))`)
   }
   await clickByText('Archived Suppliers')
-  await waitFor("document.querySelectorAll('.supplier-archive-panel .supplier-card').length === 2")
+  await waitFor("document.querySelectorAll('.supplier-archive-drawer .supplier-archive-table tbody tr').length === 2")
   const desktopArchivePanel = await evaluate(`(() => {
-    const panel = document.querySelector('.supplier-archive-panel')
-    const grid = document.querySelector('.supplier-archive-panel .archived-supplier-grid')
+    const panel = document.querySelector('.supplier-archive-drawer')
+    const table = document.querySelector('.supplier-archive-table .table-scroll')
     return {
       width: panel.getBoundingClientRect().width,
-      columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
       scrollable: getComputedStyle(panel).overflowY === 'auto',
-      values: [...document.querySelectorAll('.supplier-archive-panel .supplier-contact-list dd')].every((value) => value.clientWidth > 60 && value.scrollWidth <= value.clientWidth),
+      tableScroll: table.scrollWidth > table.clientWidth,
+      values: [...document.querySelectorAll('.supplier-archive-address')].every((value) => value.clientWidth > 60 && value.scrollWidth <= value.clientWidth),
     }
   })()`)
   assert(desktopArchivePanel.width > 640 && desktopArchivePanel.width <= 800, 'Archived Suppliers panel width was not suitable for desktop')
-  assert(desktopArchivePanel.columns === 2, 'Archived supplier cards did not use two columns on desktop')
-  assert(desktopArchivePanel.scrollable && desktopArchivePanel.values, `Archived supplier panel scrolling or contact text layout was incorrect: ${JSON.stringify(desktopArchivePanel)}`)
+  assert(desktopArchivePanel.scrollable && desktopArchivePanel.tableScroll && desktopArchivePanel.values, `Archived supplier panel scrolling or contact text layout was incorrect: ${JSON.stringify(desktopArchivePanel)}`)
   await browserConnection.command('Emulation.setDeviceMetricsOverride', { width: 700, height: 900, deviceScaleFactor: 1, mobile: false })
   await delay(120)
-  assert(await evaluate("getComputedStyle(document.querySelector('.supplier-archive-panel .archived-supplier-grid')).gridTemplateColumns.split(' ').length === 2"), 'Archived supplier cards did not retain two columns when they fit on tablet')
+  assert(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth'), 'Archived supplier drawer overflowed the tablet viewport')
   await browserConnection.command('Emulation.setDeviceMetricsOverride', { width: 600, height: 900, deviceScaleFactor: 1, mobile: false })
   await delay(120)
-  assert(await evaluate("getComputedStyle(document.querySelector('.supplier-archive-panel .archived-supplier-grid')).gridTemplateColumns.split(' ').length === 1"), 'Archived supplier cards did not collapse to one column when narrow')
-  assert(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth'), 'Archived supplier panel overflowed the narrow viewport')
+  assert(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth'), 'Archived supplier drawer overflowed the narrow viewport')
   await browserConnection.command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false })
-  await evaluate("document.querySelector('.supplier-archive-panel .supplier-card-actions button').click()")
+  await evaluate("document.querySelector('.supplier-archive-restore').click()")
   await waitFor("Boolean(document.querySelector('.supplier-status-modal'))")
-  assert(await evaluate("Number(getComputedStyle(document.querySelector('.modal-backdrop')).zIndex) > Number(getComputedStyle(document.querySelector('.inventory-archived-panel-backdrop')).zIndex)"), 'Restore confirmation appeared behind the archived supplier panel')
+  assert(await evaluate("Number(getComputedStyle(document.querySelector('.modal-backdrop')).zIndex) > Number(getComputedStyle(document.querySelector('.archive-drawer-backdrop')).zIndex)"), 'Restore confirmation appeared behind the archived supplier panel')
   await clickByText('Confirm Restore')
-  await waitFor("!document.querySelector('.supplier-archive-panel') && [...document.querySelectorAll('.toast-viewport .system-toast.success')].some((toast) => toast.textContent.includes('restored'))")
+  await waitFor("!document.querySelector('.supplier-archive-drawer') && [...document.querySelectorAll('.toast-viewport .system-toast.success')].some((toast) => toast.textContent.includes('restored'))")
   console.log('PASS archived supplier panel width, two-column layout, narrow-screen layout, contact readability, restore, and success toast')
 
   await clickByText('Add Supplier')
   await setValue('input[name=supplier_name]', 'Failure Preserved Supplier')
+  await setValue('input[name=contact_number]', '09170000000')
+  await setValue('textarea[name=address]', 'Pasig City')
   await clickByText('Review Supplier')
   await evaluate('supplierTestState.failNext()')
   await clickByText('Confirm Supplier')

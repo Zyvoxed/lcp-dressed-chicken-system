@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
   BarChart3,
-  Building2,
   Filter,
   Layers,
   PackageCheck,

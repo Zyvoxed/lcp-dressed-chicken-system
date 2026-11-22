@@ -6,9 +6,10 @@ import StatCard from "../Shared/StatCard.jsx";
 import StatusBadge from "../Shared/StatusBadge.jsx";
 import { UsersRound, WalletCards } from "lucide-react";
 import {
+  getAllReceivablesReport,
+  getAllSalesReport,
   getReceivablesReport,
   getSalesReport,
-  getSalesReportDetail,
   logReportExport,
 } from "../../services/reportService.js";
 import { exportCsv, manilaDateStamp } from "../../utils/csvExport.js";
@@ -55,44 +56,28 @@ function historicalDateRange(filters) {
   };
 }
 
-async function loadHistoricalRecords(filters, signal) {
+function normalizeHistoricalRecords(report) {
+  const records = []
+  for (const sale of report.records ?? []) {
+    if (sale.payment_type !== "Credit") continue
+    const originalAmountCents = cents(sale.total_amount, "the original credit amount")
+    const paidToDateCents = cents(sale.amount_paid, "the initial amount paid")
+    const laterPaymentsCents = cents(sale.later_payments_total, "the payment history")
+    const initialPaidCents = paidToDateCents - laterPaymentsCents
+    if (initialPaidCents < 0 || initialPaidCents > originalAmountCents) {
+      throw new Error(`Unable to calculate the initial amount paid for credit sale ${sale.sale_id}.`)
+    }
+    records.push({ ...sale, amount_initially_paid: (initialPaidCents / 100).toFixed(2) })
+  }
+  return records
+}
+
+async function loadHistoricalRecords(filters, signal, page = 1, search = '') {
   const report = await getSalesReport(
-    { ...filters, payment_type: "Credit" },
+    { ...filters, payment_type: "Credit", page, page_size: 25, search },
     { signal },
   );
-  const uniqueSales = new Map();
-  for (const sale of report.records ?? []) {
-    if (sale.payment_type === "Credit") {
-      uniqueSales.set(String(sale.sale_id), sale);
-    }
-  }
-
-  return Promise.all([...uniqueSales.values()].map(async (sale) => {
-    const details = await getSalesReportDetail(sale.sale_id, { signal });
-    if (!details?.sale || Number(details.sale.sale_id) !== Number(sale.sale_id)) {
-      throw new Error(`Unable to verify details for credit sale ${sale.sale_id}.`);
-    }
-    if (!Array.isArray(details.payments)) {
-      throw new Error(`Unable to verify payment history for credit sale ${sale.sale_id}.`);
-    }
-
-    const originalAmountCents = cents(sale.total_amount, "the original credit amount");
-    const paidToDateCents = cents(details.sale.amount_paid, "the initial amount paid");
-    const laterPaymentsCents = details.payments.reduce(
-      (total, payment) => total + cents(payment.payment_amount, "the initial amount paid"),
-      0,
-    );
-    const initialPaidCents = paidToDateCents - laterPaymentsCents;
-    if (initialPaidCents < 0 || initialPaidCents > originalAmountCents) {
-      throw new Error(`Unable to calculate the initial amount paid for credit sale ${sale.sale_id}.`);
-    }
-
-    return {
-      ...sale,
-      customer_id: details.sale.customer_id,
-      amount_initially_paid: (initialPaidCents / 100).toFixed(2),
-    };
-  }));
+  return { ...report, records: normalizeHistoricalRecords(report) }
 }
 
 function ReceivablesLedger() {
@@ -102,6 +87,13 @@ function ReceivablesLedger() {
   const [historicalFilters, setHistoricalFilters] = useState(emptyHistoricalFilters);
   const [historicalMode, setHistoricalMode] = useState(false);
   const [historicalRecords, setHistoricalRecords] = useState(null);
+  const [historicalPagination, setHistoricalPagination] = useState(null);
+  const [historicalSummary, setHistoricalSummary] = useState(null);
+  const [historicalQuery, setHistoricalQuery] = useState(null);
+  const [historicalSearch, setHistoricalSearch] = useState('');
+  const currentPageController = useRef(null);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const historicalSearchTimer = useRef(null);
   const [historicalPeriod, setHistoricalPeriod] = useState("");
   const [historicalLoading, setHistoricalLoading] = useState(false);
   const [historicalError, setHistoricalError] = useState("");
@@ -109,7 +101,7 @@ function ReceivablesLedger() {
 
   useEffect(() => {
     const controller = new AbortController();
-    getReceivablesReport({ signal: controller.signal })
+    getReceivablesReport({ page: 1, page_size: 25, search: '' }, { signal: controller.signal })
       .then(setReport)
       .catch((requestError) => {
         if (requestError.name !== "AbortError") setError(requestError.message);
@@ -120,6 +112,7 @@ function ReceivablesLedger() {
     return () => {
       controller.abort();
       historicalController.current?.abort();
+      window.clearTimeout(historicalSearchTimer.current);
     };
   }, []);
 
@@ -141,8 +134,11 @@ function ReceivablesLedger() {
     setHistoricalLoading(true);
 
     try {
-      const records = await loadHistoricalRecords(dateRange, controller.signal);
-      setHistoricalRecords(records);
+      const result = await loadHistoricalRecords(dateRange, controller.signal, 1, historicalSearch);
+      setHistoricalRecords(result.records);
+      setHistoricalPagination(result.pagination);
+      setHistoricalSummary(result.summary);
+      setHistoricalQuery(dateRange);
       setHistoricalPeriod(
         dateRange.start_date || dateRange.end_date
           ? `${dateRange.start_date || "Beginning"} to ${dateRange.end_date || "Present"}`
@@ -158,13 +154,56 @@ function ReceivablesLedger() {
   }
 
   function clearHistoricalFilter() {
+    window.clearTimeout(historicalSearchTimer.current)
     historicalController.current?.abort();
     setHistoricalFilters(emptyHistoricalFilters);
     setHistoricalMode(false);
     setHistoricalRecords(null);
+    setHistoricalPagination(null);
+    setHistoricalSummary(null);
+    setHistoricalQuery(null);
+    setHistoricalSearch('');
     setHistoricalPeriod("");
     setHistoricalLoading(false);
     setHistoricalError("");
+  }
+
+  function scheduleHistoricalSearch(value) {
+    setHistoricalSearch(value)
+    window.clearTimeout(historicalSearchTimer.current)
+    historicalSearchTimer.current = window.setTimeout(async () => {
+      if (!historicalMode || !historicalQuery) return
+      historicalController.current?.abort()
+      const controller = new AbortController()
+      historicalController.current = controller
+      setHistoricalLoading(true)
+      setHistoricalError('')
+      try {
+        const result = await loadHistoricalRecords(historicalQuery, controller.signal, 1, value)
+        setHistoricalRecords(result.records)
+        setHistoricalPagination(result.pagination)
+        setHistoricalSummary(result.summary)
+      } catch (searchError) {
+        if (searchError.name !== 'AbortError') setHistoricalError(searchError.message)
+      } finally {
+        if (!controller.signal.aborted) setHistoricalLoading(false)
+      }
+    }, 250)
+  }
+
+  async function loadCurrentPage(page) {
+    currentPageController.current?.abort()
+    const controller = new AbortController()
+    currentPageController.current = controller
+    setError('')
+    setLoading(true)
+    try {
+      setReport(await getReceivablesReport({ page, page_size: 25, search: customerSearch }, { signal: controller.signal }))
+    } catch (requestError) {
+      if (requestError.name !== 'AbortError') setError(requestError.message)
+    } finally {
+      if (!controller.signal.aborted) setLoading(false)
+    }
   }
 
   async function download() {
@@ -177,6 +216,8 @@ function ReceivablesLedger() {
     }
 
     if (historicalMode) {
+      const completeReport = await getAllSalesReport({ ...historicalQuery, payment_type: "Credit" });
+      const completeRecords = normalizeHistoricalRecords(completeReport);
       exportCsv(
         `historical-credit-report-${manilaDateStamp()}.csv`,
         [
@@ -188,7 +229,7 @@ function ReceivablesLedger() {
           "Current Remaining Balance",
           "Current Payment Status",
         ],
-        historicalRecords.map((sale) => [
+        completeRecords.map((sale) => [
           `OR-${sale.sale_id}`,
           formatActivityTimestamp(sale.sale_date).dateTime,
           sale.customer_name,
@@ -201,6 +242,7 @@ function ReceivablesLedger() {
       return;
     }
 
+    const completeReport = await getAllReceivablesReport();
     exportCsv(
       `receivables-report-${manilaDateStamp()}.csv`,
       [
@@ -211,7 +253,7 @@ function ReceivablesLedger() {
         "Unpaid Credit Sales",
         "Oldest Unpaid Sale",
       ],
-      report.records.map((customer) => [
+      completeReport.records.map((customer) => [
         customer.customer_name,
         customer.contact_number,
         customer.address,
@@ -249,12 +291,7 @@ function ReceivablesLedger() {
       "Oldest Unpaid Sale",
     ];
   const historicalCreditTotal = historicalMode
-    ? peso.format(
-      historicalRecords.reduce(
-        (totalCents, sale) => totalCents + cents(sale.total_amount, "the original credit amount"),
-        0,
-      ) / 100,
-    )
+    ? peso.format(Number(historicalSummary?.gross_sales || 0))
     : null;
   return (
     <div className="report-tab-content">
@@ -263,7 +300,7 @@ function ReceivablesLedger() {
           icon={UsersRound}
           label={historicalMode ? "Credit Transactions" : "Current Customers with Balance"}
           value={historicalMode
-            ? historicalRecords.length.toLocaleString("en-PH")
+            ? Number(historicalPagination?.total_records || 0).toLocaleString("en-PH")
             : Number(report.summary.customers_with_balance).toLocaleString("en-PH")}
         />
         <StatCard
@@ -304,7 +341,20 @@ function ReceivablesLedger() {
               key={historicalMode ? "historical" : "current"}
               columns={tableColumns}
               rows={tableRows}
-              pageSize={10}
+              pageSize={25}
+              externalPagination
+              searchQuery={historicalMode ? undefined : customerSearch}
+              onSearchChange={historicalMode ? scheduleHistoricalSearch : (value) => {
+                setCustomerSearch(value)
+                currentPageController.current?.abort()
+                const controller = new AbortController()
+                currentPageController.current = controller
+                setLoading(true)
+                getReceivablesReport({ page: 1, page_size: 25, search: value }, { signal: controller.signal })
+                  .then(setReport)
+                  .catch((searchError) => { if (searchError.name !== 'AbortError') setError(searchError.message) })
+                  .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+              }}
               searchPlaceholder={historicalMode ? "Search credit transactions" : "Search customers"}
               getSortValue={(record, index) => (
                 historicalMode
@@ -368,6 +418,46 @@ function ReceivablesLedger() {
               )}
             />
           )}
+          {((historicalMode && historicalPagination?.total_pages > 1)
+            || (!historicalMode && report.pagination?.total_pages > 1)) && <div className="table-pagination" aria-label="Receivables report pages">
+            {historicalMode ? (
+              <>
+                <span>Page {historicalPagination.page} of {historicalPagination.total_pages}</span>
+                <div>
+                  <button type="button" aria-label="Previous page" disabled={historicalLoading || historicalPagination.page <= 1} onClick={async () => {
+                    const controller = new AbortController()
+                    historicalController.current?.abort()
+                    historicalController.current = controller
+                    setHistoricalLoading(true)
+                    try {
+                      const next = await loadHistoricalRecords(historicalQuery, controller.signal, historicalPagination.page - 1, historicalSearch)
+                      setHistoricalRecords(next.records); setHistoricalPagination(next.pagination); setHistoricalSummary(next.summary)
+                    } catch (pageError) { if (pageError.name !== 'AbortError') setHistoricalError(pageError.message) }
+                    finally { if (!controller.signal.aborted) setHistoricalLoading(false) }
+                  }}>&lsaquo;</button>
+                  <button type="button" aria-label="Next page" disabled={historicalLoading || historicalPagination.page >= historicalPagination.total_pages} onClick={async () => {
+                    const controller = new AbortController()
+                    historicalController.current?.abort()
+                    historicalController.current = controller
+                    setHistoricalLoading(true)
+                    try {
+                      const next = await loadHistoricalRecords(historicalQuery, controller.signal, historicalPagination.page + 1, historicalSearch)
+                      setHistoricalRecords(next.records); setHistoricalPagination(next.pagination); setHistoricalSummary(next.summary)
+                    } catch (pageError) { if (pageError.name !== 'AbortError') setHistoricalError(pageError.message) }
+                    finally { if (!controller.signal.aborted) setHistoricalLoading(false) }
+                  }}>&rsaquo;</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <span>Page {report.pagination.page} of {report.pagination.total_pages}</span>
+                <div>
+                  <button type="button" aria-label="Previous page" disabled={loading || report.pagination.page <= 1} onClick={() => loadCurrentPage(report.pagination.page - 1)}>&lsaquo;</button>
+                  <button type="button" aria-label="Next page" disabled={loading || report.pagination.page >= report.pagination.total_pages} onClick={() => loadCurrentPage(report.pagination.page + 1)}>&rsaquo;</button>
+                </div>
+              </>
+            )}
+          </div>}
         </article>
         <form className="receipt-panel report-filter-panel" onSubmit={applyHistoricalFilter}>
           <div className="report-heading report-filter-heading">
@@ -395,7 +485,7 @@ function ReceivablesLedger() {
           {historicalError && <p className="report-inline-error" role="alert">{historicalError}</p>}
           {historicalLoading && <LoadingSpinner />}
           <button className="secondary-action" type="submit" disabled={historicalLoading}>
-            {historicalLoading ? "Generating…" : "Generate Report"}
+            {historicalLoading ? "Generating…" : "Apply Filters"}
           </button>
           <button className="secondary-action" type="button" onClick={clearHistoricalFilter}>
             Clear Filters

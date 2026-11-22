@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Header from "./Header.jsx";
 import Sidebar from "./Sidebar.jsx";
 
@@ -24,6 +24,23 @@ function MainLayout({
   const closeMobile = useCallback(() => {
     setMobileOpen(false);
   }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") closeMobile();
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [closeMobile, mobileOpen]);
 
   function handleSelect(label) {
     onSelect(label);

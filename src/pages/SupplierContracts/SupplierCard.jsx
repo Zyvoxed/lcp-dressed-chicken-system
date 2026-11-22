@@ -1,7 +1,7 @@
-import { Archive, Building2, MapPin, PackageCheck, Phone, RotateCcw, User, Wallet } from 'lucide-react'
+import { Archive, Building2, MapPin, PackageCheck, Pencil, Phone, RotateCcw, User, Wallet } from 'lucide-react'
 import { peso } from '../../utils/currency.js'
 
-function SupplierCard({ supplier, records = [], archived = false, isAdmin = false, onArchive, onRestore }) {
+function SupplierCard({ supplier, records = [], archived = false, isAdmin = false, onEdit, onArchive, onRestore }) {
   const totalSpend = records.reduce((sum, record) => sum + Number(record.total_cost || 0), 0)
   const totalVolume = records.reduce((sum, record) => sum + Number(record.quantity_received || 0), 0)
 
@@ -85,14 +85,24 @@ function SupplierCard({ supplier, records = [], archived = false, isAdmin = fals
               <span>Restore Supplier</span>
             </button>
           ) : (
-            <button
-              className="secondary-action slim supplier-action-btn danger"
-              type="button"
-              onClick={() => onArchive(supplier)}
-            >
-              <Archive size={13} aria-hidden="true" />
-              <span>Archive Supplier</span>
-            </button>
+            <>
+              <button
+                className="secondary-action slim supplier-action-btn"
+                type="button"
+                onClick={() => onEdit(supplier)}
+              >
+                <Pencil size={13} aria-hidden="true" />
+                <span>Edit Supplier</span>
+              </button>
+              <button
+                className="secondary-action slim supplier-action-btn danger"
+                type="button"
+                onClick={() => onArchive(supplier)}
+              >
+                <Archive size={13} aria-hidden="true" />
+                <span>Archive Supplier</span>
+              </button>
+            </>
           )}
         </footer>
       )}

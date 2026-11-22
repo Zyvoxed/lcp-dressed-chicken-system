@@ -397,6 +397,8 @@
 .supplier-card-footer {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--border);
 }
@@ -786,6 +788,17 @@
   background: var(--danger-bg);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.supplier-form > label .supplier-form-error {
+  padding: 0;
+  border: 0;
+  color: var(--status-danger-text);
+  background: transparent;
+}
+
+.supplier-form > label :is(input, textarea)[aria-invalid="true"] {
+  border-color: var(--danger-border);
 }
 
 .supplier-save-button {

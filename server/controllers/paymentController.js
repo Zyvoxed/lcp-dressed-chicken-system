@@ -10,6 +10,7 @@ import {
   saveIdempotentResponse,
 } from '../utils/idempotency.js'
 import { centsToAmount, toCents } from '../utils/money.js'
+import { toManilaDateTime } from '../utils/manilaDateTime.js'
 import { resolveTransactionFailure } from '../utils/transactionFailure.js'
 
 class PaymentError extends Error {
@@ -103,7 +104,7 @@ export async function recordPayment(request, response) {
     const [result] = await connection.execute(
       `INSERT INTO payments (sale_id, customer_id, user_id, payment_amount, remaining_balance, payment_date)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [saleId, sale.customer_id, request.user.user_id, paymentValue, newRemaining, new Date()],
+      [saleId, sale.customer_id, request.user.user_id, paymentValue, newRemaining, toManilaDateTime()],
     )
     await connection.execute(
       `INSERT INTO activity_logs (user_id, action, description, created_at)

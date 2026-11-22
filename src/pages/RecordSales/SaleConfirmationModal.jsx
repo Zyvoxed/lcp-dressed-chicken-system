@@ -5,7 +5,7 @@ import {
   transactionLineCents,
 } from '../../utils/transactionMoney.js'
 
-function SaleConfirmationModal({ cart, customer, paymentType, totalCents, amountPaidCents, submitting, error, onCancel, onConfirm }) {
+function SaleConfirmationModal({ cart, customer, paymentType, totalCents, amountPaidCents, changeCents, submitting, error, onCancel, onConfirm }) {
   const remainingBalanceCents = totalCents - amountPaidCents
   const customerDetails = [
     { label: 'Customer type', value: paymentType === 'Cash' ? 'Walk-in' : 'Credit Supplier' },
@@ -44,8 +44,18 @@ function SaleConfirmationModal({ cart, customer, paymentType, totalCents, amount
         <h3 id="confirmation-payment-heading">Payment Details</h3>
         <dl className="transaction-detail-list confirmation-details">
           <div><dt>Payment method</dt><dd>{paymentType}</dd></div>
-          <div><dt>Amount paid</dt><dd>{formatTransactionCents(amountPaidCents, peso)}</dd></div>
-          {paymentType === 'Credit' && <div><dt>Remaining balance for this sale</dt><dd>{formatTransactionCents(remainingBalanceCents, peso)}</dd></div>}
+          {paymentType === 'Cash' ? (
+            <>
+              <div><dt>Amount received</dt><dd>{formatTransactionCents(amountPaidCents, peso)}</dd></div>
+              <div><dt>Amount applied to sale</dt><dd>{formatTransactionCents(totalCents, peso)}</dd></div>
+              <div><dt>Change returned</dt><dd>{formatTransactionCents(changeCents, peso)}</dd></div>
+            </>
+          ) : (
+            <>
+              <div><dt>Amount paid</dt><dd>{formatTransactionCents(amountPaidCents, peso)}</dd></div>
+              <div><dt>Remaining balance for this sale</dt><dd>{formatTransactionCents(remainingBalanceCents, peso)}</dd></div>
+            </>
+          )}
         </dl>
       </section>
       <section className="confirmation-section confirmation-total-section" aria-labelledby="confirmation-total-heading">

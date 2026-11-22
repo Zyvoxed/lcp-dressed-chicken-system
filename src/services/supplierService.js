@@ -68,3 +68,20 @@ export async function createSupplier(data) {
 
   return result.data
 }
+
+export async function updateSupplier(id, data) {
+  const response = await authenticatedApiFetch(`/suppliers/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  })
+  const result = await parseResponse(response, 'Unable to update supplier')
+
+  if (!result.data || String(result.data.supplier_id) !== String(id)) {
+    throw new Error('The supplier result could not be read. Check the supplier list before trying again.')
+  }
+
+  return result.data
+}

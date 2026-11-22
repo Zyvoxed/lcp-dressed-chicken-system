@@ -6,7 +6,7 @@ import { toTransactionCents } from '../../utils/transactionMoney.js'
 import { buildMonotonePath } from '../../utils/chartPaths.js'
 import { getMonthlyIndexesForYear } from '../../utils/monthlyChartPeriods.js'
 import EmptyState from '../Shared/EmptyState.jsx'
-import { getSalesReport } from '../../services/reportService.js'
+import { getAllSalesReport } from '../../services/reportService.js'
 
 const chart = { height: 310, left: 72, right: 18, top: 24, bottom: 48 }
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -88,7 +88,7 @@ function SalesChart() {
 
   useEffect(() => {
     const controller = new AbortController()
-    getSalesReport({}, { signal: controller.signal }).then((report) => {
+    getAllSalesReport({}, { signal: controller.signal }).then((report) => {
       const normalizedSales = normalizeSales(report.records || [])
       setSales(normalizedSales)
       const availableYears = normalizedSales.map((sale) => sale.year)
@@ -276,7 +276,7 @@ function SalesChart() {
       {activePoint && createPortal(
         <div
           ref={tooltipRef}
-          className={`dashboard-product-sales-tooltip ${pointerRef.current?.y > 150 ? 'above' : 'below'}`}
+          className="dashboard-product-sales-tooltip below"
           role="tooltip"
           style={{ '--tooltip-color': 'var(--primary)' }}
         >

@@ -50,7 +50,9 @@ function SalesBasket({
   recoveryError,
 }) {
   const { showSuccess, showError } = useToast()
-  const [amountPaid, setAmountPaid] = useState(() => pendingSale ? String(pendingSale.payload.amount_paid) : '')
+  const [amountPaid, setAmountPaid] = useState(() => pendingSale
+    ? String(pendingSale.display?.amount_received ?? pendingSale.payload.amount_paid)
+    : '')
   const [paymentType, setPaymentType] = useState(() => pendingSale?.payload.payment_type || 'Cash')
   const [confirmationOpen, setConfirmationOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -85,6 +87,9 @@ function SalesBasket({
   const previewRemainingCents = amountPaidCents !== null && amountPaidCents <= totalCents
     ? totalCents - amountPaidCents
     : totalCents
+  const cashChangeCents = amountPaidCents !== null && amountPaidCents > totalCents
+    ? amountPaidCents - totalCents
+    : 0n
 
   const isExactCash = paymentType === 'Cash' && totalCents > 0n && amountPaidCents === totalCents
 
@@ -118,14 +123,19 @@ function SalesBasket({
       showError('Enter a valid amount paid with no more than two decimal places.')
       return
     }
-    if (amountPaidCents > totalCents) {
+    if (amountPaidCents > maximumTransactionCents) {
+      setError('Amount cannot exceed ₱9,999,999,999.99.')
+      showError('Amount cannot exceed ₱9,999,999,999.99.')
+      return
+    }
+    if (paymentType === 'Credit' && amountPaidCents > totalCents) {
       setError('Amount paid cannot exceed the sale total.')
       showError('Amount paid cannot exceed the sale total.')
       return
     }
-    if (paymentType === 'Cash' && amountPaidCents !== totalCents) {
-      setError('Cash payment must equal the full sale total.')
-      showError('Cash payment must equal the full sale total.')
+    if (paymentType === 'Cash' && amountPaidCents < totalCents) {
+      setError('Cash received must cover the full sale total.')
+      showError('Cash received must cover the full sale total.')
       return
     }
     if (paymentType === 'Credit' && !selectedCustomer) {
@@ -152,7 +162,7 @@ function SalesBasket({
           payload: {
             customer_id: customerId ? Number(customerId) : null,
             payment_type: paymentType,
-            amount_paid: amountPaid,
+            amount_paid: paymentType === 'Cash' ? transactionCentsToAmount(totalCents) : amountPaid,
             items: cart.map((item) => ({ product_id: item.product_id, quantity: item.quantity })),
           },
           display: {
@@ -167,6 +177,7 @@ function SalesBasket({
             })),
             customer_id: customerId || null,
             customer_name: selectedCustomer?.customer_name || null,
+            amount_received: paymentType === 'Cash' ? amountPaid : null,
           },
         }
       }
@@ -242,6 +253,12 @@ function SalesBasket({
     { label: 'Transaction total', value: peso.format(Number(successResult.total_amount)) },
     { label: 'Payment method', value: successResult.paymentType },
     { label: 'Amount paid', value: peso.format(Number(successResult.amount_paid)) },
+    ...(successResult.paymentType === 'Cash'
+      ? [
+        { label: 'Amount received', value: formatTransactionCents(amountPaidCents ?? 0n, peso) },
+        { label: 'Change returned', value: formatTransactionCents(cashChangeCents, peso) },
+      ]
+      : []),
     ...(Number(successResult.remaining_balance) > 0
       ? [{ label: 'Remaining balance', value: peso.format(Number(successResult.remaining_balance)) }]
       : []),
@@ -437,7 +454,7 @@ function SalesBasket({
           {/* Amount Paid Input & Quick Cash Preset */}
           <div className="pos-amount-field-wrap">
             <label className="pos-field-label">
-              <span>{paymentType === 'Cash' ? 'Cash Received (Exact Amount)' : 'Amount Paid (Deposit)'}</span>
+              <span>{paymentType === 'Cash' ? 'Cash Received' : 'Amount Paid (Deposit)'}</span>
               <div className="pos-input-currency-wrap">
                 <span className="currency-prefix" aria-hidden="true">₱</span>
                 <FormattedNumberInput
@@ -485,9 +502,15 @@ function SalesBasket({
             <strong>{formatTransactionCents(totalCents, peso)}</strong>
           </div>
           <div>
-            <span>Amount Paid</span>
-            <strong>{peso.format(Number.isFinite(numericAmountPaid) ? numericAmountPaid : 0)}</strong>
+            <span>{paymentType === 'Cash' ? 'Amount Received' : 'Amount Paid'}</span>
+            <strong>{formatTransactionCents(amountPaidCents ?? 0n, peso)}</strong>
           </div>
+          {paymentType === 'Cash' && (
+            <div className="sale-summary-balance">
+              <span>Change</span>
+              <strong>{formatTransactionCents(cashChangeCents, peso)}</strong>
+            </div>
+          )}
           {paymentType === 'Credit' && (
             <div className="sale-summary-balance">
               <span>Remaining Balance</span>
@@ -495,7 +518,7 @@ function SalesBasket({
             </div>
           )}
           <div className="sale-summary-total">
-            <span>Final Transaction Total</span>
+            <span>Total Amount Due</span>
             <strong>{formatTransactionCents(totalCents, peso)}</strong>
           </div>
         </div>
@@ -527,6 +550,7 @@ function SalesBasket({
           paymentType={paymentType}
           totalCents={totalCents}
           amountPaidCents={amountPaidCents ?? 0n}
+          changeCents={cashChangeCents}
           submitting={submitting}
           error={error}
           onCancel={() => { if (!submitting) { setConfirmationOpen(false); setError('') } }}

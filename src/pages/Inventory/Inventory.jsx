@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Archive, X } from 'lucide-react'
+import { Archive } from 'lucide-react'
 import {
   archiveProduct,
   getArchivedProducts,

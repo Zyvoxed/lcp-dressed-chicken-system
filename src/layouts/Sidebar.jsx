@@ -40,7 +40,7 @@ const navGroups = [
   { label: "SYSTEM", items: ["User Accounts", "Activity Logs"] },
 ];
 
-function Sidebar({ activeModule, onSelect, onLogout, role, collapsed, mobileOpen }) {
+function Sidebar({ activeModule, onSelect, role, collapsed, mobileOpen }) {
   const navRef = useRef(null);
   const activeItemRef = useRef(null);
   const [activeIndicatorStyle, setActiveIndicatorStyle] = useState({ opacity: 0 });

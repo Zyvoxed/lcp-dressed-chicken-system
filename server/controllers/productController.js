@@ -288,17 +288,12 @@ export async function updateProduct(request, response) {
 
 export async function getProducts(request, response) {
   try {
+    const fields = request.user?.role === 'Staff'
+      ? `product_id, product_name, category, unit, selling_price, stock_quantity`
+      : `product_id, product_name, category, unit, selling_price, stock_quantity, reorder_level, status, created_at`
     const [products] = await pool.query(`
       SELECT
-          product_id,
-          product_name,
-          category,
-          unit,
-          selling_price,
-          stock_quantity,
-          reorder_level,
-          status,
-          created_at
+          ${fields}
       FROM products
       WHERE is_active = TRUE
       ORDER BY product_name ASC;

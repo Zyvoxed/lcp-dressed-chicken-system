@@ -269,6 +269,8 @@ test('valid two-decimal standalone payments retain existing balance updates', as
     assert.equal(response.payload.data.remaining_balance, '14.50')
     assert.equal(state.committed, true)
     assert.equal(state.rolledBack, false)
+    const paymentWrite = state.writes.find((write) => write.sql.startsWith('INSERT INTO payments'))
+    assert.match(paymentWrite.parameters[5], /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
   } finally {
     pool.getConnection = originalGetConnection
   }

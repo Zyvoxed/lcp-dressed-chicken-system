@@ -33,6 +33,9 @@ function DataTable({
   searchPlaceholder = 'Search records',
   toolbarContent = null,
   nonSortableColumns = [],
+  externalPagination = false,
+  searchQuery,
+  onSearchChange,
 }) {
   const [query, setQuery] = useState('')
   const [sortConfig, setSortConfig] = useState({ index: null, direction: 'asc' })
@@ -40,7 +43,7 @@ function DataTable({
   const safeRows = useMemo(() => rows ?? [], [rows])
 
   const processedRows = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
+    const normalizedQuery = (onSearchChange ? '' : query).trim().toLowerCase()
     const filteredRows = normalizedQuery
       ? safeRows.filter((row) => Object.values(row ?? {}).join(' ').toLowerCase().includes(normalizedQuery))
       : safeRows
@@ -54,11 +57,13 @@ function DataTable({
 
       return sortConfig.direction === 'asc' ? result : -result
     })
-  }, [getSortValue, query, safeRows, sortConfig])
+  }, [getSortValue, onSearchChange, query, safeRows, sortConfig])
 
   const pageCount = Math.max(Math.ceil(processedRows.length / pageSize), 1)
   const visiblePage = Math.min(currentPage, pageCount)
-  const pageRows = processedRows.slice((visiblePage - 1) * pageSize, visiblePage * pageSize)
+  const pageRows = externalPagination
+    ? processedRows
+    : processedRows.slice((visiblePage - 1) * pageSize, visiblePage * pageSize)
   const startRow = processedRows.length ? (visiblePage - 1) * pageSize + 1 : 0
   const endRow = Math.min(visiblePage * pageSize, processedRows.length)
 
@@ -77,10 +82,11 @@ function DataTable({
           <label className="table-search">
             <Search size={15} aria-hidden="true" />
             <input
-              value={query}
+              value={searchQuery ?? query}
               placeholder={searchPlaceholder}
               onChange={(event) => {
-                setQuery(event.target.value)
+                if (onSearchChange) onSearchChange(event.target.value)
+                else setQuery(event.target.value)
                 setCurrentPage(1)
               }}
               aria-label={searchPlaceholder}
@@ -89,7 +95,7 @@ function DataTable({
           {toolbarContent}
         </div>
       )}
-      <div className="table-scroll">
+      <div className="table-scroll" role="region" aria-label="Scrollable data table" tabIndex={0}>
         <table className="system-data-table">
           <thead>
             <tr>
@@ -134,7 +140,7 @@ function DataTable({
           </tbody>
         </table>
       </div>
-      <div className="table-pagination">
+      {!externalPagination && <div className="table-pagination">
         <span>
           Showing {startRow}-{endRow} of {processedRows.length}
         </span>
@@ -157,7 +163,7 @@ function DataTable({
             <ChevronRight size={16} aria-hidden="true" />
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }

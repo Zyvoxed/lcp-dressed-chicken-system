@@ -13,6 +13,7 @@ import salesRoutes from './routes/salesRoutes.js'
 import stockInRoutes from './routes/stockInRoutes.js'
 import supplierRoutes from './routes/supplierRoutes.js'
 import userRoutes from './routes/userRoutes.js'
+import pool from './config/database.js'
 
 const app = express()
 
@@ -48,6 +49,15 @@ app.get('/api/health', (request, response) => {
     success: true,
     message: 'LCP API is running',
   })
+})
+
+app.get('/api/ready', async (request, response) => {
+  try {
+    await pool.query('SELECT 1')
+    return response.json({ success: true, ready: true })
+  } catch {
+    return response.status(503).json({ success: false, ready: false, message: 'Service temporarily unavailable' })
+  }
 })
 
 export default app

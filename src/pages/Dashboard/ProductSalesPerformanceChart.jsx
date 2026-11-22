@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  BarChart3,
   Boxes,
   Check,
   ChevronDown,
-  RotateCcw,
   Search,
   TrendingUp,
   X,
 } from 'lucide-react'
 import EmptyState from '../Shared/EmptyState.jsx'
-import { getSalesReport, getSalesReportDetail } from '../../services/reportService.js'
+import { getProductSalesReport } from '../../services/reportService.js'
 import { buildMonotonePath } from '../../utils/chartPaths.js'
 import {
   getCurrentReportingYear,
@@ -38,18 +36,6 @@ const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 
 const chartSize = SALES_CHART_LAYOUT
 
-function yearInManila(value) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return Number(new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', year: 'numeric' }).format(date))
-}
-
-function monthInManila(value) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return Number(new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', month: 'numeric' }).format(date)) - 1
-}
-
 function formatKgAxis(value) {
   const num = Number(value) || 0
   if (num >= 1000) {
@@ -64,7 +50,11 @@ function formatKgValue(value) {
 }
 
 function ProductSalesPerformanceChart({ products = [] }) {
-  const [selectedProductIds, setSelectedProductIds] = useState([])
+  const [selectedProductIds, setSelectedProductIds] = useState(null)
+  const activeProductIds = useMemo(
+    () => selectedProductIds ?? products.slice(0, 5).map((product) => String(product.product_id)),
+    [products, selectedProductIds],
+  )
 
   const [periodMode, setPeriodMode] = useState('monthly')
   const [selectedYear, setSelectedYear] = useState(null)
@@ -77,14 +67,6 @@ function ProductSalesPerformanceChart({ products = [] }) {
   const [tooltip, setTooltip] = useState(null)
 
   const dropdownRef = useRef(null)
-
-  // Default selection: select current Top 5 Selling Products once products are available
-  useEffect(() => {
-    if (products.length && selectedProductIds.length === 0) {
-      const top5 = products.slice(0, 5).map((p) => String(p.product_id))
-      setSelectedProductIds(top5)
-    }
-  }, [products])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -99,7 +81,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [dropdownOpen])
 
-  // Fetch all sales and detailed items once on mount
+  // Load pre-aggregated sales quantities for the selected products.
   useEffect(() => {
     const controller = new AbortController()
     let isActive = true
@@ -109,10 +91,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
       setSalesError('')
 
       try {
-        const report = await getSalesReport({}, { signal: controller.signal })
-        const records = report?.records || []
-
-        if (!records.length) {
+        if (!activeProductIds.length) {
           if (isActive) {
             const currentYear = getCurrentReportingYear()
             setSalesItems([])
@@ -122,11 +101,9 @@ function ProductSalesPerformanceChart({ products = [] }) {
           }
           return
         }
-
-        // Extract available years
-        const extractedYears = Array.from(
-          new Set(records.map((r) => yearInManila(r.sale_date)).filter(Boolean)),
-        ).sort((a, b) => b - a)
+        const report = await getProductSalesReport(activeProductIds.map(Number), null, { signal: controller.signal })
+        const records = report?.records || []
+        const extractedYears = Array.from(new Set(records.map((record) => Number(record.sale_year)).filter(Number.isInteger))).sort((a, b) => b - a)
 
         const defaultYear = extractedYears.length ? extractedYears[0] : getCurrentReportingYear()
 
@@ -135,42 +112,12 @@ function ProductSalesPerformanceChart({ products = [] }) {
           setSelectedYear(defaultYear)
         }
 
-        // Fetch details concurrently with worker pool
-        const collectedItems = []
-        let nextIndex = 0
-        const workerCount = Math.min(records.length, 6)
-
-        async function worker() {
-          while (nextIndex < records.length) {
-            const record = records[nextIndex]
-            nextIndex += 1
-
-            try {
-              const detail = await getSalesReportDetail(record.sale_id, { signal: controller.signal })
-              const saleDate = detail?.sale?.sale_date || record.sale_date
-              const yr = yearInManila(saleDate)
-              const mo = monthInManila(saleDate)
-
-              for (const item of detail?.items || []) {
-                const qty = Number(item.quantity)
-                if (Number.isFinite(qty)) {
-                  collectedItems.push({
-                    saleId: record.sale_id,
-                    year: yr,
-                    month: mo,
-                    productId: String(item.product_id),
-                    quantity: qty,
-                  })
-                }
-              }
-            } catch (err) {
-              // Ignore abort or continue with remaining records
-              if (err.name === 'AbortError') return
-            }
-          }
-        }
-
-        await Promise.all(Array.from({ length: workerCount }, () => worker()))
+        const collectedItems = records.map((record) => ({
+          year: Number(record.sale_year),
+          month: Number(record.sale_month) - 1,
+          productId: String(record.product_id),
+          quantity: Number(record.quantity_sold),
+        })).filter((item) => Number.isFinite(item.quantity))
 
         if (isActive) {
           setSalesItems(collectedItems)
@@ -190,7 +137,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
       isActive = false
       controller.abort()
     }
-  }, [])
+  }, [activeProductIds])
 
   // Product map for quick lookup
   const productMap = useMemo(() => {
@@ -201,7 +148,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
 
   // Selected product objects
   const selectedProducts = useMemo(() => {
-    return selectedProductIds
+    return activeProductIds
       .map((id, index) => {
         const prod = productMap.get(String(id))
         if (!prod) return null
@@ -211,7 +158,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
         }
       })
       .filter(Boolean)
-  }, [selectedProductIds, productMap])
+  }, [activeProductIds, productMap])
 
   // Filtered products for dropdown search
   const filteredProducts = useMemo(() => {
@@ -223,17 +170,17 @@ function ProductSalesPerformanceChart({ products = [] }) {
   // Toggle selection for a product
   function handleToggleProduct(productId) {
     const idStr = String(productId)
-    if (selectedProductIds.includes(idStr)) {
-      setSelectedProductIds(selectedProductIds.filter((id) => id !== idStr))
+    if (activeProductIds.includes(idStr)) {
+      setSelectedProductIds(activeProductIds.filter((id) => id !== idStr))
     } else {
-      if (selectedProductIds.length >= 5) return // Max 5 limit reached
-      setSelectedProductIds([...selectedProductIds, idStr])
+      if (activeProductIds.length >= 5) return // Max 5 limit reached
+      setSelectedProductIds([...activeProductIds, idStr])
     }
   }
 
   // Remove a product from selection
   function handleRemoveProduct(productId) {
-    setSelectedProductIds(selectedProductIds.filter((id) => id !== String(productId)))
+    setSelectedProductIds(activeProductIds.filter((id) => id !== String(productId)))
   }
 
   // Quick select Top 5
@@ -433,7 +380,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
         <div className="product-selector-info">
           <span className="product-selector-helper">Select up to 5 products to compare.</span>
           <span className="product-selector-count">
-            {selectedProductIds.length} of 5 selected
+            {activeProductIds.length} of 5 selected
           </span>
         </div>
 
@@ -478,9 +425,9 @@ function ProductSalesPerformanceChart({ products = [] }) {
                   <p className="product-dropdown-empty">No products matching "{searchQuery}"</p>
                 ) : (
                   filteredProducts.map((product) => {
-                    const isSelected = selectedProductIds.includes(String(product.product_id))
-                    const isMaxReached = selectedProductIds.length >= 5 && !isSelected
-                    const selectedIdx = selectedProductIds.indexOf(String(product.product_id))
+                    const isSelected = activeProductIds.includes(String(product.product_id))
+                    const isMaxReached = activeProductIds.length >= 5 && !isSelected
+                    const selectedIdx = activeProductIds.indexOf(String(product.product_id))
                     const color = selectedIdx !== -1 ? PRODUCT_COLORS[selectedIdx % PRODUCT_COLORS.length] : null
 
                     return (
@@ -513,7 +460,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
                 >
                   Top 5 Products
                 </button>
-                {selectedProductIds.length > 0 && (
+                {activeProductIds.length > 0 && (
                   <button
                     type="button"
                     className="product-footer-btn clear"
