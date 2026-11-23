@@ -198,3 +198,149 @@ canvas {
     padding: 14px;
   }
 }
+
+/* Small-screen refinements for mobile phones; tablet and desktop rules stay unchanged. */
+@media (max-width: 430px) {
+  .content-area {
+    margin-inline: 0;
+    padding-inline: 18px;
+  }
+
+  .page-stack {
+    gap: 18px;
+  }
+
+  .panel,
+  .receipt-panel {
+    padding: 14px;
+  }
+
+  .stats-grid,
+  .dashboard-kpi-grid,
+  .business-kpi-grid,
+  .business-analytics-insights-grid,
+  .dashboard-two-column-grid,
+  .report-stats,
+  .supplier-grid,
+  .history-grid {
+    gap: 14px;
+  }
+
+  .report-tab-content {
+    min-width: 0;
+    gap: 20px;
+  }
+
+  .report-layout,
+  .report-layout > * {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .inventory-valuation-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inventory-valuation-chart-panel {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .table-pagination {
+    gap: 12px;
+  }
+
+  .sidebar nav {
+    gap: 6px;
+    padding: 14px 10px;
+  }
+
+  .nav-group + .nav-group {
+    margin-top: 10px;
+  }
+
+  .sidebar nav button {
+    min-height: 48px;
+  }
+
+  .modal-card {
+    padding: 16px;
+  }
+
+  .modal-actions {
+    gap: 12px;
+  }
+
+  .toast-viewport .system-toast > button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .pos-app-shell .content-area {
+    padding-inline: 14px;
+  }
+
+  .pos-mobile-switch {
+    gap: 8px;
+    padding: 5px;
+  }
+
+  .pos-mobile-switch button {
+    min-height: 44px;
+  }
+
+  .pos-catalog-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .pos-search-wrap {
+    flex: 0 0 auto;
+  }
+
+  .pos-catalog-stats {
+    gap: 6px;
+  }
+
+  .pos-category-row {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding-block: 2px 4px;
+  }
+
+  .pos-category-pill {
+    min-height: 40px;
+  }
+
+  .pos-sort-select-label,
+  .pos-stock-filter-btn {
+    height: auto;
+    min-height: 44px;
+  }
+
+  .pos-product-action .pos-add-product {
+    min-height: 44px;
+  }
+
+  .basket-panel {
+    gap: 10px;
+  }
+
+  .basket-items {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .basket-item {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .basket-checkout {
+    gap: 8px;
+  }
+
+  .payment-methods {
+    gap: 8px;
+  }
+}
