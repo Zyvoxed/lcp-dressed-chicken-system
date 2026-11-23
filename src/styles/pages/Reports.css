@@ -809,10 +809,6 @@
   min-width: 620px;
 }
 
-.report-detail-table :is(th, td):nth-child(n + 2) {
-  text-align: right;
-}
-
 .report-payment-records article {
   padding: 12px 14px;
   border: 1px solid var(--border);
