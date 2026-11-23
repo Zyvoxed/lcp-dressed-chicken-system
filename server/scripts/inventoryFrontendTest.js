@@ -720,7 +720,7 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   assert(!await evaluate("Boolean(document.querySelector('#business-analytics-test .analytics-context-row'))"), 'Redundant Business Analytics introduction was not removed')
   const analyticsKpis = await evaluate("[...document.querySelectorAll('#business-analytics-test .business-kpi-grid article > strong')].map((node) => node.textContent.trim())")
   assert(analyticsKpis[0] === '42' && analyticsKpis[1].includes('125,000.50') && analyticsKpis[2].includes('2,976.20'), 'Business Analytics KPI formatting changed the source values')
-  assert(analyticsKpis[3] === 'Whole Chicken Premium Extra Long Product Name (kg)', 'Business Analytics top seller changed')
+  assert(analyticsKpis[3] === 'Whole Chicken Premium Extra Long Product Name', 'Business Analytics top seller changed')
   const productTrendPointCount = await evaluate("document.querySelectorAll('#business-analytics-test .product-trends-point').length")
   const productTrendState = await evaluate("document.querySelector('#business-analytics-test .product-trends-empty-state, #business-analytics-test [role=alert], #business-analytics-test .product-trends-loading-state')?.textContent.trim() || 'chart rendered'")
   assert(productTrendPointCount === 11, `Product chart did not render the elapsed-month calendar timeline (points=${productTrendPointCount}; state=${productTrendState})`)

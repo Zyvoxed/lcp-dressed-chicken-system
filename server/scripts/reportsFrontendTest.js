@@ -52,6 +52,7 @@ import '/@fs/${sourceRoot}/src/styles/shared/Tables.css'
 import '/@fs/${sourceRoot}/src/styles/shared/Modal.css'
 import '/@fs/${sourceRoot}/src/styles/layouts/MainLayout.css'
 import '/@fs/${sourceRoot}/src/styles/pages/Reports.css'
+import '/@fs/${sourceRoot}/src/styles/responsive.css'
 
 document.documentElement.dataset.theme = 'light'
 localStorage.setItem('authToken', 'reports-test-token')
@@ -211,7 +212,17 @@ createRoot(document.getElementById('root')).render(<main className="content-area
   await browserConnection.command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
   await delay(150)
   assert(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth'), 'Inventory valuation overflowed the mobile viewport')
-  assert(await evaluate("document.querySelector('.inventory-valuation-chart-panel').getBoundingClientRect().width <= document.documentElement.clientWidth - 32"), 'Inventory valuation chart card did not fit the mobile content width')
+  const valuationMobileLayout = await evaluate("(() => { const selectors = ['.content-area', '.page-transition', '.reports-page', '.inventory-valuation-tab', '.inventory-valuation-layout', '.inventory-valuation-chart-panel']; return Object.fromEntries(selectors.map((selector) => { const element = document.querySelector(selector); const rect = element?.getBoundingClientRect(); const style = element ? getComputedStyle(element) : null; return [selector, { width: rect?.width, left: rect?.left, right: rect?.right, minWidth: style?.minWidth, gridTemplateColumns: style?.gridTemplateColumns }] })) })()")
+  assert(await evaluate("document.querySelector('.inventory-valuation-chart-panel').getBoundingClientRect().width <= document.documentElement.clientWidth - 32"), `Inventory valuation chart card did not fit the mobile content width: ${JSON.stringify(valuationMobileLayout)}`)
+  for (const width of [320, 360, 375, 390, 430]) {
+    await browserConnection.command('Emulation.setDeviceMetricsOverride', {
+      width, height: width === 320 ? 568 : 844, deviceScaleFactor: 1, mobile: true,
+    })
+    await delay(80)
+    assert(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth'), `Reports page overflowed at ${width}px`)
+    assert(await evaluate("document.querySelector('.inventory-valuation-chart-panel').getBoundingClientRect().width <= document.documentElement.clientWidth - 32"), `Inventory valuation card exceeded mobile gutters at ${width}px`)
+  }
+  await browserConnection.command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
   await evaluate("document.querySelector('.inventory-valuation-chart-panel').scrollIntoView({ block: 'start' })")
   await delay(100)
   screenshot = await browserConnection.command('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false })
