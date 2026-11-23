@@ -47,7 +47,7 @@ test('admin dashboard keeps revenue data and ranks product quantities within eac
     const { data } = result.body
     assert.equal(data.summary.total_revenue, '125.50')
     assert.equal(data.summary.average_sale_value, '31.375')
-    assert.equal(data.summary.best_seller, 'Chicken (kg) · Eggs (tray)')
+    assert.equal(data.summary.best_seller, 'Chicken (7 kg) · Eggs (4 tray)')
     assert.equal(data.top_products[0].product_name, 'Chicken')
     assert.equal(data.top_products[1].product_name, 'Eggs')
     assert.equal(data.low_stock_alerts[0].product_name, 'Eggs')
@@ -66,6 +66,64 @@ test('admin dashboard keeps revenue data and ranks product quantities within eac
     assert.match(queries[1], /PARTITION BY p\.unit/)
     assert.match(queries[2], /PARTITION BY p\.unit/)
     assert.ok(queries.slice(5).every((sql) => sql.includes("CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00')")))
+  } finally {
+    pool.execute = original
+  }
+})
+
+test('admin dashboard displays the database-aggregated decimal top-product quantity', async () => {
+  const original = pool.execute
+  const rowsByQuery = [
+    [{ total_revenue: '15750.00', total_transactions: 1, average_sale_value: '15750.00', total_products: 1, low_stock_count: 0, customer_credits: '0.00' }],
+    [{ product_id: 18, product_name: 'Whole Chicken', unit: 'kg', quantity_sold: '125.500', sales_amount: '15750.00', unit_rank: 1 }],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+  ]
+  pool.execute = async () => {
+    const result = rowsByQuery.shift()
+    assert.ok(result, 'Unexpected dashboard query')
+    return [result]
+  }
+
+  try {
+    const result = response()
+    await getDashboard({ user: { role: 'Admin' } }, result)
+    assert.equal(result.statusCode, 200)
+    assert.equal(result.body.data.summary.best_seller, 'Whole Chicken (125.5 kg)')
+  } finally {
+    pool.execute = original
+  }
+})
+
+test('admin dashboard has no top-product display when there are no qualifying sales items', async () => {
+  const original = pool.execute
+  const rowsByQuery = [
+    [{ total_revenue: '0.00', total_transactions: 0, average_sale_value: '0.00', total_products: 1, low_stock_count: 1, customer_credits: '0.00' }],
+    [],
+    [{ product_id: 18, product_name: 'Whole Chicken', unit: 'kg', stock_quantity: '12.000', quantity_sold: '0', unit_rank: 1 }],
+    [],
+    [],
+    [],
+    [],
+    [],
+  ]
+  pool.execute = async () => {
+    const result = rowsByQuery.shift()
+    assert.ok(result, 'Unexpected dashboard query')
+    return [result]
+  }
+
+  try {
+    const result = response()
+    await getDashboard({ user: { role: 'Admin' } }, result)
+    assert.equal(result.statusCode, 200)
+    assert.equal(result.body.data.summary.best_seller, null)
+    assert.deepEqual(result.body.data.top_products, [])
+    assert.equal(result.body.data.low_products[0].quantity_sold, '0')
   } finally {
     pool.execute = original
   }

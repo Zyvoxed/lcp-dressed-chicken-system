@@ -1,5 +1,7 @@
 import pool from '../config/database.js'
 
+const quantityFormat = new Intl.NumberFormat('en-PH', { maximumFractionDigits: 3 })
+
 const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const manilaCurrentDate = "DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))"
 
@@ -183,7 +185,7 @@ async function getAdminDashboardData() {
       ...summaries[0],
       best_seller: topProducts
         .filter((product) => Number(product.unit_rank) === 1)
-        .map((product) => `${product.product_name} (${product.unit})`)
+        .map((product) => `${product.product_name} (${quantityFormat.format(Number(product.quantity_sold))} ${product.unit})`)
         .join(' · ') || null,
     },
     trends: {
