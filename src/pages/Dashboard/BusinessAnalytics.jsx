@@ -34,7 +34,11 @@ function BusinessAnalytics() {
     <section className="business-analytics-page">
       <BusinessAnalyticsStats summary={analytics.summary} />
       <div className="business-analytics-main-grid">
-        <ProductSalesPerformanceChart products={analytics.product_performance} />
+        <ProductSalesPerformanceChart
+          products={analytics.product_performance}
+          rankedProducts={analytics.top_performing}
+          rankedProductsByYear={analytics.product_rankings_by_year}
+        />
         <RestockWarnings products={analytics.restock_alerts} />
       </div>
       <div className="business-analytics-insights-grid">

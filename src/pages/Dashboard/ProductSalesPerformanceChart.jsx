@@ -16,7 +16,13 @@ import {
 } from '../../utils/monthlyChartPeriods.js'
 import { SALES_CHART_LAYOUT } from '../../utils/salesChartPresentation.js'
 import ProductSalesTrendPlot from './ProductSalesTrendPlot.jsx'
-import { groupByUnit, scaleSeriesByUnit } from '../../utils/unitAwareMetrics.js'
+import { scaleSeriesByUnit } from '../../utils/unitAwareMetrics.js'
+import {
+  rankingsForYear,
+  resolveProductSelection,
+  selectTopProductsByUnit,
+  toggleProductSelection,
+} from '../../utils/topProductSelection.js'
 
 const PRODUCT_COLORS = [
   '#235347', // Forest Green
@@ -34,17 +40,30 @@ const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 
 const chartSize = SALES_CHART_LAYOUT
 
-function ProductSalesPerformanceChart({ products = [] }) {
+function ProductSalesPerformanceChart({ products = [], rankedProducts = products, rankedProductsByYear = [] }) {
   const [selectedProductIds, setSelectedProductIds] = useState(null)
-  const topProductsByUnit = useMemo(() => groupByUnit(products).map(({ items }) => items[0]).filter(Boolean), [products])
+  const availableYears = useMemo(
+    () => [...new Set(rankedProductsByYear.map((product) => Number(product.sale_year)).filter(Number.isInteger))].sort((a, b) => b - a),
+    [rankedProductsByYear],
+  )
+  const [selectedYear, setSelectedYear] = useState(null)
+  const effectiveSelectedYear = selectedYear || availableYears[0] || getCurrentReportingYear()
+  const rankingYear = selectedYear || availableYears[0]
+  const rankedProductsForYear = useMemo(() => {
+    if (!rankingYear) return rankedProducts
+    return rankingsForYear(rankedProductsByYear, rankingYear, rankedProducts)
+  }, [rankedProducts, rankedProductsByYear, rankingYear])
+  const defaultTopProducts = useMemo(() => selectTopProductsByUnit(rankedProductsForYear), [rankedProductsForYear])
+  const defaultProductIds = useMemo(
+    () => defaultTopProducts.map((product) => String(product.product_id)),
+    [defaultTopProducts],
+  )
   const activeProductIds = useMemo(
-    () => selectedProductIds ?? topProductsByUnit.slice(0, 5).map((product) => String(product.product_id)),
-    [topProductsByUnit, selectedProductIds],
+    () => resolveProductSelection(selectedProductIds, defaultProductIds, products),
+    [defaultProductIds, products, selectedProductIds],
   )
 
   const [periodMode, setPeriodMode] = useState('monthly')
-  const [selectedYear, setSelectedYear] = useState(null)
-  const [availableYears, setAvailableYears] = useState([])
   const [salesItems, setSalesItems] = useState(null)
   const [loadingSales, setLoadingSales] = useState(true)
   const [salesError, setSalesError] = useState('')
@@ -78,25 +97,13 @@ function ProductSalesPerformanceChart({ products = [] }) {
       try {
         if (!activeProductIds.length) {
           if (isActive) {
-            const currentYear = getCurrentReportingYear()
             setSalesItems([])
-            setAvailableYears([currentYear])
-            setSelectedYear(currentYear)
             setLoadingSales(false)
           }
           return
         }
         const report = await getProductSalesReport(activeProductIds.map(Number), null, { signal: controller.signal })
         const records = report?.records || []
-        const extractedYears = Array.from(new Set(records.map((record) => Number(record.sale_year)).filter(Number.isInteger))).sort((a, b) => b - a)
-
-        const defaultYear = extractedYears.length ? extractedYears[0] : getCurrentReportingYear()
-
-        if (isActive) {
-          setAvailableYears(extractedYears.length ? extractedYears : [defaultYear])
-          setSelectedYear(defaultYear)
-        }
-
         const collectedItems = records.map((record) => ({
           year: Number(record.sale_year),
           month: Number(record.sale_month) - 1,
@@ -154,13 +161,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
 
   // Toggle selection for a product
   function handleToggleProduct(productId) {
-    const idStr = String(productId)
-    if (activeProductIds.includes(idStr)) {
-      setSelectedProductIds(activeProductIds.filter((id) => id !== idStr))
-    } else {
-      if (activeProductIds.length >= 5) return // Max 5 limit reached
-      setSelectedProductIds([...activeProductIds, idStr])
-    }
+    setSelectedProductIds(toggleProductSelection(activeProductIds, productId))
   }
 
   // Remove a product from selection
@@ -170,8 +171,8 @@ function ProductSalesPerformanceChart({ products = [] }) {
 
   // Quick select Top 5
   function handleSelectTop5() {
-    const top5 = topProductsByUnit.slice(0, 5).map((product) => String(product.product_id))
-    setSelectedProductIds(top5)
+    // Return to automatic mode so changed ranking data refreshes the defaults.
+    setSelectedProductIds(null)
     setDropdownOpen(false)
   }
 
@@ -192,13 +193,13 @@ function ProductSalesPerformanceChart({ products = [] }) {
     let labels = []
     let fullLabels = []
     const monthlyIndexes = periodMode === 'monthly'
-      ? getMonthlyIndexesForYear(selectedYear)
+      ? getMonthlyIndexesForYear(effectiveSelectedYear)
       : []
     if (periodMode === 'monthly' && monthlyIndexes.length === 0) return null
 
     if (periodMode === 'monthly') {
       labels = monthlyIndexes.map((monthIndex) => shortMonths[monthIndex])
-      fullLabels = monthlyIndexes.map((monthIndex) => `${monthNames[monthIndex]} ${selectedYear}`)
+      fullLabels = monthlyIndexes.map((monthIndex) => `${monthNames[monthIndex]} ${effectiveSelectedYear}`)
     } else {
       const sortedYears = [...availableYears].sort((a, b) => a - b)
       labels = sortedYears.map(String)
@@ -212,7 +213,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
       const values = Array(numPoints).fill(0)
 
       if (periodMode === 'monthly') {
-        const targetYear = selectedYear
+        const targetYear = effectiveSelectedYear
         for (const item of salesItems) {
           if (item.productId === String(product.product_id) && item.year === targetYear && item.month >= 0 && item.month < monthlyIndexes.length) {
             values[item.month] += item.quantity
@@ -271,7 +272,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
     })
 
     return { unitGroups }
-  }, [selectedProducts, salesItems, periodMode, selectedYear, availableYears])
+  }, [selectedProducts, salesItems, periodMode, effectiveSelectedYear, availableYears])
 
   return (
     <article className="panel product-trends-chart-panel">
@@ -290,7 +291,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
             <div className="analytics-year-select-wrap">
               <select
                 className="analytics-year-select"
-                value={selectedYear || ''}
+                value={effectiveSelectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
                 aria-label="Select year for monthly trend"
               >
@@ -405,7 +406,7 @@ function ProductSalesPerformanceChart({ products = [] }) {
                   className="product-footer-btn"
                   onClick={handleSelectTop5}
                 >
-                  Top Product by Unit
+                  Top Products by Unit
                 </button>
                 {activeProductIds.length > 0 && (
                   <button
@@ -466,6 +467,8 @@ function ProductSalesPerformanceChart({ products = [] }) {
         <div className="product-trends-loading-state">
           <p>Loading product sales trend data…</p>
         </div>
+      ) : !selectedProducts.length && selectedProductIds === null ? (
+        <EmptyState>No product sales recorded.</EmptyState>
       ) : !selectedProducts.length ? (
         <div className="product-trends-empty-state">
           <Boxes size={32} className="empty-icon" aria-hidden="true" />

@@ -34,7 +34,10 @@ function Dashboard() {
         <SalesSummary summary={dashboard.summary} />
       </div>
       <div className="dashboard-two-column-grid dashboard-product-grid">
-        <SalesByProductChart products={dashboard.top_products} />
+        <SalesByProductChart
+          products={dashboard.top_products}
+          rankedProductsByYear={dashboard.product_rankings_by_year}
+        />
         <TopSellingProducts products={dashboard.top_products} leastProducts={dashboard.low_products} />
       </div>
       <div className="dashboard-two-column-grid dashboard-operations-grid">

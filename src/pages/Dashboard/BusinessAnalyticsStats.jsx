@@ -1,6 +1,6 @@
 import { Award, PhilippinePeso, ReceiptText, Sigma } from 'lucide-react'
 import { peso } from '../../utils/currency.js'
-import { formatTopSellersByUnit } from '../../utils/topProductDisplay.js'
+import { formatTopSellerNames } from '../../utils/topProductDisplay.js'
 
 function BusinessAnalyticsStats({ summary }) {
   const topSellers = summary.top_sellers_by_unit || []
@@ -23,7 +23,7 @@ function BusinessAnalyticsStats({ summary }) {
       </article>
       <article>
         <header><span className="accent">TOP PRODUCT BY UNIT</span><Award size={18} aria-hidden="true" /></header>
-        <strong className="seller-name">{topSellers.length ? formatTopSellersByUnit(topSellers) : 'No sales data yet'}</strong>
+        <strong className="seller-name">{topSellers.length ? formatTopSellerNames(topSellers) : 'No sales data yet'}</strong>
         <p>{topSellers.length ? 'Highest quantity within each unit' : 'No completed product sales'}</p>
       </article>
     </div>

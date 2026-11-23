@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import pool from '../config/database.js'
-import { getDashboard, getStaffSalesActivity, rankBusinessProducts } from '../controllers/dashboardController.js'
+import { getBusinessAnalytics, getDashboard, getStaffSalesActivity, rankBusinessProducts } from '../controllers/dashboardController.js'
 
 function response() {
   return {
@@ -20,6 +20,10 @@ test('admin dashboard keeps revenue data and ranks product quantities within eac
     [
       { product_id: 3, product_name: 'Chicken', unit: 'kg', quantity_sold: '7', sales_amount: '125.50', unit_rank: 1 },
       { product_id: 5, product_name: 'Eggs', unit: 'tray', quantity_sold: '4', sales_amount: '80.00', unit_rank: 1 },
+    ],
+    [
+      { product_id: 3, product_name: 'Chicken', unit: 'kg', sale_year: 2026, quantity_sold: '7', sales_amount: '125.50', unit_rank: 1 },
+      { product_id: 5, product_name: 'Eggs', unit: 'tray', sale_year: 2026, quantity_sold: '4', sales_amount: '80.00', unit_rank: 1 },
     ],
     [
       { product_id: 4, product_name: 'Eggs', unit: 'tray', stock_quantity: '2', quantity_sold: '0', unit_rank: 1 },
@@ -47,9 +51,11 @@ test('admin dashboard keeps revenue data and ranks product quantities within eac
     const { data } = result.body
     assert.equal(data.summary.total_revenue, '125.50')
     assert.equal(data.summary.average_sale_value, '31.375')
-    assert.equal(data.summary.best_seller, 'Chicken (7 kg) · Eggs (4 tray)')
+    assert.equal(data.summary.best_seller, 'Chicken · Eggs')
     assert.equal(data.top_products[0].product_name, 'Chicken')
+    assert.equal(data.top_products[0].quantity_sold, '7')
     assert.equal(data.top_products[1].product_name, 'Eggs')
+    assert.deepEqual(data.product_rankings_by_year.map(({ product_id, sale_year }) => [product_id, sale_year]), [[3, 2026], [5, 2026]])
     assert.equal(data.low_stock_alerts[0].product_name, 'Eggs')
     assert.equal(data.recent_activity[0].activity_id, 12)
     assert.equal(data.trends.daily.length, 24)
@@ -62,20 +68,21 @@ test('admin dashboard keeps revenue data and ranks product quantities within eac
     assert.ok(data.trends.monthly.length >= 28 && data.trends.monthly.length <= 31)
     assert.equal(data.trends.monthly[0].sales, 25.5)
     assert.equal(data.trends.monthly[1].sales, 0)
-    assert.equal(queries.length, 8)
+    assert.equal(queries.length, 9)
     assert.match(queries[1], /PARTITION BY p\.unit/)
     assert.match(queries[2], /PARTITION BY p\.unit/)
-    assert.ok(queries.slice(5).every((sql) => sql.includes("CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00')")))
+    assert.ok(queries.slice(6).every((sql) => sql.includes("CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00')")))
   } finally {
     pool.execute = original
   }
 })
 
-test('admin dashboard displays the database-aggregated decimal top-product quantity', async () => {
+test('admin dashboard displays only the top-product name and preserves aggregated quantity data', async () => {
   const original = pool.execute
   const rowsByQuery = [
     [{ total_revenue: '15750.00', total_transactions: 1, average_sale_value: '15750.00', total_products: 1, low_stock_count: 0, customer_credits: '0.00' }],
     [{ product_id: 18, product_name: 'Whole Chicken', unit: 'kg', quantity_sold: '125.500', sales_amount: '15750.00', unit_rank: 1 }],
+    [{ product_id: 18, product_name: 'Whole Chicken', unit: 'kg', sale_year: 2026, quantity_sold: '125.500', sales_amount: '15750.00', unit_rank: 1 }],
     [],
     [],
     [],
@@ -93,7 +100,8 @@ test('admin dashboard displays the database-aggregated decimal top-product quant
     const result = response()
     await getDashboard({ user: { role: 'Admin' } }, result)
     assert.equal(result.statusCode, 200)
-    assert.equal(result.body.data.summary.best_seller, 'Whole Chicken (125.5 kg)')
+    assert.equal(result.body.data.summary.best_seller, 'Whole Chicken')
+    assert.equal(result.body.data.top_products[0].quantity_sold, '125.500')
   } finally {
     pool.execute = original
   }
@@ -103,6 +111,7 @@ test('admin dashboard has no top-product display when there are no qualifying sa
   const original = pool.execute
   const rowsByQuery = [
     [{ total_revenue: '0.00', total_transactions: 0, average_sale_value: '0.00', total_products: 1, low_stock_count: 1, customer_credits: '0.00' }],
+    [],
     [],
     [{ product_id: 18, product_name: 'Whole Chicken', unit: 'kg', stock_quantity: '12.000', quantity_sold: '0', unit_rank: 1 }],
     [],
@@ -146,6 +155,54 @@ test('business analytics quantity rankings are independently ordered within each
   assert.deepEqual(ranked.topPerforming.map(({ product_name, unit_rank }) => [product_name, unit_rank]), [
     ['Chicken', 1], ['Feet', 2], ['Eggs', 1], ['Quail eggs', 2],
   ])
+})
+
+test('business analytics returns quantity-ranked product IDs and preserves aggregate fields for chart defaults', async () => {
+  const original = pool.execute
+  const queries = []
+  const rowsByQuery = [
+    [{ total_transactions: 3, gross_revenue: '205.00', average_ticket_value: '68.33' }],
+    [
+      { product_id: 11, product_name: 'Chicken', unit: 'kg', current_stock: '3', reorder_level: '2', quantity_sold: '7.500', gross_sales: '125.00' },
+      { product_id: 12, product_name: 'Chicken Breast', unit: 'kg', current_stock: '5', reorder_level: '2', quantity_sold: '4', gross_sales: '60.00' },
+      { product_id: 13, product_name: 'Eggs', unit: 'tray', current_stock: '2', reorder_level: '3', quantity_sold: '4', gross_sales: '20.00' },
+      { product_id: 14, product_name: 'Unsold Item', unit: 'tray', current_stock: '8', reorder_level: '1', quantity_sold: '0', gross_sales: '0.00' },
+    ],
+    [
+      { product_id: 11, product_name: 'Chicken', unit: 'kg', sale_year: 2026, quantity_sold: '7.500', sales_amount: '125.00', unit_rank: 1 },
+      { product_id: 13, product_name: 'Eggs', unit: 'tray', sale_year: 2026, quantity_sold: '4', sales_amount: '20.00', unit_rank: 1 },
+    ],
+  ]
+  pool.execute = async (sql) => {
+    queries.push(sql)
+    const result = rowsByQuery.shift()
+    assert.ok(result, `Unexpected business analytics query: ${sql}`)
+    return [result]
+  }
+
+  try {
+    const result = response()
+    await getBusinessAnalytics({}, result)
+    assert.equal(result.statusCode, 200)
+    assert.deepEqual(result.body.data.top_performing.map(({ product_id, unit_rank }) => [product_id, unit_rank]), [
+      [11, 1], [12, 2], [13, 1],
+    ])
+    assert.deepEqual(result.body.data.summary.top_sellers_by_unit.map(({ product_id, quantity_sold }) => [product_id, quantity_sold]), [
+      [11, '7.500'], [13, '4'],
+    ])
+    assert.deepEqual(result.body.data.product_rankings_by_year.map(({ product_id, sale_year }) => [product_id, sale_year]), [
+      [11, 2026], [13, 2026],
+    ])
+    assert.match(queries[1], /SUM\(si\.quantity\)/)
+    assert.match(queries[1], /GROUP BY p\.product_id/)
+    assert.match(queries[1], /LEFT JOIN sales_items si ON si\.product_id = p\.product_id/)
+    assert.equal((queries[1].match(/sales_items/g) || []).length, 1)
+    assert.match(queries[2], /PARTITION BY p\.unit, YEAR\(sa\.sale_date\)/)
+    assert.match(queries[2], /GROUP BY p\.product_id, YEAR\(sa\.sale_date\)/)
+    assert.equal((queries[2].match(/sales_items/g) || []).length, 1)
+  } finally {
+    pool.execute = original
+  }
 })
 
 test('staff dashboard returns operational metrics without monetary sales or payment totals', async () => {

@@ -5,7 +5,7 @@ import { peso } from '../../utils/currency.js'
 import { getProductSalesReport } from '../../services/reportService.js'
 import { buildMonotonePath } from '../../utils/chartPaths.js'
 import { getMonthlyIndexesForYear } from '../../utils/monthlyChartPeriods.js'
-import { groupByUnit } from '../../utils/unitAwareMetrics.js'
+import { selectTopProductsByUnit } from '../../utils/topProductSelection.js'
 import {
   SALES_CHART_LAYOUT,
   SALES_CHART_STYLE,
@@ -25,8 +25,19 @@ function compactPeso(value) {
   }).format(value)
 }
 
-function SalesByProductChart({ products = [] }) {
-  const topProducts = useMemo(() => groupByUnit(products).map(({ items }) => items[0]).filter(Boolean).slice(0, 5), [products])
+function SalesByProductChart({ products = [], rankedProductsByYear = [] }) {
+  const latestRankingYear = useMemo(
+    () => Math.max(...rankedProductsByYear.map((product) => Number(product.sale_year)).filter(Number.isInteger), 0),
+    [rankedProductsByYear],
+  )
+  const latestYearRankings = useMemo(
+    () => rankedProductsByYear.filter((product) => Number(product.sale_year) === latestRankingYear),
+    [latestRankingYear, rankedProductsByYear],
+  )
+  const topProducts = useMemo(
+    () => selectTopProductsByUnit(latestYearRankings.length ? latestYearRankings : products),
+    [latestYearRankings, products],
+  )
   const productKey = topProducts.map((product) => product.product_id).join(',')
   const [salesByProduct, setSalesByProduct] = useState(null)
   const [selectedYear, setSelectedYear] = useState(null)

@@ -1,7 +1,5 @@
 import pool from '../config/database.js'
 
-const quantityFormat = new Intl.NumberFormat('en-PH', { maximumFractionDigits: 3 })
-
 const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const manilaCurrentDate = "DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))"
 
@@ -30,6 +28,31 @@ function fillSeries(length, rows, indexField, labelForIndex) {
     sales: values.get(index) ? Number(values.get(index).sales) : 0,
     transactions: values.get(index) ? Number(values.get(index).transactions) : 0,
   }))
+}
+
+async function getProductRankingsByYear() {
+  const [rankedProducts] = await pool.execute(`
+    SELECT product_id, product_name, unit, sale_year, quantity_sold, sales_amount, unit_rank
+    FROM (
+      SELECT p.product_id, p.product_name, p.unit,
+             YEAR(sa.sale_date) AS sale_year,
+             SUM(si.quantity) AS quantity_sold,
+             SUM(si.subtotal) AS sales_amount,
+             ROW_NUMBER() OVER (
+               PARTITION BY p.unit, YEAR(sa.sale_date)
+               ORDER BY SUM(si.quantity) DESC, SUM(si.subtotal) DESC,
+                        p.product_name ASC, p.product_id ASC
+             ) AS unit_rank
+      FROM sales_items si
+      JOIN sales sa ON sa.sale_id = si.sale_id
+      JOIN products p ON p.product_id = si.product_id
+      WHERE p.is_active = TRUE
+      GROUP BY p.product_id, YEAR(sa.sale_date)
+    ) AS yearly_ranked_products
+    WHERE unit_rank <= 5
+    ORDER BY sale_year DESC, unit ASC, unit_rank ASC
+  `)
+  return rankedProducts
 }
 
 async function getStaffDashboardData() {
@@ -119,6 +142,7 @@ async function getAdminDashboardData() {
     WHERE unit_rank <= 5
     ORDER BY unit ASC, unit_rank ASC
   `)
+  const productRankingsByYear = await getProductRankingsByYear()
   const [lowProducts] = await pool.execute(`
     SELECT product_id, product_name, unit, stock_quantity, quantity_sold, unit_rank
     FROM (
@@ -185,7 +209,7 @@ async function getAdminDashboardData() {
       ...summaries[0],
       best_seller: topProducts
         .filter((product) => Number(product.unit_rank) === 1)
-        .map((product) => `${product.product_name} (${quantityFormat.format(Number(product.quantity_sold))} ${product.unit})`)
+        .map((product) => product.product_name)
         .join(' · ') || null,
     },
     trends: {
@@ -194,6 +218,7 @@ async function getAdminDashboardData() {
       monthly: fillSeries(daysInMonth, monthlyRows, 'bucket_index', (index) => `${monthLabel} ${index + 1}`),
     },
     top_products: topProducts,
+    product_rankings_by_year: productRankingsByYear,
     low_products: lowProducts,
     low_stock_alerts: lowStock,
     recent_activity: activities,
@@ -317,6 +342,7 @@ export async function getBusinessAnalytics(request, response) {
       GROUP BY p.product_id
       ORDER BY p.unit ASC, quantity_sold DESC, gross_sales DESC, p.product_name ASC
     `)
+    const productRankingsByYear = await getProductRankingsByYear()
     const { topPerforming, slowSelling, restockAlerts, topPerUnit, slowPerUnit } = rankBusinessProducts(products)
 
     return response.json({
@@ -324,6 +350,7 @@ export async function getBusinessAnalytics(request, response) {
       data: {
         summary: { ...summaryRows[0], top_seller: null, top_sellers_by_unit: topPerUnit },
         product_performance: products,
+        product_rankings_by_year: productRankingsByYear,
         top_performing: topPerforming,
         slow_selling: slowSelling,
         restock_alerts: restockAlerts,
