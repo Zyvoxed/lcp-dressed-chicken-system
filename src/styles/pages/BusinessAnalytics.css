@@ -30,13 +30,16 @@
 
 /* — Chart Header — */
 .product-trends-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 16px;
-  flex-wrap: wrap;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
+}
+
+.product-trends-title-group {
+  min-width: 0;
 }
 
 .product-trends-title-group h2 {
@@ -65,7 +68,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .analytics-period-toggle {
@@ -591,12 +594,14 @@
 /* — Responsive Adjustments — */
 @media (max-width: 768px) {
   .product-trends-header {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
   }
 
   .product-trends-filter-controls {
     justify-content: space-between;
+    flex-wrap: wrap;
   }
 
   .product-selector-bar {
