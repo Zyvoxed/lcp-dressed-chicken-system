@@ -6,9 +6,20 @@ import StatusBadge from '../Shared/StatusBadge.jsx'
 import { getSalesReportDetail } from '../../services/reportService.js'
 import { peso } from '../../utils/currency.js'
 import { formatActivityTimestamp } from '../../utils/activityDateTime.js'
+import { toTransactionCents } from '../../utils/transactionMoney.js'
+import { buildSalesReportPaymentRecords } from './salesReportPaymentRecords.js'
 
 function DetailRow({ label, value, emphasis = false }) {
   return <div className={emphasis ? 'report-detail-emphasis' : ''}><dt>{label}</dt><dd>{value}</dd></div>
+}
+
+function formatPaymentAmount(value) {
+  try {
+    toTransactionCents(value)
+    return peso.format(Number(value))
+  } catch {
+    return 'Amount unavailable'
+  }
 }
 
 function TransactionDetailsModal({ saleId, onClose }) {
@@ -30,6 +41,7 @@ function TransactionDetailsModal({ saleId, onClose }) {
   }, [saleId])
 
   const sale = details?.sale
+  const paymentRecords = buildSalesReportPaymentRecords(sale, details?.payments)
 
   return (
     <Modal title={`Transaction OR-${saleId}`} onClose={onClose} className="report-transaction-modal">
@@ -83,15 +95,31 @@ function TransactionDetailsModal({ saleId, onClose }) {
 
         <section className="report-detail-section" aria-labelledby="payment-records-heading">
           <h3 id="payment-records-heading">Payment Records</h3>
-          {details.payments.length ? <div className="report-payment-records">
-            {details.payments.map((payment) => <article key={payment.payment_id}>
-              <div><strong>{peso.format(Number(payment.payment_amount))}</strong><span>Payment #{payment.payment_id}</span></div>
-              <p><time dateTime={payment.payment_date}>{formatActivityTimestamp(payment.payment_date).dateTime}</time></p>
-              <p>Recorded by {payment.recorded_by} · Balance after payment: {peso.format(Number(payment.remaining_balance))}</p>
-            </article>)}
-          </div> : <p className="report-detail-note">{sale.payment_type === 'Cash'
-            ? 'No separate payment records are expected for this cash transaction.'
-            : 'No subsequent payment records are available for this transaction.'}</p>}
+          {paymentRecords.length ? <div className="report-payment-records">
+            {paymentRecords.map((payment, index) => {
+              const record = payment && typeof payment === 'object' ? payment : {}
+              return (
+                <article key={record.history_id || (record.payment_id ? `payment-${record.payment_id}` : `payment-record-${index}`)}>
+                  <div>
+                    <strong>{formatPaymentAmount(record.payment_amount)}</strong>
+                    <span>{record.history_type === 'initial-downpayment'
+                      ? 'Initial Down Payment'
+                      : record.payment_id ? `Payment #${record.payment_id}` : 'Payment record'}</span>
+                  </div>
+                  <p><time dateTime={record.payment_date || undefined}>{formatActivityTimestamp(record.payment_date).dateTime}</time></p>
+                  <p>Recorded by {record.recorded_by || 'Unknown'} · Balance after payment: {formatPaymentAmount(record.remaining_balance)}</p>
+                </article>
+              )
+            })}
+          </div> : (
+            <p className="report-detail-note">
+              {!Array.isArray(details.payments)
+                ? 'Payment records are unavailable for this transaction.'
+                : sale.payment_type === 'Cash'
+                  ? 'No separate payment records are expected for this cash transaction.'
+                  : 'No subsequent payment records are available for this transaction.'}
+            </p>
+          )}
         </section>
       </div>}
     </Modal>

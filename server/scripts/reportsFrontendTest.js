@@ -58,23 +58,23 @@ localStorage.setItem('authToken', 'reports-test-token')
 
 const records = [
   { sale_id: 201, sale_date: '2026-10-21T09:15:00+08:00', customer_name: 'Walk-in Customer', recorded_by: 'Test Admin', payment_type: 'Cash', total_amount: '1250.00', amount_paid: '1250.00', remaining_balance: '0.00', status: 'Paid' },
-  { sale_id: 202, sale_date: '2026-10-21T10:30:00+08:00', customer_name: 'Maria Santos', recorded_by: 'Test Admin', payment_type: 'Credit', total_amount: '2500.00', amount_paid: '500.00', remaining_balance: '2000.00', status: 'Partially Paid' },
+  { sale_id: 202, sale_date: '2026-10-21T10:30:00+08:00', customer_name: 'Maria Santos', recorded_by: 'Test Admin', payment_type: 'Credit', total_amount: '2500.00', amount_paid: '560.00', remaining_balance: '1940.00', status: 'Partially Paid' },
   { sale_id: 203, sale_date: '2026-10-20T11:00:00+08:00', customer_name: 'Credit Customer', recorded_by: 'Test Admin', payment_type: 'Credit', total_amount: '900.00', amount_paid: '0.00', remaining_balance: '900.00', status: 'Unpaid' },
   ...Array.from({ length: 7 }, (_, index) => ({ sale_id: 204 + index, sale_date: '2026-10-19T08:00:00+08:00', customer_name: 'Fixture Customer ' + (index + 1), recorded_by: 'Test Admin', payment_type: 'Cash', total_amount: '100.00', amount_paid: '100.00', remaining_balance: '0.00', status: 'Paid' })),
 ]
 
-const salesReport = { summary: { total_transactions: records.length, gross_sales: '5350.00', cash_sales_total: '1950.00', credit_sales_total: '3400.00', total_amount_paid: '2450.00', outstanding_balance: '2900.00' }, records }
+const salesReport = { summary: { total_transactions: records.length, gross_sales: '5350.00', cash_sales_total: '1950.00', credit_sales_total: '3400.00', total_amount_paid: '2510.00', outstanding_balance: '2840.00' }, records }
 const details = { sale: { ...records[1], customer_id: 8, customer_type: 'Credit Supplier', contact_number: '09171234567', address: 'Quezon City' }, items: [
   { salesitem_id: 1, product_id: 3, product_name: 'Chicken Breast', unit: 'kg', quantity: '2.000', price: '750.00', subtotal: '1500.00' },
   { salesitem_id: 2, product_id: 4, product_name: 'Chicken Wings', unit: 'kg', quantity: '2.000', price: '500.00', subtotal: '1000.00' },
-], payments: [{ payment_id: 41, payment_amount: '500.00', remaining_balance: '2000.00', payment_date: '2026-10-21T11:00:00+08:00', recorded_by: 'Test Admin' }] }
+], payments: [{ payment_id: 41, payment_amount: '500.00', remaining_balance: '1940.00', payment_date: '2026-10-21T11:00:00+08:00', recorded_by: 'Test Admin' }] }
 const inventoryReport = { summary: { total_products: 4, total_inventory_cost_value: '1000.00', estimated_total_sales_value: '1620.00', low_stock_count: 1, out_of_stock_count: 1 }, records: [
   { product_id: 1, product_name: 'Whole Chicken', category: 'Whole Chicken', unit: 'kg', stock_quantity: '5', reorder_level: '2', inventory_cost_value: '500', estimated_sales_value: '800', status: 'In Stock' },
   { product_id: 2, product_name: 'Chicken Breast Fillet Extra Long Product Name', category: 'Chicken Parts', unit: 'kg', stock_quantity: '3.5', reorder_level: '4', inventory_cost_value: '300', estimated_sales_value: '520', status: 'Low Stock' },
   { product_id: 3, product_name: 'Chicken Wings', category: 'Chicken Parts', unit: 'kg', stock_quantity: '2', reorder_level: '1', inventory_cost_value: '200', estimated_sales_value: '300', status: 'In Stock' },
   { product_id: 4, product_name: 'Chicken Liver', category: 'Offal', unit: 'kg', stock_quantity: '0', reorder_level: '2', inventory_cost_value: null, estimated_sales_value: null, status: 'Out of Stock' },
 ] }
-const receivablesReport = { summary: { customers_with_balance: 1, total_receivables: '2000.00' }, records: [{ customer_id: 8, customer_name: 'Maria Santos', contact_number: '09171234567', address: 'Quezon City', current_balance: '2000.00', total_original_credit_amount: '2500.00', open_credit_sales: 1, oldest_unpaid_sale_date: '2026-10-21T10:30:00+08:00' }] }
+const receivablesReport = { summary: { customers_with_balance: 1, total_receivables: '1940.00' }, records: [{ customer_id: 8, customer_name: 'Maria Santos', contact_number: '09171234567', address: 'Quezon City', current_balance: '1940.00', total_original_credit_amount: '2500.00', open_credit_sales: 1, oldest_unpaid_sale_date: '2026-10-21T10:30:00+08:00' }] }
 
 globalThis.fetch = async (input, options = {}) => {
   const requestUrl = new URL(String(input), location.origin)
@@ -173,7 +173,8 @@ createRoot(document.getElementById('root')).render(<main className="content-area
   await waitFor("Boolean(document.querySelector('.report-transaction-modal .report-detail-content'))")
   assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('Chicken Breast') && document.querySelector('[role=dialog]').textContent.includes('₱750.00')"), 'Historical sale items and prices were not displayed')
   assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('Credit Supplier') && document.querySelector('[role=dialog]').textContent.includes('09171234567')"), 'Customer audit details were incomplete')
-  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('Payment #41') && document.querySelector('[role=dialog]').textContent.includes('Oct 21, 2026, 10:30 AM')"), 'Payment records or Manila transaction timestamp were missing')
+  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('₱60.00') && document.querySelector('[role=dialog]').textContent.includes('Initial Down Payment') && document.querySelector('[role=dialog]').textContent.includes('Payment #41')"), 'Initial down payment or subsequent payment records were missing')
+  assert(await evaluate("document.querySelector('[role=dialog]').textContent.includes('₱560.00') && document.querySelector('[role=dialog]').textContent.includes('₱1,940.00') && document.querySelector('[role=dialog]').textContent.includes('Oct 21, 2026, 10:30 AM')"), 'Payment summary or original transaction timestamp was missing')
   assert(!await evaluate("document.querySelector('[role=dialog]').textContent.includes('PHT')"), 'Transaction modal displayed a prohibited timezone suffix')
   assert(await evaluate("document.activeElement?.classList.contains('close-button')"), 'Shared modal did not receive its expected initial focus')
   const backdrop = await evaluate(`(() => { const rect = document.querySelector('.modal-backdrop').getBoundingClientRect(); return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, documentWidth: document.documentElement.clientWidth, viewportHeight: innerHeight, overflow: document.body.style.overflow } })()`)
@@ -216,7 +217,7 @@ createRoot(document.getElementById('root')).render(<main className="content-area
 
   await evaluate("[...document.querySelectorAll('[role=tab]')].find((button) => button.textContent.includes('Credit Receivables')).click()")
   await waitFor("document.body.textContent.includes('Credit Receivables Ledger')")
-  assert(await evaluate("document.body.textContent.includes('Maria Santos') && document.body.textContent.includes('₱2,500.00') && document.body.textContent.includes('₱2,000.00')"), 'Receivables report tab did not retain credit and balance data')
+  assert(await evaluate("document.body.textContent.includes('Maria Santos') && document.body.textContent.includes('₱2,500.00') && document.body.textContent.includes('₱1,940.00')"), 'Receivables report tab did not retain credit and balance data')
   assert(await evaluate("document.body.textContent.includes('Oct 21, 2026, 10:30 AM') && !document.body.textContent.includes('PHT')"), 'Receivables timestamp was not the expected Manila date/time format')
 
   assert(await evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth'), 'Reports page overflowed the mobile viewport')
