@@ -77,6 +77,10 @@ const payments = [{ payment_id: 900, sale_id: 700, payment_amount: '100.00', rem
 const justinePayments = []
 const cashSales = [{ sale_id: 699, sale_date: '2026-10-20T08:00:00+08:00', amount_paid: '50.00', payment_type: 'Cash', status: 'Paid' }]
 const justineCashSales = []
+const customerSales = [
+  { sale_id: 700, sale_date: '2026-10-20T09:30:00+08:00', item_count: 2, total_amount: '500.00', payment_type: 'Credit', amount_paid: '200.00', remaining_balance: '300.00', status: 'Partially Paid' },
+  { sale_id: 699, sale_date: '2026-10-20T08:00:00+08:00', item_count: 1, total_amount: '50.00', payment_type: 'Cash', amount_paid: '50.00', remaining_balance: '0.00', status: 'Paid' },
+]
 globalThis.testCredits = credits
 globalThis.testJustineCredits = justineCredits
 globalThis.testJustinePayments = justinePayments
@@ -144,7 +148,7 @@ globalThis.fetch = async (url, options = {}) => {
   }
   if (pathParts.length === 4 && pathParts[1] === 'customers' && pathParts[3] === 'sales' && method === 'GET') {
     globalThis.ledgerRefreshCustomerIds.push(customerId)
-    return new Response(JSON.stringify({ success: true, data: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ success: true, data: customerId === 7 ? customerSales : [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   if (path.endsWith('/customers') && method === 'GET') {
     return new Response(JSON.stringify({ success: true, data: customers }), { status: 200, headers: { 'Content-Type': 'application/json' } })
@@ -575,6 +579,13 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   assert(await evaluate("document.querySelector('#customer-drawer-title')?.textContent === 'Maria Santos' && document.querySelector('[aria-label=\"Customer information\"]')?.textContent.includes('09171234567') && document.querySelector('[aria-label=\"Customer information\"]')?.textContent.includes('Pasig City')"), 'Customer identity and contact details were incomplete')
   await click("[...document.querySelectorAll('#customer-credits-test .customer-drawer-tabs button')].find((button) => button.textContent.trim() === 'Sales History')")
   assert(await evaluate("document.querySelector('[aria-label=\"Customer balance summary\"] .outstanding strong').textContent.includes('300.00')"), 'Customer outstanding balance was inaccurate')
+  const salesHistoryState = await evaluate("(() => { const table = document.querySelector('.customer-sales-history .system-data-table'); const headers = [...(table?.querySelectorAll('thead th') || [])]; const rows = [...(table?.querySelectorAll('tbody tr') || [])]; const scroll = table?.closest('.table-scroll'); return { labels: headers.map((header) => header.textContent.trim()), headerButtons: headers.filter((header) => header.querySelector('button')).length, indicators: headers.filter((header) => header.querySelector('svg, [aria-sort]')).length, sales: rows.map((row) => row.cells[0]?.textContent.trim()), details: rows.map((row) => row.textContent.trim()), scrollContainer: Boolean(scroll), tableMinWidth: table ? getComputedStyle(table).minWidth : '' } })()")
+  assert(JSON.stringify(salesHistoryState.labels) === JSON.stringify(['Sale ID', 'Sale Date', 'Items', 'Total Amount', 'Payment Type', 'Amount Paid', 'Remaining Balance', 'Status']), 'Sales History column labels changed')
+  assert(salesHistoryState.headerButtons === 0 && salesHistoryState.indicators === 0, 'Sales History headers still expose sorting controls or indicators')
+  assert(JSON.stringify(salesHistoryState.sales) === JSON.stringify(['OR-700', 'OR-699']), 'Sales History did not preserve the supplied newest-first transaction order')
+  assert(salesHistoryState.details[0].includes('Partially Paid') && salesHistoryState.details[0].includes('500.00') && salesHistoryState.details[1].includes('Cash') && salesHistoryState.details[1].includes('50.00'), 'Sales History transaction details were missing')
+  assert(salesHistoryState.scrollContainer && salesHistoryState.tableMinWidth === '1050px', 'Sales History responsive scroll container or table width was removed')
+  assert(await evaluate("document.querySelectorAll('#customer-credits-test .customer-list-panel .system-data-table thead th button').length > 0"), 'Sorting controls were unintentionally removed from the customer list table')
   await click("[...document.querySelectorAll('#customer-credits-test .customer-drawer-tabs button')].find((button) => button.textContent.trim() === 'Record Payment')")
   await waitFor("Boolean(document.querySelector('#customer-credits-test .payment-form select option[value=\"700\"]'))", 'Unpaid credit sale was not available in the payment form')
   await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Maria')

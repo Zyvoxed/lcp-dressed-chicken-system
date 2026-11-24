@@ -22,17 +22,6 @@ const salesColumns = [
   'Status',
 ]
 
-const salesSortAccessors = [
-  (sale) => Number(sale.sale_id),
-  (sale) => sale.sale_date,
-  (sale) => Number(sale.item_count),
-  (sale) => Number(sale.total_amount),
-  (sale) => sale.payment_type,
-  (sale) => Number(sale.amount_paid),
-  (sale) => Number(sale.remaining_balance),
-  (sale) => sale.status,
-]
-
 function CustomerLedger({
   customer,
   credits,
@@ -239,7 +228,7 @@ function CustomerLedger({
                   rows={sales}
                   pageSize={8}
                   searchable={false}
-                  getSortValue={(sale, columnIndex) => salesSortAccessors[columnIndex](sale)}
+                  nonSortableColumns={salesColumns}
                   renderRow={(sale) => (
                     <tr key={sale.sale_id}>
                       <td><strong>OR-{sale.sale_id}</strong></td>
