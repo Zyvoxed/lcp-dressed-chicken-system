@@ -10,6 +10,7 @@ import { useToast } from '../../context/ToastContext.jsx'
 import {
   archiveCustomer,
   getCustomer,
+  getCustomerCashSales,
   getArchivedCustomers,
   getCustomerCredits,
   getCustomerPayments,
@@ -26,6 +27,7 @@ function CustomerCredits() {
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [credits, setCredits] = useState([])
   const [payments, setPayments] = useState([])
+  const [cashSales, setCashSales] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [detailsLoading, setDetailsLoading] = useState(false)
@@ -81,13 +83,15 @@ function CustomerCredits() {
     const controller = new AbortController()
     async function loadDetails() {
       try {
-        const [creditData, paymentData] = await Promise.all([
+        const [creditData, paymentData, cashSalesData] = await Promise.all([
           getCustomerCredits(selectedCustomer.customer_id, { signal: controller.signal }),
           getCustomerPayments(selectedCustomer.customer_id, { signal: controller.signal }),
+          getCustomerCashSales(selectedCustomer.customer_id, { signal: controller.signal }),
         ])
         setDetailsError('')
         setCredits(creditData)
         setPayments(paymentData)
+        setCashSales(cashSalesData)
       } catch (requestError) {
         if (requestError.name !== 'AbortError') setDetailsError(requestError.message)
       } finally {
@@ -119,6 +123,7 @@ function CustomerCredits() {
       setSalesError('')
       setCredits([])
       setPayments([])
+      setCashSales([])
       setSales([])
     }
     setSelectedCustomer(customer)
@@ -126,11 +131,12 @@ function CustomerCredits() {
   }
 
   const refreshCustomer = useCallback(async (customerId, paymentId) => {
-    const [customer, customerList, creditData, paymentData, salesData] = await Promise.all([
+    const [customer, customerList, creditData, paymentData, cashSalesData, salesData] = await Promise.all([
       getCustomer(customerId),
       getCustomers(),
       getCustomerCredits(customerId),
       getCustomerPayments(customerId),
+      getCustomerCashSales(customerId),
       isAdmin ? getCustomerSales(customerId) : Promise.resolve([]),
     ])
     setCustomers(customerList)
@@ -138,6 +144,7 @@ function CustomerCredits() {
       setSelectedCustomer(customer)
       setCredits(creditData)
       setPayments(paymentData)
+      setCashSales(cashSalesData)
       setSales(salesData)
     }
     return paymentData.find((payment) => payment.payment_id === paymentId)
@@ -223,6 +230,7 @@ function CustomerCredits() {
               customer={selectedCustomer}
               credits={credits}
               payments={payments}
+              cashSales={cashSales}
               sales={sales}
               onPayment={refreshCustomer}
               onArchive={archiveSelectedCustomer}

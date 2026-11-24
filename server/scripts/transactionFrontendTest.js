@@ -75,10 +75,13 @@ const credits = [{ sale_id: 700, sale_date: '2026-10-20T09:30:00+08:00', total_a
 const justineCredits = [{ sale_id: 701, sale_date: '2026-10-20T11:30:00+08:00', total_amount: '300.00', amount_paid: '0.00', remaining_balance: '300.00', status: 'Unpaid', recorded_by: 'Transaction Test Admin' }]
 const payments = [{ payment_id: 900, sale_id: 700, payment_amount: '100.00', remaining_balance: '300.00', payment_date: '2026-10-20T10:15:00+08:00', recorded_by: 'Transaction Test Admin' }]
 const justinePayments = []
+const cashSales = [{ sale_id: 699, sale_date: '2026-10-20T08:00:00+08:00', amount_paid: '50.00', payment_type: 'Cash', status: 'Paid' }]
+const justineCashSales = []
 globalThis.testCredits = credits
 globalThis.testJustineCredits = justineCredits
 globalThis.testJustinePayments = justinePayments
 globalThis.testPayments = payments
+globalThis.testCashSales = cashSales
 globalThis.testCustomers = customers
 globalThis.salesRequests = []
 globalThis.saleIdempotencyKeys = []
@@ -134,6 +137,10 @@ globalThis.fetch = async (url, options = {}) => {
   if (pathParts.length === 4 && pathParts[1] === 'customers' && pathParts[3] === 'payments' && method === 'GET') {
     globalThis.ledgerRefreshCustomerIds.push(customerId)
     return new Response(JSON.stringify({ success: true, data: customerId === 7 ? payments : customerId === 8 ? justinePayments : [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  }
+  if (pathParts.length === 4 && pathParts[1] === 'customers' && pathParts[3] === 'cash-sales' && method === 'GET') {
+    globalThis.ledgerRefreshCustomerIds.push(customerId)
+    return new Response(JSON.stringify({ success: true, data: customerId === 7 ? cashSales : customerId === 8 ? justineCashSales : [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   if (pathParts.length === 4 && pathParts[1] === 'customers' && pathParts[3] === 'sales' && method === 'GET') {
     globalThis.ledgerRefreshCustomerIds.push(customerId)
@@ -540,7 +547,8 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   await waitFor("document.querySelector('#customer-drawer-title')?.textContent === 'Maria Santos'", 'Customer detail drawer did not open')
   assert(await evaluate("document.querySelector('[aria-label=\"Customer information\"]') && [...document.querySelectorAll('#customer-credits-test .customer-drawer-tabs button')].some((button) => button.textContent.trim() === 'Sales History') && document.querySelector('#customer-payment-history-heading')?.textContent === 'Payment History'"), 'Customer information, sales history navigation, or payment history section was missing')
   assert(await evaluate("document.querySelectorAll('#customer-credits-test .customer-payment-history-list .initial-downpayment').length") === 1, 'Initial downpayment was missing or duplicated in payment history')
-  assert(await evaluate("document.querySelector('#customer-credits-test .customer-payment-history-list').textContent.includes('Initial Downpayment') && document.querySelector('#customer-credits-test .customer-payment-history-list').textContent.includes('100.00') && document.querySelector('#customer-credits-test .customer-payment-history-list').textContent.includes('PAY-900')"), 'Initial downpayment and subsequent payment were not displayed separately')
+  assert(await evaluate("document.querySelector('#customer-credits-test .customer-payment-history-list').textContent.includes('Credit · Down Payment') && document.querySelector('#customer-credits-test .customer-payment-history-list').textContent.includes('100.00') && document.querySelector('#customer-credits-test .customer-payment-history-list').textContent.includes('PAY-900')"), 'Initial downpayment and subsequent payment were not displayed separately')
+  assert(await evaluate("document.querySelector('#customer-credits-test .customer-payment-history-list').textContent.includes('Cash · Paid') && document.querySelector('#customer-credits-test .customer-payment-history-list').textContent.includes('OR-699')"), 'Fully paid cash sale was missing from the combined payment history')
   assert(await evaluate("document.querySelector('#customer-drawer-title')?.textContent === 'Maria Santos' && document.querySelector('[aria-label=\"Customer information\"]')?.textContent.includes('09171234567') && document.querySelector('[aria-label=\"Customer information\"]')?.textContent.includes('Quezon City')"), 'Customer identity and contact details were incomplete')
   await click("[...document.querySelectorAll('#customer-credits-test .customer-drawer-tabs button')].find((button) => button.textContent.trim() === 'Sales History')")
   assert(await evaluate("document.querySelector('[aria-label=\"Customer balance summary\"] .outstanding strong').textContent.includes('300.00')"), 'Customer outstanding balance was inaccurate')
@@ -666,6 +674,7 @@ createRoot(document.getElementById('root')).render(<ToastProvider><Harness /></T
   await setInput("document.querySelector('#customer-credits-test .customer-list-controls input')", 'Justine')
   await click("[...document.querySelectorAll('#customer-credits-test .customer-selection-row')].find((row) => row.textContent.includes('Justine'))")
   await waitFor("document.querySelector('#customer-drawer-title')?.textContent === 'Justine'", 'Customer switch did not open the selected ledger')
+  assert(!await evaluate("document.querySelector('#customer-credits-test .customer-payment-history-list')?.textContent.includes('OR-699')"), 'Previous customer cash history remained after switching customers')
   assert(!await evaluate("document.querySelector('#customer-credits-test .payment-feedback')?.textContent.includes('Maria Santos')"), 'Maria payment recovery appeared under Justine')
   assert(await evaluate("Boolean(document.querySelector('#customer-credits-test .payment-form select option[value=\"701\"]')) && !document.querySelector('#customer-credits-test .payment-form select').disabled"), 'Justine unpaid credit sale was unavailable while Maria had a pending payment')
   assert(!await evaluate("document.querySelector('[role=dialog][aria-label=\"Payment Recorded Successfully!\"]')"), 'Maria payment was shown as successful under Justine')

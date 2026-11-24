@@ -6,6 +6,7 @@ import {
   createCustomer,
   getArchivedCustomers,
   getCustomer,
+  getCustomerCashSales,
   getCustomerCredits,
   getCustomerPayments,
   getCustomerSales,
@@ -23,6 +24,7 @@ router.get('/', authorizeCapability('customer.read'), getCustomers)
 router.post('/', authorizeCapability('customer.create.pos'), createCustomer)
 router.get('/:id/credits', authorizeCapability('customer.balance.read'), getCustomerCredits)
 router.get('/:id/payments', authorizeCapability('customer.payment.read'), getCustomerPayments)
+router.get('/:id/cash-sales', authorizeCapability('customer.payment.read'), getCustomerCashSales)
 router.get('/:id/sales', authorizeRoles('Admin'), getCustomerSales)
 router.patch('/:id', authorizeRoles('Admin'), updateCustomer)
 router.get('/:id', authorizeCapability('customer.balance.read'), getCustomer)

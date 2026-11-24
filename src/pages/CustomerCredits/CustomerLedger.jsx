@@ -37,6 +37,7 @@ function CustomerLedger({
   customer,
   credits,
   payments,
+  cashSales,
   sales,
   onPayment,
   onSelectCustomer,
@@ -54,7 +55,7 @@ function CustomerLedger({
   const [actionBusy, setActionBusy] = useState(false)
   const [actionError, setActionError] = useState('')
   const archived = customer.is_active === false || customer.is_active === 0
-  const paymentHistory = buildCustomerPaymentHistory(credits, payments)
+  const paymentHistory = buildCustomerPaymentHistory(credits, payments, cashSales)
 
   async function confirmStatusChange() {
     setActionBusy(true)
@@ -190,19 +191,24 @@ function CustomerLedger({
                           className={payment.history_type === 'initial-downpayment' ? 'initial-downpayment' : undefined}
                         >
                           <div>
-                            <strong>
-                              {payment.history_type === 'initial-downpayment'
-                                ? 'Initial Downpayment'
-                                : `PAY-${payment.payment_id}`}
-                            </strong>
+                            <strong>{payment.history_type === 'cash-sale'
+                              ? 'Cash · Paid'
+                              : payment.history_type === 'initial-downpayment'
+                                ? 'Credit · Down Payment'
+                                : 'Credit · Payment'}</strong>
                             <span>{peso.format(Number(payment.payment_amount))}</span>
                           </div>
                           <p>
-                            {payment.history_type === 'initial-downpayment'
-                              ? `Payment received during credit sale · OR-${payment.sale_id}`
-                              : `Applied to OR-${payment.sale_id}`}
+                            {payment.history_type === 'cash-sale'
+                              ? `OR-${payment.sale_id} · Status: Paid`
+                              : payment.history_type === 'initial-downpayment'
+                                ? `OR-${payment.sale_id}`
+                                : `PAY-${payment.payment_id} · Applied to OR-${payment.sale_id}`}
                             {payment.payment_date
                               ? ` · ${formatActivityTimestamp(payment.payment_date).dateTime}`
+                              : ''}
+                            {(payment.history_type === 'payment' || payment.payment_id) && payment.remaining_balance !== undefined
+                              ? ` · Remaining: ${peso.format(Number(payment.remaining_balance))}`
                               : ''}
                           </p>
                         </article>

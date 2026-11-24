@@ -69,6 +69,7 @@ const suppliers = [{ supplier_id: 5, supplier_name: 'Active Supplier', contact_p
 const customers = [{ customer_id: 17, customer_name: 'POS Customer', current_balance: '90.00' }]
 const credits = [{ sale_id: 52, sale_date: '2026-11-20T10:00:00+08:00', total_amount: '100.00', amount_paid: '10.00', remaining_balance: '90.00', status: 'Partially Paid', recorded_by: 'Staff Test' }]
 const payments = [{ payment_id: 73, sale_id: 52, payment_amount: '10.00', remaining_balance: '90.00', payment_date: '2026-11-20T11:00:00+08:00', recorded_by: 'Staff Test' }]
+const cashSales = [{ sale_id: 50, sale_date: '2026-11-19T10:00:00+08:00', amount_paid: '45.00', payment_type: 'Cash', status: 'Paid' }]
 globalThis.staffReportMode = 'success'
 globalThis.staffReportRequests = []
 globalThis.staffCreditMode = 'success'
@@ -98,6 +99,7 @@ globalThis.fetch = async (input, options = {}) => {
     if (globalThis.staffCreditMode === 'error') return Response.json({ success: false, message: 'Mock payment history failed' }, { status: 503 })
     return json({ data: payments })
   }
+  if (path.endsWith('/customers/17/cash-sales')) return json({ data: cashSales })
   if (path.endsWith('/customers/17')) return json({ data: customers[0] })
   if (path.endsWith('/customers')) return json({ data: customers })
   if (path.endsWith('/stock-in')) return json({ data: [{ stockin_id: 12, supplier_id: 5, supplier_name: 'Active Supplier', product_id: 4, product_name: 'POS Product', unit: 'kg', quantity_received: '3.000', remaining_quantity: '2.000', delivery_date: '2026-11-22T09:00:00+08:00', recorded_by: 'Staff Test' }] })
@@ -279,6 +281,7 @@ createRoot(document.getElementById('root')).render(<App />)
   await waitFor("document.querySelector('[role=dialog][aria-label=\"Customer Credit Ledger\"]')?.textContent.includes('Customer Credit Ledger')")
   await evaluate("[...document.querySelectorAll('[role=dialog] [role=tab]')].find((tab) => tab.textContent.includes('Payment History')).click()")
   await waitFor("document.querySelector('[role=dialog][aria-label=\"Customer Credit Ledger\"]')?.textContent.includes('PAY-73')")
+  assert(await evaluate("document.querySelector('[role=dialog][aria-label=\"Customer Credit Ledger\"]')?.textContent.includes('Cash · Paid') && document.querySelector('[role=dialog][aria-label=\"Customer Credit Ledger\"]')?.textContent.includes('OR-50')"), 'Staff payment history did not include the customer cash sale')
   assert(await evaluate("(() => { const dialog = document.querySelector('[role=dialog][aria-label=\"Customer Credit Ledger\"]'); const buttons = [...dialog.querySelectorAll('button')].map((button) => button.textContent.trim()); return dialog.textContent.includes('POS Customer') && dialog.textContent.includes('OR-52') && dialog.textContent.includes('PAY-73') && dialog.textContent.includes('Outstanding Balance') && !buttons.some((text) => /record payment|edit credit|delete|reverse|adjustment/i.test(text)); })()"), 'Customer credit modal omitted authorized details or exposed a modification action')
   const reportPath = await evaluate('location.pathname')
   await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))")

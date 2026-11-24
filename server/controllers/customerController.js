@@ -397,8 +397,10 @@ export async function getCustomerPayments(request, response) {
       `SELECT pa.payment_id, pa.sale_id, pa.payment_amount, pa.remaining_balance,
               CONCAT(DATE_FORMAT(pa.payment_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS payment_date,
               u.fullname AS recorded_by
-       FROM payments pa JOIN users u ON pa.user_id = u.user_id
-       WHERE pa.customer_id = ?
+       FROM payments pa
+       JOIN sales sa ON sa.sale_id = pa.sale_id
+       JOIN users u ON pa.user_id = u.user_id
+       WHERE pa.customer_id = ? AND sa.customer_id = pa.customer_id AND sa.payment_type = 'Credit'
        ORDER BY pa.payment_date DESC, pa.payment_id DESC`,
       [customerId],
     )
@@ -406,5 +408,30 @@ export async function getCustomerPayments(request, response) {
   } catch (error) {
     console.error('Unable to retrieve customer payments:', error.message)
     return response.status(500).json({ success: false, message: 'Unable to retrieve customer payments' })
+  }
+}
+
+export async function getCustomerCashSales(request, response) {
+  const customerId = parseCustomerId(request.params.id)
+  if (!customerId) return response.status(400).json({ success: false, message: 'Invalid customer ID' })
+
+  try {
+    const [sales] = await pool.execute(
+      `SELECT sale_id,
+              CONCAT(DATE_FORMAT(sale_date, '%Y-%m-%dT%H:%i:%s'), '+08:00') AS sale_date,
+              amount_paid, payment_type, status
+       FROM sales
+       WHERE customer_id = ?
+         AND payment_type = 'Cash'
+         AND status = 'Paid'
+         AND remaining_balance = 0
+         AND amount_paid = total_amount
+       ORDER BY sale_date DESC, sale_id DESC`,
+      [customerId],
+    )
+    return response.json({ success: true, data: sales })
+  } catch (error) {
+    console.error('Unable to retrieve customer cash sales:', error.message)
+    return response.status(500).json({ success: false, message: 'Unable to retrieve customer cash sales' })
   }
 }

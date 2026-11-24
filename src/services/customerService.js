@@ -56,6 +56,12 @@ export async function getCustomerPayments(id, options = {}) {
   return data
 }
 
+export async function getCustomerCashSales(id, options = {}) {
+  const data = await request(`/customers/${id}/cash-sales`, options, 'Unable to retrieve customer cash sales')
+  if (!Array.isArray(data)) throw new Error('Customer cash sales could not be loaded. Please try again.')
+  return data
+}
+
 export async function getCustomerSales(id, options = {}) {
   const data = await request(`/customers/${id}/sales`, options, 'Unable to retrieve customer sales')
   if (!Array.isArray(data)) throw new Error('Customer sales could not be loaded. Please try again.')
