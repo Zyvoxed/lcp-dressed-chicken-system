@@ -3,6 +3,7 @@ import Modal from '../Shared/Modal.jsx'
 import TransactionSuccessModal from '../Shared/TransactionSuccessModal.jsx'
 import { createCustomer, updateCustomer } from '../../services/customerService.js'
 import { useToast } from '../../context/ToastContext.jsx'
+import { customerFieldErrorsFromMessage, normalizeCustomerForm, validateCustomerForm } from './customerFormValidation.js'
 
 const initialForm = { customer_name: '', contact_number: '', address: '' }
 
@@ -21,21 +22,32 @@ function CustomerModal({ onClose, onCreated, onUpdated, customer = null }) {
   const [form, setForm] = useState(() => customerForm(customer))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const [refreshWarning, setRefreshWarning] = useState('')
   const [savedCustomer, setSavedCustomer] = useState(null)
   const submissionLock = useRef(false)
 
   function change(event) {
-    setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
+    const { name, value } = event.target
+    setForm((current) => ({ ...current, [name]: value }))
     setError('')
+    setFieldErrors((current) => {
+      if (!current[name]) return current
+      const next = { ...current }
+      delete next[name]
+      return next
+    })
   }
 
   async function save(event) {
     event.preventDefault()
     if (submissionLock.current) return
-    if (!form.customer_name.trim()) {
-      setError('Customer name is required.')
-      showError('Customer name is required.')
+    const validationErrors = validateCustomerForm(form)
+    if (Object.keys(validationErrors).length) {
+      setFieldErrors(validationErrors)
+      const message = Object.values(validationErrors)[0]
+      setError(message)
+      showError(message)
       return
     }
 
@@ -43,11 +55,7 @@ function CustomerModal({ onClose, onCreated, onUpdated, customer = null }) {
     setSaving(true)
     setError('')
     try {
-      const payload = {
-        customer_name: form.customer_name.trim(),
-        contact_number: form.contact_number.trim(),
-        address: form.address.trim(),
-      }
+      const payload = normalizeCustomerForm(form)
       const result = editing
         ? await updateCustomer(customer.customer_id, payload)
         : await createCustomer(payload)
@@ -66,6 +74,7 @@ function CustomerModal({ onClose, onCreated, onUpdated, customer = null }) {
     } catch (requestError) {
       showError(requestError.message || 'Unable to save customer')
       setError(requestError.message)
+      setFieldErrors(customerFieldErrorsFromMessage(requestError.message))
       submissionLock.current = false
       setSaving(false)
     }
@@ -76,7 +85,7 @@ function CustomerModal({ onClose, onCreated, onUpdated, customer = null }) {
       { label: 'Customer reference', value: `CUS-${savedCustomer.customer_id}` },
       { label: 'Customer name', value: savedCustomer.customer_name },
       ...(savedCustomer.contact_number ? [{ label: 'Contact number', value: savedCustomer.contact_number }] : []),
-      ...(savedCustomer.address ? [{ label: 'Address', value: savedCustomer.address }] : []),
+      ...(savedCustomer.address ? [{ label: 'Location', value: savedCustomer.address }] : []),
     ]
     return (
       <TransactionSuccessModal
@@ -94,15 +103,18 @@ function CustomerModal({ onClose, onCreated, onUpdated, customer = null }) {
       <form className="customer-form" onSubmit={save} noValidate aria-busy={saving}>
         <label htmlFor="customer-name">
           <span>Customer Name <b className="required-marker" aria-hidden="true">*</b></span>
-          <input id="customer-name" name="customer_name" value={form.customer_name} onChange={change} maxLength={100} autoComplete="name" disabled={saving} required />
+          <input id="customer-name" name="customer_name" value={form.customer_name} onChange={change} maxLength={100} autoComplete="name" disabled={saving} required aria-invalid={Boolean(fieldErrors.customer_name)} aria-describedby={fieldErrors.customer_name ? 'customer-name-error' : undefined} />
+          {fieldErrors.customer_name && <span className="customer-field-error" id="customer-name-error">{fieldErrors.customer_name}</span>}
         </label>
         <label htmlFor="customer-contact">
-          Contact Number <span className="optional-label">Optional</span>
-          <input id="customer-contact" name="contact_number" value={form.contact_number} onChange={change} maxLength={20} inputMode="tel" autoComplete="tel" disabled={saving} />
+          <span>Contact Number <b className="required-marker" aria-hidden="true">*</b></span>
+          <input id="customer-contact" name="contact_number" value={form.contact_number} onChange={change} maxLength={20} inputMode="tel" autoComplete="tel" disabled={saving} required aria-invalid={Boolean(fieldErrors.contact_number)} aria-describedby={fieldErrors.contact_number ? 'customer-contact-error' : undefined} />
+          {fieldErrors.contact_number && <span className="customer-field-error" id="customer-contact-error">{fieldErrors.contact_number}</span>}
         </label>
         <label htmlFor="customer-address">
-          Address <span className="optional-label">Optional</span>
-          <textarea id="customer-address" name="address" value={form.address} onChange={change} rows={3} autoComplete="street-address" disabled={saving} />
+          <span>Location <b className="required-marker" aria-hidden="true">*</b></span>
+          <textarea id="customer-address" name="address" value={form.address} onChange={change} rows={3} autoComplete="street-address" disabled={saving} required aria-invalid={Boolean(fieldErrors.address)} aria-describedby={fieldErrors.address ? 'customer-address-error' : undefined} />
+          {fieldErrors.address && <span className="customer-field-error" id="customer-address-error">{fieldErrors.address}</span>}
         </label>
         {error && <p className="sales-feedback error" role="alert">{error}</p>}
         <div className="modal-actions">

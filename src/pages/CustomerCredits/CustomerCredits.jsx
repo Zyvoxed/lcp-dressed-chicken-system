@@ -36,6 +36,7 @@ function CustomerCredits() {
   const [salesLoading, setSalesLoading] = useState(false)
   const [salesError, setSalesError] = useState('')
   const [customerModalOpen, setCustomerModalOpen] = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState(null)
   const [showArchivedPanel, setShowArchivedPanel] = useState(false)
   const [archivedCustomersLoading, setArchivedCustomersLoading] = useState(false)
   const [archivedCustomersError, setArchivedCustomersError] = useState('')
@@ -200,6 +201,19 @@ function CustomerCredits() {
     if (customer) selectCustomer(customer)
   }
 
+  async function customerUpdated(updatedCustomer) {
+    const customerId = Number(updatedCustomer.customer_id)
+    const [customerList, currentCustomer] = await Promise.all([
+      getCustomers(),
+      getCustomer(customerId),
+    ])
+    setCustomers(customerList)
+    if (Number(selectedCustomerIdRef.current) === customerId) {
+      setSelectedCustomer(currentCustomer)
+      selectedCustomerIdRef.current = customerId
+    }
+  }
+
   function closeCustomerModal() {
     setCustomerModalOpen(false)
   }
@@ -235,6 +249,7 @@ function CustomerCredits() {
               onPayment={refreshCustomer}
               onArchive={archiveSelectedCustomer}
               onRestore={restoreSelectedCustomer}
+              onEditCustomer={setEditingCustomer}
               isAdmin={isAdmin}
               onSelectCustomer={selectCustomerById}
               onClose={closeCustomerDrawer}
@@ -251,6 +266,14 @@ function CustomerCredits() {
           key="add-customer"
           onClose={closeCustomerModal}
           onCreated={customerCreated}
+        />
+      )}
+      {editingCustomer && (
+        <CustomerModal
+          key={`edit-customer-${editingCustomer.customer_id}`}
+          customer={editingCustomer}
+          onClose={() => setEditingCustomer(null)}
+          onUpdated={customerUpdated}
         />
       )}
       <AnimatePresence>

@@ -45,6 +45,7 @@ function parseCustomerId(value) {
 }
 
 function parseCustomerName(value) {
+  if (value === null || value === undefined) throw new CustomerError(400, 'Customer name is required')
   if (typeof value !== 'string') throw new CustomerError(400, 'Customer name must be text')
   const customerName = value.trim()
   if (!customerName) throw new CustomerError(400, 'Customer name is required')
@@ -52,14 +53,27 @@ function parseCustomerName(value) {
   return customerName
 }
 
-function parseOptionalText(value, label, maximumLength) {
-  if (value === null || value === undefined) return null
-  if (typeof value !== 'string') throw new CustomerError(400, `${label} must be text`)
-  const normalized = value.trim()
-  if (maximumLength && normalized.length > maximumLength) {
-    throw new CustomerError(400, `${label} must not exceed ${maximumLength} characters`)
+function parseCustomerContactNumber(value) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new CustomerError(400, 'Contact number is required')
   }
-  return normalized || null
+  const contactNumber = value.trim()
+  if (contactNumber.length > 20) {
+    throw new CustomerError(400, 'Contact number must not exceed 20 characters')
+  }
+  const coreNumber = contactNumber.replace(/\s*(?:ext\.?|x)\s*\d{1,5}$/i, '')
+  const digits = coreNumber.replace(/\D/g, '')
+  if (!/^\+?[\d\s().-]+$/.test(coreNumber) || digits.length < 7 || digits.length > 15) {
+    throw new CustomerError(400, 'Contact number must be a valid telephone number')
+  }
+  return contactNumber
+}
+
+function parseCustomerLocation(value) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new CustomerError(400, 'Location is required')
+  }
+  return value.trim()
 }
 
 function failure(error, response, fallback) {
@@ -215,8 +229,8 @@ export async function restoreCustomer(request, response) {
 export async function createCustomer(request, response) {
   try {
     const customerName = parseCustomerName(request.body?.customer_name)
-    const contactNumber = parseOptionalText(request.body?.contact_number, 'Contact number', 20)
-    const address = parseOptionalText(request.body?.address, 'Address')
+    const contactNumber = parseCustomerContactNumber(request.body?.contact_number)
+    const address = parseCustomerLocation(request.body?.address)
     const [result] = await pool.execute(
       'INSERT INTO customers (customer_name, contact_number, address) VALUES (?, ?, ?)',
       [customerName, contactNumber, address],
@@ -248,6 +262,8 @@ export async function updateCustomer(request, response) {
     if (submittedFields.some((field) => !editableCustomerFields.has(field))) {
       throw new CustomerError(400, 'Only customer name, contact number, and address can be updated')
     }
+    if (!Object.hasOwn(body, 'contact_number')) throw new CustomerError(400, 'Contact number is required')
+    if (!Object.hasOwn(body, 'address')) throw new CustomerError(400, 'Location is required')
 
     const updates = []
     const values = []
@@ -255,14 +271,10 @@ export async function updateCustomer(request, response) {
       updates.push('customer_name = ?')
       values.push(parseCustomerName(body.customer_name))
     }
-    if (Object.hasOwn(body, 'contact_number')) {
-      updates.push('contact_number = ?')
-      values.push(parseOptionalText(body.contact_number, 'Contact number', 20))
-    }
-    if (Object.hasOwn(body, 'address')) {
-      updates.push('address = ?')
-      values.push(parseOptionalText(body.address, 'Address'))
-    }
+    updates.push('contact_number = ?')
+    values.push(parseCustomerContactNumber(body.contact_number))
+    updates.push('address = ?')
+    values.push(parseCustomerLocation(body.address))
 
     connection = await pool.getConnection()
     await connection.beginTransaction()

@@ -1278,6 +1278,19 @@
   resize: vertical;
 }
 
+.customer-form :is(input, textarea)[aria-invalid="true"] {
+  border-color: var(--danger, #b42318);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger, #b42318) 14%, transparent);
+}
+
+.customer-field-error {
+  display: block;
+  margin-top: 4px;
+  color: var(--danger, #b42318);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .customer-form .primary-action {
   display: inline-flex;
   align-items: center;

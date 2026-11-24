@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Archive, RotateCcw, X } from 'lucide-react'
+import { Archive, Pencil, RotateCcw, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import DataTable from '../Shared/DataTable.jsx'
 import EmptyState from '../Shared/EmptyState.jsx'
@@ -49,6 +49,7 @@ function CustomerLedger({
   isAdmin,
   onArchive,
   onRestore,
+  onEditCustomer,
 }) {
   const [activeSection, setActiveSection] = useState('Record Payment')
   const [confirmation, setConfirmation] = useState('')
@@ -121,7 +122,10 @@ function CustomerLedger({
           <div className="customer-drawer-header-actions">
             {isAdmin && (archived
               ? <button className="secondary-action slim" type="button" onClick={() => { setConfirmation('restore'); setActionError('') }}><RotateCcw size={14} aria-hidden="true" /> Restore</button>
-              : <button className="secondary-action slim" type="button" onClick={() => { setConfirmation('archive'); setActionError('') }}><Archive size={14} aria-hidden="true" /> Archive</button>)}
+              : <>
+                <button className="secondary-action slim" type="button" onClick={() => onEditCustomer(customer)}><Pencil size={14} aria-hidden="true" /> Edit</button>
+                <button className="secondary-action slim" type="button" onClick={() => { setConfirmation('archive'); setActionError('') }}><Archive size={14} aria-hidden="true" /> Archive</button>
+              </>)}
             <button className="close-button" type="button" onClick={onClose} aria-label="Close customer details">
               <X size={18} aria-hidden="true" />
             </button>

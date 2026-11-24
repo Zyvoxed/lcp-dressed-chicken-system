@@ -61,7 +61,7 @@ async function withFakeConnection(connection, callback) {
   try { await callback() } finally { pool.getConnection = original }
 }
 
-test('valid customer updates change only contact fields and log the editor', async () => {
+test('valid customer updates change only profile fields and log the editor', async () => {
   const connection = fakeCustomerConnection()
   const response = responseRecorder()
   const salesBefore = [{ sale_id: 40, customer_id: 7, total_amount: '500.00' }]
@@ -101,16 +101,51 @@ test('invalid IDs and unsupported financial fields are rejected before database 
   assert.equal(unsupportedResponse.payload.message, 'Only customer name, contact number, and address can be updated')
 
   const emptyNameResponse = responseRecorder()
-  await updateCustomer({ params: { id: '7' }, body: { customer_name: '   ' }, user: { user_id: 2 } }, emptyNameResponse)
+  await updateCustomer({ params: { id: '7' }, body: { customer_name: '   ', contact_number: '09171234567', address: 'Quezon City' }, user: { user_id: 2 } }, emptyNameResponse)
   assert.equal(emptyNameResponse.statusCode, 400)
   assert.equal(emptyNameResponse.payload.message, 'Customer name is required')
+
+  const longNameResponse = responseRecorder()
+  await updateCustomer({ params: { id: '7' }, body: { customer_name: 'N'.repeat(101), contact_number: '09171234567', address: 'Quezon City' }, user: { user_id: 2 } }, longNameResponse)
+  assert.equal(longNameResponse.statusCode, 400)
+  assert.equal(longNameResponse.payload.message, 'Customer name must not exceed 100 characters')
+
+  const longContactResponse = responseRecorder()
+  await updateCustomer({ params: { id: '7' }, body: { contact_number: '1'.repeat(21), address: 'Quezon City' }, user: { user_id: 2 } }, longContactResponse)
+  assert.equal(longContactResponse.statusCode, 400)
+  assert.equal(longContactResponse.payload.message, 'Contact number must not exceed 20 characters')
+
+  const invalidPhoneResponse = responseRecorder()
+  await updateCustomer({ params: { id: '7' }, body: { contact_number: 'letters only', address: 'Quezon City' }, user: { user_id: 2 } }, invalidPhoneResponse)
+  assert.equal(invalidPhoneResponse.statusCode, 400)
+  assert.equal(invalidPhoneResponse.payload.message, 'Contact number must be a valid telephone number')
+
+  const whitespaceContactResponse = responseRecorder()
+  await updateCustomer({ params: { id: '7' }, body: { contact_number: '   ', address: 'Quezon City' }, user: { user_id: 2 } }, whitespaceContactResponse)
+  assert.equal(whitespaceContactResponse.statusCode, 400)
+  assert.equal(whitespaceContactResponse.payload.message, 'Contact number is required')
+
+  const missingContactResponse = responseRecorder()
+  await updateCustomer({ params: { id: '7' }, body: { customer_name: 'Maria S.', address: 'Quezon City' }, user: { user_id: 2 } }, missingContactResponse)
+  assert.equal(missingContactResponse.statusCode, 400)
+  assert.equal(missingContactResponse.payload.message, 'Contact number is required')
+
+  const missingLocationResponse = responseRecorder()
+  await updateCustomer({ params: { id: '7' }, body: { customer_name: 'Maria S.', contact_number: '09171234567' }, user: { user_id: 2 } }, missingLocationResponse)
+  assert.equal(missingLocationResponse.statusCode, 400)
+  assert.equal(missingLocationResponse.payload.message, 'Location is required')
+
+  const whitespaceLocationResponse = responseRecorder()
+  await updateCustomer({ params: { id: '7' }, body: { customer_name: 'Maria S.', contact_number: '09171234567', address: '   ' }, user: { user_id: 2 } }, whitespaceLocationResponse)
+  assert.equal(whitespaceLocationResponse.statusCode, 400)
+  assert.equal(whitespaceLocationResponse.payload.message, 'Location is required')
 })
 
 test('a nonexistent customer returns 404 and rolls back', async () => {
   const connection = fakeCustomerConnection({ exists: false })
   const response = responseRecorder()
   await withFakeConnection(connection, () => updateCustomer({
-    params: { id: '999' }, body: { customer_name: 'Missing Customer' }, user: { user_id: 2 },
+    params: { id: '999' }, body: { customer_name: 'Missing Customer', contact_number: '09171234567', address: 'Quezon City' }, user: { user_id: 2 },
   }, response))
   assert.equal(response.statusCode, 404)
   assert.equal(response.payload.message, 'Customer not found')

@@ -259,6 +259,7 @@ createRoot(document.getElementById('root')).render(<App />)
   await evaluate("document.querySelector('.customer-selection-row').click()")
   await waitFor("document.body.textContent.includes('Payment History')")
   assert(await evaluate("document.body.textContent.includes('90.00') && document.body.textContent.includes('Record Payment') && !document.body.textContent.includes('Sales History')"), 'Staff customer credit view did not show balances/payment workflow safely')
+  assert(!await evaluate("[...document.querySelectorAll('.customer-drawer-header-actions button')].some((button) => button.textContent.includes('Edit'))"), 'Staff customer credit view exposed the Admin-only profile edit action')
 
   await clickByText('Reports & Audits')
   await waitFor("document.querySelector('.staff-reports [role=tab]')?.textContent.includes('Sales Activity Audit') && document.querySelector('.staff-reports tbody')?.textContent.includes('POS Customer')")

@@ -115,7 +115,7 @@ test('Staff can use POS lookups and checkout while direct administrative API cal
 
     const createCustomerResponse = await fetch(`${base}/customers`, {
       method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_name: 'New POS Customer' }),
+      body: JSON.stringify({ customer_name: 'New POS Customer', contact_number: '09171234567', address: 'Pasig City' }),
     })
     assert.equal(createCustomerResponse.status, 201)
 
